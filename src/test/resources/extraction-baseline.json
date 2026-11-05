@@ -1,0 +1,46 @@
+{
+  "types": {
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassPalette": "com.dishanhai.sh_better_ui.client.glass.GlassPalette",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassGeometry": "com.dishanhai.sh_better_ui.client.glass.GlassGeometry",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassMotion": "com.dishanhai.sh_better_ui.client.glass.GlassMotion",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassCell": "com.dishanhai.sh_better_ui.client.glass.GlassCell",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassBlur": "com.dishanhai.sh_better_ui.client.glass.GlassBlur",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GlassPanelTexture": "com.dishanhai.sh_better_ui.compat.ldlib.GlassPanelTexture",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.Spring": "com.dishanhai.sh_better_ui.client.gui.scaled.Spring",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.SpringTable": "com.dishanhai.sh_better_ui.client.gui.scaled.SpringTable",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.GuiMotion": "com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.GuiRenderUtil": "com.dishanhai.sh_better_ui.client.gui.scaled.GuiRenderUtil",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.ButtonFeedback": "com.dishanhai.sh_better_ui.client.gui.scaled.ButtonFeedback",
+    "com.dishanhai.gt_shanhai.client.gui.shop.ShopGaussBlur": "com.dishanhai.sh_better_ui.client.blur.GaussBlur",
+    "com.dishanhai.gt_shanhai.client.gui.shop.ShopGlassStyle": "com.dishanhai.sh_better_ui.client.blur.GlassStyle",
+    "com.dishanhai.gt_shanhai.client.gui.shop.ShopTheme": "com.dishanhai.sh_better_ui.client.glass.GlassTheme",
+    "com.dishanhai.gt_shanhai.client.gui.shop.ShopGlassTooltip": "com.dishanhai.sh_better_ui.client.glass.GlassTooltip",
+    "com.dishanhai.gt_shanhai.client.gui.glass.GuiRect": "com.dishanhai.sh_better_ui.client.glass.GuiRect",
+    "com.dishanhai.gt_shanhai.client.gui.glass.PixelRect": "com.dishanhai.sh_better_ui.client.glass.PixelRect",
+    "com.dishanhai.gt_shanhai.client.gui.scaled.RepeatCurve": "com.dishanhai.sh_better_ui.client.gui.scaled.RepeatCurve"
+  },
+  "moves": {
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassPalette.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassPalette.kt",
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassGeometry.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassGeometry.kt",
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassMotion.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassMotion.kt",
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassCell.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassCell.kt",
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassBlur.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
+    "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassPanelTexture.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/compat/ldlib/GlassPanelTexture.kt",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/Spring.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/Spring.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/SpringTable.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/SpringTable.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/GuiMotion.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GuiMotion.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/GuiRenderUtil.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GuiRenderUtil.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/ButtonFeedback.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ButtonFeedback.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/shop/ShopGaussBlur.java": "src/main/java/com/dishanhai/sh_better_ui/client/blur/GaussBlur.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/shop/ShopGlassStyle.java": "src/main/java/com/dishanhai/sh_better_ui/client/blur/GlassStyle.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/shop/ShopTheme.java": "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTheme.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/shop/ShopGlassTooltip.java": "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/RepeatCurve.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/RepeatCurve.java"
+  },
+  "shader_hashes": {
+    "post/shop_gauss_blur.json": "9b3c1dfc3d7964ee0864fe0f325ead3a716a7affbb583f381518070281d78964",
+    "program/shop_gauss_blur.json": "c2d60fb8aa40f29a86b231f0c3bb6f053723ab4bf69c1d425dad6ec9e963d8f0",
+    "program/shop_gauss_blur.fsh": "3cae9ed723e9d43d21c8817bef03b5a4ffffef852fc7b3d79c816b57ff30c0b9",
+    "program/shop_gauss_blur.vsh": "39148043a5e688a087d2add7b313677fb8e8025bc4a17322ebeff6118265e5a2"
+  }
+}
