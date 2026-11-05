@@ -1,0 +1,16 @@
+# Author: dishanhai
+/.gradle/
+/.kotlin/
+/build/
+/run/
+/libs/
+/gradle-install/
+/.idea/
+*.iml
+*.log
+*.log.gz
+.DS_Store
+Thumbs.db
+__pycache__/
+/.learnings/
+/docs/

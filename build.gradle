@@ -1,0 +1,134 @@
+// Author: dishanhai
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+    id 'org.jetbrains.kotlin.jvm' version '2.2.21'
+}
+
+group = 'com.dishanhai'
+version = mod_version
+base { archivesName = mod_id }
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+kotlin {
+    jvmToolchain(21)
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21 }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+repositories { mavenCentral() }
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    // KotlinForForge is installed separately. Never unpack or embed its classes.
+    implementation files('libs/kotlinforforge-4.12.0-all.jar')
+    compileOnly files('libs/ldlib-forge-1.20.1-1.0.33.b.jar')
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+
+// Reuse the verified metadata cache instead of fetching it on every configuration.
+def cachedMcVersionJson = file("${System.properties['user.home']}/.gradle/caches/forge_gradle/minecraft_repo/versions/${minecraft_version}/version.json")
+def mcMetaOut = layout.buildDirectory.file('downloadMCMeta/version.json').get().asFile
+if (cachedMcVersionJson.isFile() && !mcMetaOut.isFile()) {
+    mcMetaOut.parentFile.mkdirs()
+    java.nio.file.Files.copy(cachedMcVersionJson.toPath(), mcMetaOut.toPath())
+}
+
+minecraft {
+    mappings channel: mappings_channel, version: "${mappings_version}-${minecraft_version}"
+    runs {
+        client {
+            workingDirectory file('run/client')
+            mods { sh_better_ui { source sourceSets.main } }
+        }
+        server {
+            workingDirectory file('run/server')
+            mods { sh_better_ui { source sourceSets.main } }
+        }
+    }
+}
+
+processResources {
+    filteringCharset = 'UTF-8'
+    def properties = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version,
+                      mod_authors: mod_authors, mod_description: mod_description,
+                      minecraft_version: minecraft_version, forge_version: forge_version]
+    inputs.properties properties
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) { expand properties }
+}
+
+jar {
+    archiveClassifier = 'raw'
+    manifest.attributes('Specification-Title': mod_name,
+                        'Specification-Vendor': mod_authors,
+                        'Specification-Version': '1',
+                        'Implementation-Title': mod_name,
+                        'Implementation-Version': mod_version,
+                        'Implementation-Vendor': mod_authors)
+    finalizedBy 'reobfJar'
+}
+
+// Keep development classes independent of ForgeGradle's production remapping.
+tasks.register('devJar', Jar) {
+    dependsOn classes
+    archiveClassifier = 'dev'
+    from sourceSets.main.output
+}
+tasks.register('releaseJar', Copy) {
+    dependsOn 'reobfJar'
+    from layout.buildDirectory.file('reobfJar/output.jar')
+    into layout.buildDirectory.dir('libs')
+    rename { "${mod_id}-${mod_version}.jar" }
+}
+
+tasks.register('verifyLibraryJar') {
+    dependsOn 'releaseJar'
+    doLast {
+        def artifact = layout.buildDirectory.file("libs/${mod_id}-${mod_version}.jar").get().asFile
+        def zip = new java.util.zip.ZipFile(artifact)
+        try {
+            def required = ['META-INF/mods.toml', 'pack.mcmeta',
+                            'com/dishanhai/sh_better_ui/ShBetterUi.class',
+                            'com/dishanhai/sh_better_ui/client/UiClient.class',
+                            'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
+                            'assets/sh_better_ui/shaders/post/shop_gauss_blur.json',
+                            'assets/sh_better_ui/shaders/program/shop_gauss_blur.json',
+                            'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh',
+                            'assets/sh_better_ui/shaders/program/shop_gauss_blur.vsh']
+            sourceSets.main.output.classesDirs.files.each { classesDir ->
+                fileTree(classesDir).matching { include '**/*.class' }.files.each { classFile ->
+                    required.add(classesDir.toPath().relativize(classFile.toPath()).toString().replace('\\', '/'))
+                }
+            }
+            def missing = required.findAll { zip.getEntry(it) == null }
+            if (!missing.isEmpty()) throw new GradleException("UI library entries missing: ${missing}")
+            def forbidden = zip.entries().findAll {
+                it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
+                it.name.startsWith('kotlinx/') || it.name.startsWith('thedarkcolour/') ||
+                it.name.startsWith('com/dishanhai/gt_shanhai/')
+            }.collect { it.name }
+            if (!forbidden.isEmpty()) throw new GradleException("UI library contains embedded dependency classes: ${forbidden.take(5)}")
+        } finally { zip.close() }
+    }
+}
+tasks.named('build') { dependsOn 'devJar', 'verifyLibraryJar' }
+
+publishing {
+    publications {
+        uiLibrary(MavenPublication) {
+            artifactId = mod_id
+            artifact tasks.named('devJar')
+            artifact tasks.named('sourcesJar')
+            pom {
+                name = mod_name
+                description = mod_description
+            }
+        }
+    }
+}

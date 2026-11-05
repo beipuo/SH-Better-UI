@@ -1,0 +1,29 @@
+@echo off
+chcp 65001 > nul
+setlocal
+cd /d "%~dp0"
+rem Author: dishanhai
+set "JAVA_HOME=%ProgramFiles%\Java\jdk-21.0.11"
+set "TEMP=C:\jtmp"
+set "TMP=C:\jtmp"
+set "BUILD_EXIT=1"
+if not exist "%JAVA_HOME%\bin\java.exe" (
+    echo 找不到 JDK 21：%JAVA_HOME%
+    goto finish
+)
+if not exist "%~dp0gradle-install\gradle-8.8\bin\gradle.bat" (
+    echo 找不到本地 Gradle 8.8。
+    goto finish
+)
+if not exist "%TEMP%\" mkdir "%TEMP%"
+call "%~dp0gradle-install\gradle-8.8\bin\gradle.bat" build --offline --no-daemon --console=plain
+set "BUILD_EXIT=%ERRORLEVEL%"
+if not "%BUILD_EXIT%"=="0" goto finish
+echo 正式包：build\libs\sh_better_ui-1.0.0.jar
+echo 開發包：build\libs\sh_better_ui-1.0.0-dev.jar
+
+:finish
+echo.
+if not "%BUILD_EXIT%"=="0" echo 建置失敗，請查看上方錯誤。
+if /i not "%~1"=="--no-pause" pause
+exit /b %BUILD_EXIT%
