@@ -16,6 +16,11 @@ if not exist "%~dp0gradle-install\gradle-8.8\bin\gradle.bat" (
     goto finish
 )
 if not exist "%TEMP%\" mkdir "%TEMP%"
+if exist "%~dp0build\libs" rmdir /s /q "%~dp0build\libs"
+if exist "%~dp0build\libs" (
+    echo 無法清除舊的 build\libs 目錄
+    goto finish
+)
 call "%~dp0gradle-install\gradle-8.8\bin\gradle.bat" build --offline --no-daemon --console=plain
 set "BUILD_EXIT=%ERRORLEVEL%"
 if not "%BUILD_EXIT%"=="0" goto finish
