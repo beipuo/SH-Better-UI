@@ -23,6 +23,11 @@ public final class GlassTooltip {
 
     /** 以 LOWEST 优先级挂在 Forge 总线上：别的模组先改完位置/字体，我们再接管绘制。 */
     public static void render(RenderTooltipEvent.Pre event) {
+        render(event, false);
+    }
+
+    /** 山海：调用方选择中性烟灰或原深蓝玻璃，布局与文字绘制共用。 */
+    public static void render(RenderTooltipEvent.Pre event, boolean smoke) {
         List<ClientTooltipComponent> components = event.getComponents();
         if (components.isEmpty()) return;
         GuiGraphics g = event.getGraphics();
@@ -41,7 +46,8 @@ public final class GlassTooltip {
 
         g.pose().pushPose();
         try {
-            GlassTheme.GLASS.tooltipPanel(g, x - PAD, y - PAD, w + PAD * 2, h + PAD * 2);
+            if (smoke) GlassSurface.smokePanel(g, x - PAD, y - PAD, w + PAD * 2, h + PAD * 2);
+            else GlassTheme.GLASS.tooltipPanel(g, x - PAD, y - PAD, w + PAD * 2, h + PAD * 2);
             g.flush();
             g.pose().translate(0f, 0f, TEXT_Z);
             int ty = y;

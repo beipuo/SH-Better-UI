@@ -13,6 +13,9 @@ import net.minecraft.client.gui.GuiGraphics;
  */
 public class GlassTheme {
 
+    /** 山海：與星律樣板總成共用的中性煙灰材質；根板取樣一次，內層只疊薄灰。 */
+    public static final GlassTheme SMOKE = new GlassTheme(GlassColors.SMOKE);
+
     /** 原 KE 金框配色。 */
     public static final GlassTheme CLASSIC = new GlassTheme(false,
             -22016, -7710208, -267382768, -266724838, -300674028, -300476649, -299555547, -299421158,
@@ -37,6 +40,7 @@ public class GlassTheme {
             GlassPalette.ROW_EDGE);
 
     public final boolean glass;
+    public final GlassColors colors;
     /** 亮框：选中格、选中页签、按钮 hover 边、滚动条把手。经典=金，玻璃=青。 */
     public final int frame;
     /** 暗框：面板外框、盒子边、按钮常态边。 */
@@ -58,7 +62,22 @@ public class GlassTheme {
     private GlassTheme(boolean glass, int frame, int frameDark, int panelBg, int panelInner, int boxBg,
                       int rowBg, int rowHover, int selectBg, int buttonBg, int buttonHover,
                       int barBorder, int barBg, int cellEdge) {
+        this(glass, GlassColors.DARK, frame, frameDark, panelBg, panelInner, boxBg,
+                rowBg, rowHover, selectBg, buttonBg, buttonHover, barBorder, barBg, cellEdge);
+    }
+
+    private GlassTheme(GlassColors colors) {
+        this(true, colors, colors.ACCENT, colors.BUTTON_EDGE, colors.PANEL_FILL,
+                colors.DISPLAY_FILL, colors.DISPLAY_FILL, colors.ROW_FILL, colors.ROW_FILL_HOVER,
+                colors.ROW_FILL_HOVER, colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER,
+                colors.ROW_EDGE, colors.DISPLAY_FILL, colors.ROW_EDGE);
+    }
+
+    private GlassTheme(boolean glass, GlassColors colors, int frame, int frameDark, int panelBg, int panelInner, int boxBg,
+                       int rowBg, int rowHover, int selectBg, int buttonBg, int buttonHover,
+                       int barBorder, int barBg, int cellEdge) {
         this.glass = glass;
+        this.colors = colors;
         this.frame = frame;
         this.frameDark = frameDark;
         this.panelBg = panelBg;
@@ -76,7 +95,7 @@ public class GlassTheme {
 
     /** 山海：供消费端保留原有主题类型与选择入口，共用同一套绘制。 */
     protected GlassTheme(GlassTheme source) {
-        this(source.glass, source.frame, source.frameDark, source.panelBg, source.panelInner,
+        this(source.glass, source.colors, source.frame, source.frameDark, source.panelBg, source.panelInner,
                 source.boxBg, source.rowBg, source.rowHover, source.selectBg, source.buttonBg,
                 source.buttonHover, source.barBorder, source.barBg, source.cellEdge);
     }
@@ -101,8 +120,9 @@ public class GlassTheme {
         g.fill(x + w - 1, y + 1, x + w, y + h - 1, border);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, fill);
         if (w > 4 && h > 4) {
-            g.fill(x + 1, y + 1, x + w - 1, y + 2, GlassPalette.LIT);
-            g.fill(x + 1, y + 2, x + 2, y + h - 1, GlassPalette.LIT_SOFT);
+            g.fill(x + 1, y + 1, x + w - 1, y + 2, colors.LIT);
+            g.fill(x + 1, y + 2, x + 2, y + h - 1,
+                    colors == GlassColors.SMOKE ? colors.LIT : GlassPalette.LIT_SOFT);
         }
     }
 
@@ -140,21 +160,21 @@ public class GlassTheme {
             }
         }
         return switch (code) {
-            case '0', '8' -> GlassPalette.TEXT_DIM;
-            case '7' -> GlassPalette.TEXT_MUTED;
-            case 'a', '2' -> GlassPalette.OK;
-            case 'b', '3', '9', '1' -> GlassPalette.ACCENT;
+            case '0', '8' -> colors.TEXT_DIM;
+            case '7' -> colors.TEXT_MUTED;
+            case 'a', '2' -> colors.OK;
+            case 'b', '3', '9', '1' -> colors.ACCENT;
             case 'c', '4' -> GLASS_RED;
             case 'e', '6' -> GLASS_GOLD;
             case 'd', '5' -> GLASS_PURPLE;
-            default -> GlassPalette.TEXT;
+            default -> colors.TEXT;
         };
     }
 
     /** 页签/普通文字的常态、悬停、选中色（玻璃主题；经典调用方仍用自己的灰/白/金）。 */
-    public int tabIdle() { return GlassPalette.TEXT_MUTED; }
-    public int tabHover() { return GlassPalette.TEXT; }
-    public int tabActive() { return GlassPalette.ACCENT; }
+    public int tabIdle() { return colors.TEXT_MUTED; }
+    public int tabHover() { return colors.TEXT; }
+    public int tabActive() { return colors.ACCENT; }
 
     /** 居中画按钮文字：经典带阴影（原样）；玻璃无阴影，同样板生成器。 */
     public void drawCentered(GuiGraphics g, net.minecraft.client.gui.Font font, String text, int cx, int y, int color) {
@@ -168,7 +188,8 @@ public class GlassTheme {
     /** 原版界面背景那层 75%~80% 的黑幕会把玻璃盖成实心；玻璃主题换成很淡的一层冷色。返回 false 表示调用方照旧画原版背景。 */
     public boolean renderBackdropDim(GuiGraphics g, int width, int height) {
         if (!glass) return false;
-        g.fillGradient(0, 0, width, height, 0x30101828, 0x50101828);
+        if (colors == GlassColors.SMOKE) g.fillGradient(0, 0, width, height, 0x30202020, 0x50202020);
+        else g.fillGradient(0, 0, width, height, 0x30101828, 0x50101828);
         return true;
     }
 
@@ -180,6 +201,11 @@ public class GlassTheme {
     /** 同上，strength 0..1：二级界面开关时跟着弹簧淡入淡出。 */
     public void backdrop(GuiGraphics g, int x, int y, int w, int h, float strength) {
         if (!glass) return;
+        if (colors == GlassColors.SMOKE) {
+            GlassBlur.backdrop(g, new GuiRect(x, y, w, h), strength,
+                    com.dishanhai.sh_better_ui.client.blur.GlassStyle.NONE, 12f);
+            return;
+        }
         com.dishanhai.sh_better_ui.client.glass.GlassBlur.backdrop(g,
                 new com.dishanhai.sh_better_ui.client.glass.GuiRect(x, y, w, h), strength);
     }
@@ -194,7 +220,7 @@ public class GlassTheme {
      * 采样夹在区域内，不会吸进相邻区域的边框和字。经典主题不做。
      */
     public void regionBackdrop(GuiGraphics g, int x, int y, int w, int h) {
-        if (!glass) return;
+        if (!glass || colors == GlassColors.SMOKE) return;
         com.dishanhai.sh_better_ui.client.glass.GlassBlur.backdrop(g,
                 new com.dishanhai.sh_better_ui.client.glass.GuiRect(x, y, w, h), 1f,
                 com.dishanhai.sh_better_ui.client.blur.GlassStyle.REGION, REGION_BLUR_RADIUS);
@@ -202,7 +228,7 @@ public class GlassTheme {
 
     /** 同上，strength 0..1：飞行卡片这类随动画淡入淡出的元素用。 */
     public void controlBackdrop(GuiGraphics g, int x, int y, int w, int h, float strength) {
-        if (!glass) return;
+        if (!glass || colors == GlassColors.SMOKE) return;
         com.dishanhai.sh_better_ui.client.glass.GlassBlur.backdrop(g,
                 new com.dishanhai.sh_better_ui.client.glass.GuiRect(x, y, w, h), strength,
                 com.dishanhai.sh_better_ui.client.blur.GlassStyle.CONTROL, CONTROL_BLUR_RADIUS);
@@ -210,13 +236,17 @@ public class GlassTheme {
 
     /** 玻璃 tooltip 底：毛玻璃 + 高不透明度深蓝底 + 青色细边，文字压在上面要读得清（底比按钮更实）。 */
     public void tooltipPanel(GuiGraphics g, int x, int y, int w, int h) {
+        if (colors == GlassColors.SMOKE) {
+            GlassSurface.smokePanel(g, x, y, w, h);
+            return;
+        }
         controlBackdrop(g, x, y, w, h);
         box(g, x, y, w, h, GlassPalette.BUTTON_EDGE, 0xE60A1322);
     }
 
     /** 按钮/页签底的毛玻璃：比区域压得更深，保证按钮字的对比度。在按钮底盒之前、按钮动效的 pose 里调。 */
     public void controlBackdrop(GuiGraphics g, int x, int y, int w, int h) {
-        if (!glass) return;
+        if (!glass || colors == GlassColors.SMOKE) return;
         com.dishanhai.sh_better_ui.client.glass.GlassBlur.backdrop(g,
                 new com.dishanhai.sh_better_ui.client.glass.GuiRect(x, y, w, h), 1f,
                 com.dishanhai.sh_better_ui.client.blur.GlassStyle.CONTROL, CONTROL_BLUR_RADIUS);
@@ -229,7 +259,7 @@ public class GlassTheme {
      * 玻璃：外缘柔影 → 毛玻璃底 → 低不透明度根板 → 内层显示区，同商店主界面。
      */
     public void rootPanel(GuiGraphics g, int x, int y, int w, int h, int ix, int iy, int iw, int ih) {
-        rootPanel(g, x, y, w, h, ix, iy, iw, ih, frameDark, frame, GlassPalette.ROOT_EDGE);
+        rootPanel(g, x, y, w, h, ix, iy, iw, ih, frameDark, frame, colors.ROOT_EDGE);
     }
 
     /** 同上，自选外框（警告弹窗的红框）：经典用 outer/line 两层，玻璃用 glassEdge 当根板边。 */
@@ -239,7 +269,7 @@ public class GlassTheme {
             rootShadow(g, x, y, w, h);
             backdrop(g, x, y, w, h);
             box(g, x, y, w, h, glassEdge, panelBg);
-            box(g, ix, iy, iw, ih, GlassPalette.DISPLAY_EDGE, panelInner);
+            box(g, ix, iy, iw, ih, colors.DISPLAY_EDGE, panelInner);
             return;
         }
         g.fill(x, y, x + w, y + h, outer);
@@ -260,7 +290,7 @@ public class GlassTheme {
             return;
         }
         regionBackdrop(g, x, y, w, h);
-        box(g, x, y, w, h, GlassPalette.ROW_EDGE, fill);
+        box(g, x, y, w, h, colors.ROW_EDGE, fill);
     }
 
     /**

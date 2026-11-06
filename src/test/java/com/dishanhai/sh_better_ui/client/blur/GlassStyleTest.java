@@ -66,4 +66,17 @@ class GlassStyleTest {
         GlassStyle.FLIGHT.write(1f, tint, params, edge);
         assertTrue(params[3] > 0f && edge[0] > 0f);
     }
+
+    @Test
+    void clearStyleKeepsTheSceneBrightWithAVisibleLensEdge() {
+        float[] tint = new float[4];
+        float[] params = new float[4];
+        float[] edge = new float[4];
+        GlassStyle.CLEAR.write(1f, tint, params, edge);
+        assertTrue(tint[0] >= 0.9f && tint[1] >= 0.9f && tint[2] >= 0.9f);
+        assertTrue(tint[3] > 0f && tint[3] <= 0.15f);
+        assertTrue(params[2] > 0f);
+        assertTrue(params[3] > 0f && edge[0] > 0f);
+        assertEquals(0f, edge[3], 0f);
+    }
 }

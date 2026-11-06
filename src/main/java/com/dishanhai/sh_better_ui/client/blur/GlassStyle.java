@@ -27,6 +27,9 @@ public final class GlassStyle {
     /** 商店玻璃主题的毛玻璃底：只糊面板后面的世界，叠一点冷色调与提亮，亮边由面板自己画。 */
     public static final GlassStyle BACKDROP = new GlassStyle(
             0.70f, 0.85f, 1.0f, 0.12f, 0.25f, 0.020f, 0.030f, 0f, 0f, 0f, 0f, 0f);
+    /** 通用浅色透明玻璃：保留背景本色，以轻微提亮、柔和亮边和边缘折射形成玻璃感。 */
+    public static final GlassStyle CLEAR = new GlassStyle(
+            0.96f, 0.98f, 1.0f, 0.08f, 0.10f, 0.012f, 0.035f, 0.55f, 3f, 5f, 0f, 0f);
     /**
      * 玻璃主题的区域分隔（余额栏、网格区、详情区）：在根板毛玻璃之上再糊一层，色调压向深海军蓝、去饱和，
      * 区域比根板暗一档，分区边界一眼可见，区域里的浅色字也更清楚。

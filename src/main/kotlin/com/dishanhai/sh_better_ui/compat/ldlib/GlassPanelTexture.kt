@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.compat.ldlib
 
 import com.dishanhai.sh_better_ui.client.glass.GlassPalette
+import com.dishanhai.sh_better_ui.client.glass.GlassSurface
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring
 import com.lowdragmc.lowdraglib.gui.texture.IGuiTexture
@@ -9,13 +10,14 @@ import net.minecraft.client.gui.GuiGraphics
 /**
  * 配方修改器的玻璃底图，替换原版 GuiTextures.BACKGROUND / DISPLAY / BUTTON。
  *
- * 常态不跑后处理：玻璃感来自半透明分层填色 + 左上受光亮边 + 根板外缘柔影。
- * 只有换页和弹层打开时才叠真正的模糊（见 GlassBlur）。
+ * 原有深色材质常态不跑后处理：玻璃感来自半透明分层填色 + 左上受光亮边 + 根板外缘柔影。
+ * 浅色面板调用 GlassSurface 的局部背景模糊；已在面板里的按钮使用 clearButtonOverlay 避免重复采样。
  * 每个实例独立持有 hover 弹簧，所以每个按钮要各自 `button()` 一份，不要共用。
  */
 class GlassPanelTexture private constructor(private val style: Style) : IGuiTexture {
 
-    enum class Style { ROOT, PANEL, DISPLAY, PAGE, BUTTON }
+    enum class Style { ROOT, PANEL, DISPLAY, PAGE, BUTTON, CLEAR_PANEL, CLEAR_BUTTON, CLEAR_BUTTON_OVERLAY,
+        SMOKE_PANEL, SMOKE_BUTTON_OVERLAY }
 
     private val hover = Spring(Spring.HOVER)
 
@@ -35,6 +37,19 @@ class GlassPanelTexture private constructor(private val style: Style) : IGuiText
             Style.PAGE ->
                 plate(graphics, left, top, width, height, GlassPalette.DISPLAY_EDGE, GlassPalette.PAGE_FILL, false)
             Style.BUTTON -> button(graphics, mouseX, mouseY, left, top, width, height)
+            Style.CLEAR_PANEL -> GlassSurface.panel(graphics, left, top, width, height)
+            Style.SMOKE_PANEL -> GlassSurface.smokePanel(graphics, left, top, width, height)
+            Style.CLEAR_BUTTON, Style.CLEAR_BUTTON_OVERLAY, Style.SMOKE_BUTTON_OVERLAY -> {
+                val now = System.currentTimeMillis()
+                val over = mouseX >= left && mouseX < left + width && mouseY >= top && mouseY < top + height
+                hover.setTarget(if (over) 1f else 0f, now)
+                hover.update(now)
+                if (style == Style.SMOKE_BUTTON_OVERLAY) {
+                    GlassSurface.smokeControl(graphics, left, top, width, height, hover.value())
+                } else {
+                    GlassSurface.control(graphics, left, top, width, height, hover.value(), style == Style.CLEAR_BUTTON)
+                }
+            }
         }
     }
 
@@ -88,5 +103,25 @@ class GlassPanelTexture private constructor(private val style: Style) : IGuiText
 
         @JvmStatic
         fun button(): GlassPanelTexture = GlassPanelTexture(Style.BUTTON)
+
+        /** 中性浅色面板，也可用作根板或内容区。 */
+        @JvmStatic
+        fun clearPanel(): GlassPanelTexture = GlassPanelTexture(Style.CLEAR_PANEL)
+
+        /** 中性浅色按钮，每个按钮各持一份 hover 弹簧。 */
+        @JvmStatic
+        fun clearButton(): GlassPanelTexture = GlassPanelTexture(Style.CLEAR_BUTTON)
+
+        /** 已放在浅色毛玻璃面板内的按钮，省去每个按钮重复采样背景。 */
+        @JvmStatic
+        fun clearButtonOverlay(): GlassPanelTexture = GlassPanelTexture(Style.CLEAR_BUTTON_OVERLAY)
+
+        /** 山海：低亮度中性烟灰根板，只在根板取样背景。 */
+        @JvmStatic
+        fun smokePanel(): GlassPanelTexture = GlassPanelTexture(Style.SMOKE_PANEL)
+
+        /** 烟灰面板内的按钮，每个实例保留独立 hover 弹簧。 */
+        @JvmStatic
+        fun smokeButtonOverlay(): GlassPanelTexture = GlassPanelTexture(Style.SMOKE_BUTTON_OVERLAY)
     }
 }
