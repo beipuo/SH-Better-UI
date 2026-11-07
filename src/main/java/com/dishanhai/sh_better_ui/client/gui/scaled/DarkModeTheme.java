@@ -165,8 +165,8 @@ public final class DarkModeTheme {
     }
 
     /** 圆角边线与填色各自绘制，半透明卡片内不会叠加边框色。 */
-    private static void rounded(GuiGraphics g, int x, int y, int width, int height,
-                                int radius, int stroke, int edge, int fill) {
+    static void rounded(GuiGraphics g, int x, int y, int width, int height,
+                        int radius, int stroke, int edge, int fill) {
         int maxRadius = Math.min(width, height) / 2;
         radius = Math.min(radius, maxRadius);
         int innerRadius = Math.max(0, radius - stroke);

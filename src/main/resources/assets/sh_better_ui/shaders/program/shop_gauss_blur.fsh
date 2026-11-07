@@ -19,8 +19,8 @@ uniform vec2 BlurDir;
 uniform float Radius;
 uniform float Progress;
 uniform float Smooth;
-// PostChain 的 float uniform 走 glUniform1fv，原点用 float[2]，不要写成 vec2。
-uniform float WaveOrigin[2];
+// Minecraft 的 float/count=2 通过 glUniform2 上传，需与 GLSL vec2 匹配。
+uniform vec2 WaveOrigin;
 uniform float WaveRadius;      // 波峰所在半径（像素）
 uniform float WaveThickness;   // 波峰厚度（像素）
 uniform float WaveRefract;     // 波峰处沿半径方向的采样位移（像素），负值向外推
@@ -29,7 +29,7 @@ uniform vec4 GlassTint;        // rgb = 色调，a = 混合量
 uniform vec4 GlassParams;      // x = 饱和度增量，y = 颗粒幅度，z = 提亮，w = 亮边强度
 uniform vec4 GlassEdge;        // x = 边缘折射 px，y = 亮边宽 px，z = Hole 阴影半径 px，w = Hole 阴影强度
 uniform vec4 MotionAxis;       // x = 第一趟（H）半径倍率，y = 第二趟（V）半径倍率；默认 (1,1)，水平滑动用 (1,0)
-                               // z = 软边宽度 px：>0 时按“弹层外圈”处理——Rect 外缘向外淡出、取样绕开 Hole、不画 Rect 内缘亮边；0 为旧行为，w 保留为 0
+                               // z = 弹层外圈软边宽度 px，w = 液态玻璃圆角半径 px（此时 Hole 为原始轮廓）
 uniform vec4 Rect;   // xy = 左下角 UV，zw = 右上角 UV
 uniform vec4 Hole;   // 正在飞行的卡片或浮层矩形，保持清晰
 // PostChain 的 float uniform 走 glUniform1fv，所以这里是 8 个矩形 × 4 分量，不是 vec4[8]。
@@ -79,7 +79,7 @@ float grainNoise(vec2 p) {
 }
 
 vec3 applyGlass(vec3 rgb, float k, float edgeD, vec2 inward, vec2 uv) {
-    if (GlassTint.a <= 0.0 && GlassParams.x <= 0.0 && GlassParams.y <= 0.0
+    if (GlassTint.a <= 0.0 && GlassParams.x == 0.0 && GlassParams.y <= 0.0
             && GlassParams.z <= 0.0 && GlassParams.w <= 0.0 && GlassEdge.w <= 0.0) {
         return rgb;
     }
@@ -115,7 +115,8 @@ vec3 applyGlass(vec3 rgb, float k, float edgeD, vec2 inward, vec2 uv) {
 void main() {
     vec2 uv = texCoord;
 
-    bool insideHole = Hole.z > Hole.x && Hole.w > Hole.y
+    bool rounded = MotionAxis.w > 0.0;
+    bool insideHole = !rounded && Hole.z > Hole.x && Hole.w > Hole.y
             && uv.x >= Hole.x && uv.x <= Hole.z
             && uv.y >= Hole.y && uv.y <= Hole.w;
     if (!insideBox(uv, Rect) || insideHole) {
@@ -162,7 +163,7 @@ void main() {
     vec2 baseUv = uv;
     float glowAdd = 0.0;
     if (waveActive) {
-        vec2 origin = vec2(WaveOrigin[0], WaveOrigin[1]);
+        vec2 origin = WaveOrigin;
         vec2 deltaPx = (uv - origin) * InSize;          // v 轴朝上，长度仍然正确
         float distPx = length(deltaPx);
         vec2 dir = distPx > 0.001 ? deltaPx / distPx : vec2(0.0);
@@ -202,6 +203,26 @@ void main() {
     float edgeD = min(min(toLo.x, toLo.y), min(toHi.x, toHi.y));
     vec2 inward = vec2(edgeFall(toLo.x, rimW) - edgeFall(toHi.x, rimW),
                        edgeFall(toLo.y, rimW) - edgeFall(toHi.y, rimW));
+    if (rounded) {
+        // 山海：按未裁切的圆角轮廓算距离与内法线。两趟都原样传递角外像素。
+        vec2 halfSize = (Hole.zw - Hole.xy) * InSize * 0.5;
+        vec2 local = (uv - (Hole.xy + Hole.zw) * 0.5) * InSize;
+        float corner = min(MotionAxis.w, min(halfSize.x, halfSize.y));
+        vec2 q = abs(local) - halfSize + corner;
+        vec2 arc = max(q, vec2(0.0));
+        float arcLength = length(arc);
+        edgeD = corner - arcLength - min(max(q.x, q.y), 0.0);
+        if (edgeD < 0.0) {
+            fragColor = texture(DiffuseSampler, uv);
+            return;
+        }
+        vec2 normal = arcLength > 0.0 ? arc / arcLength
+                : (q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+        inward = -sign(local) * normal * edgeFall(edgeD, rimW);
+        // 避免第二趟线性采样吸进裁切区外未更新的中间纹理。
+        lo += oneTexel * 0.5;
+        hi = max(lo, hi - oneTexel * 0.5);
+    }
     if (firstPass && GlassEdge.x > 0.0) {
         // 透镜边：越靠边越多地采到内侧的内容，边缘看起来被拉伸、弯折。
         baseUv += inward * (GlassEdge.x * k) / InSize;
@@ -272,6 +293,11 @@ void main() {
         // 两趟各做一次，叠起来仍然单调、在外缘处严格等于原图。
         float fade = smoothstep(0.0, MotionAxis.z, edgeD);
         rgb = mix(texture(DiffuseSampler, uv).rgb, rgb, fade);
+    }
+    if (rounded) {
+        // 山海：圆内一个 framebuffer 像素平滑覆盖，角外已在上方原样返回。
+        // 两趟分别混回当前输入；第二趟的边缘取样仍可能包含第一趟保留的角外背景。
+        rgb = mix(texture(DiffuseSampler, uv).rgb, rgb, smoothstep(0.0, 1.0, edgeD));
     }
     fragColor = vec4(rgb, 1.0);
 }

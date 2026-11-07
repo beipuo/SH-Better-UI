@@ -33,6 +33,12 @@ public final class GlassStyle {
     /** 山海：中性烟灰的细腻毛玻璃，微量提亮与边缘柔光，不做边缘折射。 */
     public static final GlassStyle FROSTED = new GlassStyle(
             0.25f, 0.25f, 0.25f, 0.025f, -0.12f, 0.006f, 0.004f, 0.10f, 0f, 1.5f, 0f, 0f);
+    /** 山海：圆角液态玻璃，保留背景色与轮廓附近的透镜折射。 */
+    public static final GlassStyle LIQUID_CLEAR = new GlassStyle(
+            0.22f, 0.24f, 0.27f, 0.025f, 0.12f, 0f, 0.008f, 0.72f, 2.4f, 3.5f, 0f, 0f);
+    /** 山海：文本较多的输入框与浮层使用更柔和的折射。 */
+    public static final GlassStyle LIQUID_REGULAR = new GlassStyle(
+            0.20f, 0.21f, 0.23f, 0.06f, -0.10f, 0f, 0.006f, 0.65f, 1.3f, 2.4f, 0f, 0f);
     /**
      * 玻璃主题的区域分隔（余额栏、网格区、详情区）：在根板毛玻璃之上再糊一层，色调压向深海军蓝、去饱和，
      * 区域比根板暗一档，分区边界一眼可见，区域里的浅色字也更清楚。
@@ -79,7 +85,7 @@ public final class GlassStyle {
     /** 山海：玻璃底采用更密的核；飞行与页面方向模糊保留原来的采样模式。 */
     public float blurMode(boolean smooth) {
         if (!smooth) return 0f;
-        return this == CLEAR || this == FROSTED ? 2f : 1f;
+        return this == CLEAR || this == FROSTED || this == LIQUID_CLEAR || this == LIQUID_REGULAR ? 2f : 1f;
     }
 
     /**
@@ -88,12 +94,16 @@ public final class GlassStyle {
      * edge = {折射 px, 亮边宽 px, 阴影半径 px, 阴影强度}。
      */
     public void write(float scale, float[] tint, float[] params, float[] edge) {
+        write(scale, tint, params, edge, 1f, 1f);
+    }
+
+    void write(float scale, float[] tint, float[] params, float[] edge, float tintScale, float grainScale) {
         tint[0] = tintR;
         tint[1] = tintG;
         tint[2] = tintB;
-        tint[3] = tintAmount;
+        tint[3] = Math.min(1f, tintAmount * tintScale);
         params[0] = saturation;
-        params[1] = grain;
+        params[1] = grain * grainScale;
         params[2] = lift;
         params[3] = rim;
         edge[0] = refractV * scale;

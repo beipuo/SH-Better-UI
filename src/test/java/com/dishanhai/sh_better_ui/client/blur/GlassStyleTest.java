@@ -96,6 +96,20 @@ class GlassStyleTest {
     }
 
     @Test
+    void backdropSettingsOnlyScaleTintMixAndGrain() {
+        float[] tint = new float[4], params = new float[4], edge = new float[4];
+        float[] tunedTint = new float[4], tunedParams = new float[4], tunedEdge = new float[4];
+        for (GlassStyle style : new GlassStyle[]{GlassStyle.FROSTED, GlassStyle.CLEAR,
+                GlassStyle.BACKDROP, GlassStyle.REGION, GlassStyle.CONTROL}) {
+            style.write(3f, tint, params, edge);
+            style.write(3f, tunedTint, tunedParams, tunedEdge, 0f, 2f);
+            assertArrayEquals(new float[]{tint[0], tint[1], tint[2], 0f}, tunedTint, 0f);
+            assertArrayEquals(new float[]{params[0], params[1] * 2f, params[2], params[3]}, tunedParams, 0f);
+            assertArrayEquals(edge, tunedEdge, 0f);
+        }
+    }
+
+    @Test
     void denseSamplingIsLimitedToFrostedSurfaces() {
         assertEquals(2f, GlassStyle.CLEAR.blurMode(true));
         assertEquals(2f, GlassStyle.FROSTED.blurMode(true));

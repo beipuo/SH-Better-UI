@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.blur;
 
 import com.dishanhai.sh_better_ui.ShBetterUi;
+import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -155,7 +156,7 @@ public final class GaussBlur {
             try {
                 uniformFailed = !applyUniforms(post, 1f, BLUR_RADIUS_VIRTUAL,
                         new float[]{0f, 0f, 1f, 1f}, new float[]{0f, 0f, 0f, 0f}, false, 0, NO_CELLS,
-                        NO_WAVE, 1f, 1f, GlassStyle.NONE, 0f);
+                        NO_WAVE, 1f, 1f, GlassStyle.NONE, 0f, 0f, GlassBackdropSettings.DEFAULT);
             } catch (Exception e) {
                 uniformFailed = true;
                 ShBetterUi.LOGGER.error("商店高斯模糊 uniform 预检失败，已回退为局部磨砂", e);
@@ -493,17 +494,18 @@ public final class GaussBlur {
         if (primary) {
             render(mc, strength, radius, rect,
                     hole == null ? new float[]{0f, 0f, 0f, 0f} : hole, smooth, cells, cellUvSnapshot,
-                    NO_WAVE, axisX, axisY, glass, partialTick, 0f);
+                    NO_WAVE, axisX, axisY, glass, partialTick, 0f, GlassBackdropSettings.DEFAULT);
         }
         if (extra && isReady()) {
             render(mc, strength2, radius2, rect2,
                     hole2 == null ? new float[]{0f, 0f, 0f, 0f} : hole2, false, 0, NO_CELLS,
-                    NO_WAVE, 1f, 1f, glass2, partialTick, feather2);
+                    NO_WAVE, 1f, 1f, glass2, partialTick, feather2, GlassBackdropSettings.DEFAULT);
         }
         // 波放最后一趟：它要盖在飞行/浮层的模糊之上，否则点在商品格上会被飞行请求吃掉。
         if (hadWave && isReady()) {
             render(mc, waveStrength, waveRadius, waveRectCopy,
-                    new float[]{0f, 0f, 0f, 0f}, true, 0, NO_CELLS, wave, 1f, 1f, GlassStyle.NONE, partialTick, 0f);
+                    new float[]{0f, 0f, 0f, 0f}, true, 0, NO_CELLS, wave, 1f, 1f, GlassStyle.NONE, partialTick, 0f,
+                    GlassBackdropSettings.DEFAULT);
         }
     }
 
@@ -541,10 +543,18 @@ public final class GaussBlur {
                                float[] rect, float[] hole, boolean smooth,
                                int cells, float[] cellData,
                                float[] wave, float axisX, float axisY,
-                               GlassStyle glass, float partialTick, float featherPx) {
+                                GlassStyle glass, float partialTick, float featherPx,
+                                GlassBackdropSettings settings) {
+        render(mc, strength, radius, rect, hole, smooth, cells, cellData, wave, axisX, axisY,
+                glass, partialTick, featherPx, 0f, settings);
+    }
+
+    private static boolean render(Minecraft mc, float strength, float radius,
+                                  float[] rect, float[] hole, boolean smooth, int cells, float[] cellData,
+                                  float[] wave, float axisX, float axisY, GlassStyle glass,
+                                  float partialTick, float featherPx, float cornerPx, GlassBackdropSettings settings) {
         PostChain post = ensureChain(mc);
-        if (post == null) return;
-        if (mc.getMainRenderTarget() == null) return;
+        if (post == null || mc.getMainRenderTarget() == null) return false;
 
         int fbW = mc.getMainRenderTarget().width;
         int fbH = mc.getMainRenderTarget().height;
@@ -554,16 +564,17 @@ public final class GaussBlur {
             chainHeight = fbH;
         }
         // 反射/着色器 uniform 任一不可用就整个跳过，绝不让 Rect 落回默认的全屏值。
-        if (!applyUniforms(post, strength, radius, rect, hole, smooth, cells, cellData, wave, axisX, axisY, glass, featherPx)) {
+        if (!applyUniforms(post, strength, radius, rect, hole, smooth, cells, cellData, wave, axisX, axisY,
+                glass, featherPx, cornerPx, settings)) {
             uniformFailed = true;
-            return;
+            return false;
         }
         uniformFailed = false;
 
         // PostPass 会对 outTarget 调 clear()，glClear 受 scissor 约束，所以两趟都只动矩形内。
         // 矩形外的主画面原样保留；放宽的边缘像素两趟都是直通，内容不变。
         int[] scissor = toScissorRect(rect, fbW, fbH, SCISSOR_MARGIN_PX);
-        if (scissor[2] <= 0 || scissor[3] <= 0) return;
+        if (scissor[2] <= 0 || scissor[3] <= 0) return false;
 
         RenderSystem.disableBlend();
         RenderSystem.disableDepthTest();
@@ -572,12 +583,14 @@ public final class GaussBlur {
         try {
             post.process(partialTick);
             failed = false;
+            return true;
         } catch (Exception e) {
             // 不让渲染异常冒到游戏主循环；下一帧开始回退到磨砂。
             chain = null;
             failed = true;
             failedAtMs = System.currentTimeMillis();
             ShBetterUi.LOGGER.error("商店高斯模糊执行失败，已回退为局部磨砂", e);
+            return false;
         } finally {
             RenderSystem.disableScissor();
             // PostPass 解绑后会把默认 framebuffer 设回来；恢复 main，保证后续 GUI/最终 flush 仍写主画面。
@@ -598,13 +611,15 @@ public final class GaussBlur {
                                          float[] rect, float[] hole, boolean smooth,
                                          int cells, float[] cellData, float[] wave,
                                          float axisX, float axisY,
-                                         GlassStyle glass, float featherPx) {
+                                          GlassStyle glass, float featherPx, float cornerPx,
+                                          GlassBackdropSettings settings) {
         List<PostPass> passes = passesOf(post);
         if (passes.isEmpty()) return false;
         boolean allReady = true;
         // 虚拟 GUI 单位 → framebuffer 像素的比例，与模糊半径同一套换算。
         float glassScale = (radius > 0f ? radius : BLUR_RADIUS_VIRTUAL) / BLUR_RADIUS_VIRTUAL;
-        (glass == null ? GlassStyle.NONE : glass).write(glassScale, glassTint, glassParams, glassEdge);
+        (glass == null ? GlassStyle.NONE : glass).write(glassScale, glassTint, glassParams, glassEdge,
+                settings.tintScale(), settings.grainScale());
         for (PostPass pass : passes) {
             Uniform rectUniform = pass.getEffect().getUniform("Rect");
             Uniform holeUniform = pass.getEffect().getUniform("Hole");
@@ -645,7 +660,7 @@ public final class GaussBlur {
             glassTintUniform.set(glassTint[0], glassTint[1], glassTint[2], glassTint[3]);
             glassParamsUniform.set(glassParams[0], glassParams[1], glassParams[2], glassParams[3]);
             glassEdgeUniform.set(glassEdge[0], glassEdge[1], glassEdge[2], glassEdge[3]);
-            motionAxisUniform.set(axisX, axisY, featherPx, 0f);
+            motionAxisUniform.set(axisX, axisY, featherPx, cornerPx);
             int n = cells > 1 && cellData != null ? Math.min(cells, MAX_CELL_RECTS) : 0;
             cellCountUniform.set(n);
             cellRectsUniform.set(n > 0 ? cellData : NO_CELLS);
@@ -736,12 +751,28 @@ public final class GaussBlur {
      */
     public static void blurNow(GuiGraphics g, int x, int y, int w, int h, float strength,
                                float radiusPixels, GlassStyle glass) {
-        if (!isReady() || w <= 0 || h <= 0 || strength <= 0.01f) return;
+        blurNow(g, x, y, w, h, strength, radiusPixels, glass, 0f);
+    }
+
+    /** 圆角材质沿未裁切轮廓计算折射，采样与输出仍限制在当前剪裁区内。 */
+    public static boolean blurNow(GuiGraphics g, int x, int y, int w, int h, float strength,
+                                  float radiusPixels, GlassStyle glass, float cornerPixels) {
+        GlassBackdropSettings settings = GlassBackdropSettings.current();
+        float backdropStrength = clamp01(strength) * settings.strength();
+        if (!settings.enabled() || backdropStrength <= 0.01f || w <= 0 || h <= 0 || uniformFailed) return false;
+        if (cornerPixels <= 0f && !isReady()) return false;
+        // 只缩放采样轴。半径为零时，着色器仍可绘制色调、颗粒和边缘。
+        float blurScale = settings.blurRadiusScale();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.getMainRenderTarget() == null) return;
+        if (mc.getMainRenderTarget() == null || (cornerPixels > 0f && ensureChain(mc) == null)) return false;
         if (g != null) g.flush();
         int fbW = mc.getMainRenderTarget().width;
         int fbH = mc.getMainRenderTarget().height;
+        // 圆角模式借用 Hole 传入原始轮廓，保留被屏幕或滚动视口截断的角。
+        float[] bounds = cornerPixels > 0f
+                ? new float[]{(float) x / fbW, 1f - (float) (y + h) / fbH,
+                    (float) (x + w) / fbW, 1f - (float) y / fbH}
+                : new float[4];
         // 调用方可能正处在 GuiGraphics 的 scissor 里（详情滚动区里的按钮）：模糊不能糊出裁剪框，
         // render 收尾会关掉 scissor，跑完要把调用方的裁剪框原样还回去，否则后面的内容会画出滚动区。
         boolean clipped = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
@@ -759,10 +790,11 @@ public final class GaussBlur {
         try {
             if (w > 0 && h > 0) {
                 float[] rect = toUvRect(x, y, w, h, fbW, fbH);
-                render(mc, clamp01(strength), radiusPixels > 0f ? radiusPixels : BLUR_RADIUS_VIRTUAL, rect,
-                        new float[]{0f, 0f, 0f, 0f}, true, 0, NO_CELLS, NO_WAVE, 1f, 1f,
-                        glass == null ? GlassStyle.NONE : glass, mc.getFrameTime(), 0f);
+                return render(mc, backdropStrength, radiusPixels > 0f ? radiusPixels : BLUR_RADIUS_VIRTUAL, rect,
+                        bounds, true, 0, NO_CELLS, NO_WAVE, blurScale, blurScale,
+                        glass == null ? GlassStyle.NONE : glass, mc.getFrameTime(), 0f, cornerPixels, settings);
             }
+            return false;
         } finally {
             if (clipped) RenderSystem.enableScissor(box[0], box[1], box[2], box[3]);
             RenderSystem.setShaderColor(color[0], color[1], color[2], color[3]);

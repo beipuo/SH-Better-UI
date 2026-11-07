@@ -1,7 +1,12 @@
 package com.dishanhai.sh_better_ui;
 
+import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.mojang.logging.LogUtils;
+import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
 /** 山海：共用 UI 庫的共同入口，不載入任何客戶端或可選整合類別。 */
@@ -10,6 +15,22 @@ public final class ShBetterUi {
     public static final String MOD_ID = "sh_better_ui";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public ShBetterUi() {
+    public ShBetterUi(FMLJavaModLoadingContext context) {
+        var defaults = GlassBackdropSettings.DEFAULT;
+        var builder = new ForgeConfigSpec.Builder().push("glassBackdrop");
+        var enabled = builder.define("enabled", defaults.enabled());
+        var radius = builder.defineInRange("blurRadiusScale", defaults.blurRadiusScale(), 0.0, 2.0);
+        var strength = builder.defineInRange("strength", defaults.strength(), 0.0, 1.0);
+        var tint = builder.defineInRange("tintScale", defaults.tintScale(), 0.0, 2.0);
+        var grain = builder.defineInRange("grainScale", defaults.grainScale(), 0.0, 2.0);
+        var spec = builder.pop().build();
+        context.getModEventBus().addListener((ModConfigEvent event) -> {
+            if (event.getConfig().getSpec() != spec) return;
+            GlassBackdropSettings.update(spec.isLoaded()
+                    ? new GlassBackdropSettings(enabled.get(), radius.get().floatValue(), strength.get().floatValue(),
+                            tint.get().floatValue(), grain.get().floatValue())
+                    : defaults);
+        });
+        context.registerConfig(ModConfig.Type.CLIENT, spec);
     }
 }

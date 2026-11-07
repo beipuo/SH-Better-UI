@@ -95,6 +95,19 @@ object GlassBlur {
             radiusVirtual * view.pixelScale, style)
     }
 
+    /** 山海：即时绘制圆角背景，返回是否成功完成取样。 */
+    @JvmStatic
+    fun roundedBackdrop(graphics: GuiGraphics, rect: GuiRect, style: GlassStyle,
+                        radiusVirtual: Float, cornerRadius: Int): Boolean {
+        if (rect.isEmpty || cornerRadius <= 0) return false
+        val view = capture(graphics) ?: return false
+        val px = view.toPixels(rect)
+        if (px.isEmpty) return false
+        val scale = view.pixelScale * minOf(view.scaleX, view.scaleY)
+        return GaussBlur.blurNow(graphics, px.x, px.y, px.w, px.h, 1f,
+            radiusVirtual * scale, style, cornerRadius * scale)
+    }
+
     /** 一帧内的换算上下文：framebuffer 尺寸、GUI 尺寸，以及当前 pose 的缩放与平移。 */
     private class View(
         val fbW: Int,

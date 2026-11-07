@@ -44,4 +44,32 @@ class UiButtonTest {
         button.setSelected(false);
         assertFalse(button.isSelected());
     }
+
+    @Test
+    void liquidGlassKeepsTheOriginalActionAndSelectionContract() {
+        var calls = new AtomicInteger();
+        var button = new UiButton(0, 0, 100, 20, Component.translatable("gui.yes"),
+                ignored -> calls.incrementAndGet(), UiPreferences.DEFAULT, true, UiStyle.LIQUID_GLASS);
+        button.onPress();
+        assertEquals(1, calls.get());
+        assertFalse(button.isSelected());
+        assertNotNull(button.getTooltip());
+    }
+
+    @Test
+    void blurRadiusSupportsDisablingAndBoundsItsSamplingCost() {
+        var button = new UiButton(0, 0, 24, 24, Component.translatable("gui.yes"),
+                ignored -> {}, UiPreferences.DEFAULT, false, UiStyle.LIQUID_GLASS);
+        assertEquals(12f, button.getBackgroundBlurRadius());
+        button.setBackgroundBlurRadius(0f);
+        assertEquals(0f, button.getBackgroundBlurRadius());
+        button.setBackgroundBlurRadius(8.5f);
+        assertEquals(8.5f, button.getBackgroundBlurRadius());
+        button.setBackgroundBlurRadius(100f);
+        assertEquals(32f, button.getBackgroundBlurRadius());
+        for (float invalid : new float[]{-1f, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY}) {
+            assertThrows(IllegalArgumentException.class, () -> button.setBackgroundBlurRadius(invalid));
+            assertEquals(32f, button.getBackgroundBlurRadius());
+        }
+    }
 }

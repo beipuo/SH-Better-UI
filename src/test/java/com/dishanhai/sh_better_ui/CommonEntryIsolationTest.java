@@ -1,41 +1,28 @@
 package com.dishanhai.sh_better_ui;
 
-import java.io.IOException;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.ClassReader;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/** 山海：共同入口必须能在禁止客户端及可选 LDLib 类的 ClassLoader 中实例化。 */
+/** 山海：两个加载器的共同入口不能引用客户端或可选 LDLib 类。 */
 class CommonEntryIsolationTest {
     @Test
-    void entryLoadsWithoutClientOrLdlibClasses() throws Exception {
-        String entry = "com.dishanhai.sh_better_ui.ShBetterUi";
-        ClassLoader loader = new ClassLoader(getClass().getClassLoader()) {
-            @Override
-            protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-                if (name.startsWith("net.minecraft.client.")
-                        || name.startsWith("com.dishanhai.sh_better_ui.client.")
-                        || name.startsWith("com.dishanhai.sh_better_ui.compat.")
-                        || name.startsWith("com.lowdragmc.")) {
-                    throw new ClassNotFoundException("Server isolation: " + name);
-                }
-                if (!name.equals(entry)) return super.loadClass(name, resolve);
-                synchronized (getClassLoadingLock(name)) {
-                    Class<?> loaded = findLoadedClass(name);
-                    if (loaded == null) {
-                        try (var input = getResourceAsStream(name.replace('.', '/') + ".class")) {
-                            if (input == null) throw new ClassNotFoundException(name);
-                            byte[] bytes = input.readAllBytes();
-                            loaded = defineClass(name, bytes, 0, bytes.length);
-                        } catch (IOException ex) {
-                            throw new ClassNotFoundException(name, ex);
-                        }
-                    }
-                    if (resolve) resolveClass(loaded);
-                    return loaded;
-                }
+    void entryDoesNotReferenceClientOrLdlibClasses() throws Exception {
+        try (var input = ShBetterUi.class.getResourceAsStream("ShBetterUi.class")) {
+            assertNotNull(input);
+            var entry = new ClassReader(input);
+            char[] buffer = new char[entry.getMaxStringLength()];
+            for (int i = 1; i < entry.getItemCount(); i++) {
+                int item = entry.getItem(i);
+                if (item == 0 || entry.readByte(item - 1) != 7) continue; // CONSTANT_Class
+                String name = entry.readUTF8(item, buffer);
+                assertFalse(name.startsWith("net/minecraft/client/")
+                        || name.startsWith("com/dishanhai/sh_better_ui/client/")
+                        || name.startsWith("com/dishanhai/sh_better_ui/compat/")
+                        || name.startsWith("com/lowdragmc/"), name);
             }
-        };
-        assertNotNull(Class.forName(entry, true, loader).getConstructor().newInstance());
+        }
     }
 }

@@ -1,6 +1,9 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
+import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -8,8 +11,10 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import org.joml.Vector2i;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -23,9 +28,12 @@ public final class SearchField<T> extends EditBox {
     private static final int SUGGESTION_LIMIT = 8;
     private static final int GAP = 2;
     private static final float DROPDOWN_Z = 300f;
+    private static final int TOOLTIP_PADDING = 4;
     private static final Component USAGE = Component.translatable("sh_better_ui.search.usage");
 
     private final Font font;
+    private final UiStyle style;
+    private final UiPreferences preferences;
     private SearchIndex<T> index;
     private Predicate<? super T> scope = value -> true;
     private Predicate<String> filter = text -> true;
@@ -38,15 +46,41 @@ public final class SearchField<T> extends EditBox {
     private int selected;
     private int firstVisible;
     private boolean dismissed;
+    private boolean bordered = true;
+    private boolean glassForeground;
+    private boolean sampleBackground = true;
 
     public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index) {
+        this(font, x, y, width, height, index, UiStyle.DEFAULT, UiPreferences.DEFAULT);
+    }
+
+    public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index,
+                       UiStyle style, UiPreferences preferences) {
         super(font, x, y, width, height, Component.translatable("sh_better_ui.search.label"));
         this.font = font;
         this.index = Objects.requireNonNull(index);
+        this.style = Objects.requireNonNull(style);
+        this.preferences = Objects.requireNonNull(preferences);
         setMaxLength(256);
         setHint(getMessage());
         setTooltip(Tooltip.create(USAGE));
         super.setResponder(ignored -> queryChanged());
+    }
+
+    /** 位于已有玻璃工具列内时可跳过输入框取样；浮出的候选清单仍独立取样。 */
+    public void setSampleBackground(boolean sampleBackground) {
+        this.sampleBackground = sampleBackground;
+    }
+
+    @Override
+    public void setBordered(boolean bordered) {
+        super.setBordered(bordered);
+        this.bordered = bordered;
+    }
+
+    @Override
+    public int getInnerWidth() {
+        return glassForeground ? getWidth() - 8 : super.getInnerWidth();
     }
 
     public void setIndex(SearchIndex<T> index) {
@@ -204,7 +238,25 @@ public final class SearchField<T> extends EditBox {
             suffix = font.plainSubstrByWidth(suggestions.get(selected).suffixFor(query), space);
         }
         setSuggestion(suffix.isEmpty() ? null : suffix);
-        super.renderWidget(graphics, mouseX, mouseY, partialTick);
+        if (style != UiStyle.LIQUID_GLASS || !bordered || !isVisible()) {
+            super.renderWidget(graphics, mouseX, mouseY, partialTick);
+            return;
+        }
+
+        LiquidGlassTheme.input(graphics, getX(), getY(), getWidth(), getHeight(), preferences,
+                sampleBackground, isFocused());
+        graphics.pose().pushPose();
+        try {
+            // 隐藏原生底板，同时保持原生带边框时的文字起点、游标与可用宽度。
+            graphics.pose().translate(4f, (getHeight() - 8) / 2, 0f);
+            glassForeground = true;
+            super.setBordered(false);
+            super.renderWidget(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            super.setBordered(bordered);
+            glassForeground = false;
+            graphics.pose().popPose();
+        }
     }
 
     /**
@@ -224,22 +276,55 @@ public final class SearchField<T> extends EditBox {
         } finally {
             graphics.pose().popPose();
         }
-        if (clippedLabel != null) graphics.renderComponentTooltip(font, List.of(clippedLabel), mouseX, mouseY);
+        if (clippedLabel != null) renderSuggestionTooltip(graphics, clippedLabel, dropdown, mouseX, mouseY);
+    }
+
+    private void renderSuggestionTooltip(GuiGraphics graphics, Component label, Dropdown dropdown,
+                                         int mouseX, int mouseY) {
+        int left = Math.max(0, getX());
+        int right = Math.min(graphics.guiWidth(), getX() + getWidth());
+        int textWidth = right - left - 2 * TOOLTIP_PADDING;
+        if (textWidth <= 0) return;
+
+        // 提示框留在搜索列内，避免跨到 JEI 侧栏；优先放在输入框和候选列表之外。
+        int top = Math.min(getY(), dropdown.top());
+        int bottom = Math.max(getY() + getHeight(), dropdown.top() + dropdown.height());
+        Rect2i anchor = new Rect2i(left, top, right - left, bottom - top);
+        graphics.renderTooltip(font, font.split(label, textWidth), suggestionTooltipPositioner(anchor), mouseX, mouseY);
+    }
+
+    static ClientTooltipPositioner suggestionTooltipPositioner(Rect2i anchor) {
+        return (screenWidth, screenHeight, mouseX, mouseY, width, height) -> {
+            int above = anchor.getY() - TOOLTIP_PADDING - GAP;
+            int below = anchor.getY() + anchor.getHeight() + TOOLTIP_PADDING + GAP;
+            int minY = TOOLTIP_PADDING;
+            int maxY = Math.max(minY, screenHeight - TOOLTIP_PADDING - height);
+            int y = below <= maxY || maxY - below >= above - height - minY ? below : above - height;
+            return new Vector2i(anchor.getX() + TOOLTIP_PADDING, Math.clamp(y, minY, maxY));
+        };
     }
 
     private Component drawDropdown(GuiGraphics graphics, Dropdown dropdown, int hovered) {
         int x = getX();
         int bottom = dropdown.top() + dropdown.height();
-        graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.SURFACE);
+        boolean liquidGlass = style == UiStyle.LIQUID_GLASS;
+        if (liquidGlass) {
+            LiquidGlassTheme.popover(graphics, x, dropdown.top(), getWidth(), dropdown.height(), preferences);
+        } else {
+            graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.SURFACE);
+        }
         Component clippedLabel = null;
         for (int row = 0; row < dropdown.rows(); row++) {
             int index = firstVisible + row;
             int y = dropdown.top() + row * dropdown.rowHeight();
-            if (index == selected || index == hovered) {
+            if (liquidGlass) {
+                LiquidGlassTheme.suggestionRow(graphics, x + 1, y + 1, getWidth() - 2, dropdown.rowHeight() - 2,
+                        index == selected, index == hovered, preferences);
+            } else if (index == selected || index == hovered) {
                 graphics.fill(x + 1, y + 1, x + getWidth() - 1, y + dropdown.rowHeight(),
                         index == selected ? DarkModeTheme.BACKGROUND : DarkModeTheme.BORDER);
             }
-            if (index == selected) {
+            if (!liquidGlass && index == selected) {
                 graphics.fill(x + 1, y + 1, x + 3, y + dropdown.rowHeight(), DarkModeTheme.ACCENT);
             }
             Component label = label(suggestions.get(index));
@@ -247,9 +332,11 @@ public final class SearchField<T> extends EditBox {
             String visibleText = font.plainSubstrByWidth(text, getWidth() - 10);
             if (index == hovered && !visibleText.equals(text)) clippedLabel = label;
             graphics.drawString(font, visibleText, x + 5, y + (dropdown.rowHeight() - font.lineHeight) / 2,
-                    DarkModeTheme.TEXT, false);
+                    liquidGlass ? LiquidGlassTheme.TEXT : DarkModeTheme.TEXT, false);
         }
-        graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.BORDER_HOVER);
+        if (!liquidGlass) {
+            graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.BORDER_HOVER);
+        }
         return clippedLabel;
     }
 

@@ -1,6 +1,9 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.Rect2i;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.glfw.GLFW;
 
@@ -15,6 +18,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 山海：覆盖两版原生 EditBox 上的回调和搜索交互。 */
 class SearchFieldTest {
+    @Test
+    void liquidGlassKeepsNativeInputPaddingAndCompletionUndo() {
+        var field = fieldAt(20, UiStyle.LIQUID_GLASS);
+        assertEquals(92, field.getInnerWidth());
+        field.setValue("Ir");
+        assertTrue(field.keyPressed(GLFW.GLFW_KEY_DOWN, 0, 0));
+        assertTrue(field.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+        assertEquals("Iridium", field.getValue());
+        assertTrue(field.undoCompletion());
+        assertEquals("Ir", field.getValue());
+    }
+
     @Test
     void tabFillsSelectedCandidateOnceAndUndoRestoresQuery() {
         var field = fieldAt(20);
@@ -99,6 +114,26 @@ class SearchFieldTest {
     }
 
     @Test
+    void candidateTooltipStaysInsideTheFieldColumnAndAvoidsTheDropdown() {
+        var positioner = SearchField.suggestionTooltipPositioner(new Rect2i(220, 20, 100, 50));
+        var below = positioner.positionTooltip(420, 120, 310, 60, 92, 20);
+        assertEquals(224, below.x());
+        assertEquals(76, below.y());
+
+        var nearBottom = SearchField.suggestionTooltipPositioner(new Rect2i(220, 60, 100, 50));
+        var above = nearBottom.positionTooltip(420, 120, 310, 95, 92, 20);
+        assertEquals(224, above.x());
+        assertEquals(34, above.y());
+    }
+
+    @Test
+    void candidateTooltipUsesTheLargerSideWhenNeitherSideFits() {
+        var positioner = SearchField.suggestionTooltipPositioner(new Rect2i(220, 20, 100, 50));
+        var position = positioner.positionTooltip(420, 120, 310, 60, 92, 60);
+        assertEquals(56, position.y());
+    }
+
+    @Test
     void glassTooltipRaisesThePlateBeforePaintingOnBothPlatforms() throws Exception {
         var source = Path.of("src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java");
         for (var path : List.of(source, Path.of("neoforge").resolve(source))) {
@@ -125,6 +160,10 @@ class SearchFieldTest {
     }
 
     private static SearchField<Integer> fieldAt(int y) {
+        return fieldAt(y, UiStyle.DEFAULT);
+    }
+
+    private static SearchField<Integer> fieldAt(int y, UiStyle style) {
         Font font = new Font(id -> null, false) {
             @Override
             public String plainSubstrByWidth(String text, int width) {
@@ -139,7 +178,7 @@ class SearchFieldTest {
         };
         var index = new SearchIndex<>(List.of(new SearchIndex.Entry<>(1, "Iron", List.of(), List.of()),
                 new SearchIndex.Entry<>(2, "Iridium", List.of(), List.of())));
-        var field = new SearchField<>(font, 10, y, 100, 18, index);
+        var field = new SearchField<>(font, 10, y, 100, 18, index, style, UiPreferences.DEFAULT);
         field.setFocused(true);
         return field;
     }

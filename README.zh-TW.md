@@ -286,6 +286,6 @@ $env:TMP = 'C:\jtmp'
 
 遊戲端另外安裝 **KotlinForForge NeoForge 5.10.0 或相容的 5.x**，不可使用 Forge 1.20.1 的 4.x。已驗證前置 5.10.0 使用 Kotlin 2.2.20，與本庫 Kotlin compiler 2.2.21 同一條版本線。前置由整合包提供，本庫不內嵌 Kotlin／KFF。`FTB Quest Nexus/neoforge` 直接引用此專案產物提供玻璃 UI。
 
-NeoForge 打包時將 `WaveOrigin` 修正為與 Minecraft `float/count=2` 上傳一致的 GLSL `vec2`，不修改根 Forge 資源；已以實際輸出資源的測試驗證。這項契約修正不等同已完成 GPU／外觀驗收。
+兩平台共用的 shader 將 `WaveOrigin` 宣告為 GLSL `vec2`，對齊 Minecraft 的 `float/count=2` 上傳。資源測試檢查各平台的實際構建輸出。
 
 NeoForge 版本提供原生 Screen 的公開 API；目前不包含 Forge 1.20.1 專用的 `compat.ldlib.GlassPanelTexture`，不宣告 LDLib 前置。LDLib 消費端應維持使用相應平台版本，不能跨平台混裝。實際測試與待驗項目見 `neoforge/VERIFICATION.md` 與 `TODO.md`。

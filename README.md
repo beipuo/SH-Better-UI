@@ -43,6 +43,8 @@ implementation files('../SH-Better-UI/build/libs/sh_better_ui-1.0.3-dev.jar')
 
 `1.0.3` 新增 `GlassTheme.SMOKE`，共用星律的 `GlassColors.SMOKE`。本次材质维护改用 16 GUI 单位的密采样背景模糊，保留微量提亮与边缘柔光。接入方使用此主题时，最低依赖版本须为 `[1.0.3,2.0.0)`。商店可并存经典、深蓝动态玻璃与中性烟灰；选择器跟随所选主题，烟灰内层控件不重复模糊。
 
+### 玻璃材质接口
+
 通用接口位于 `com.dishanhai.sh_better_ui.client.glass`、`client.blur` 与 `client.gui.scaled`。在面板内容之前绘制玻璃底，再画文字与图示：
 
 ```java
@@ -53,6 +55,20 @@ theme.box(graphics, x, y, width, height, GlassPalette.ROOT_EDGE, theme.panelBg);
 ```
 
 `compat.ldlib.GlassPanelTexture` 提供 `root()`、`panel()`、`display()`、`page()` 与 `button()` 材质工厂。只有 LDLib 接入方引用此包；每个按钮各自建立 `button()`，让 hover 弹簧保持独立。
+
+### 客户端毛玻璃配置
+
+Forge 和 NeoForge 客户端首次启动后，在 `config/sh_better_ui-client.toml` 的 `[glassBackdrop]` 段调整毛玻璃背景。配置重新加载后，接下来的绘制会采用新值。
+
+| 设置 | 默认值 | 范围与效果 |
+| --- | --- | --- |
+| `enabled` | `true` | 设为 `false` 跳过毛玻璃背景后处理，保留半透明底板。 |
+| `blurRadiusScale` | `1.0` | `0.0–2.0`，乘以各材质原有的模糊半径。设为 `0.0` 时，仍可显示色调和颗粒。 |
+| `strength` | `1.0` | `0.0–1.0`，缩放整体效果强度。设为 `0.0` 跳过毛玻璃背景后处理。 |
+| `tintScale` | `1.0` | `0.0–2.0`，缩放材质原有的色调混合量。 |
+| `grainScale` | `1.0` | `0.0–2.0`，缩放材质原有的颗粒强度。 |
+
+设置适用于通过本库绘制的毛玻璃背景，包括根面板、分区、按钮与提示框。经典主题沿用自己的绘制方式，换页模糊和点击折射波各自独立。
 
 ### 中性浅色玻璃
 
@@ -90,6 +106,30 @@ DarkModeTheme.button(graphics, x, y, width, height, state, true, () -> {
 ```
 
 卡片悬停时抬升 2 个 GUI 单位，文字过渡 200 毫秒，卡片底板过渡 300 毫秒。按钮在按下的第一帧即缩至 98%，放开后以 200 毫秒复位，取消时用 `motion.cancelPress(nowMs)` 即时清除反馈。焦点环为 2 单位蓝边加 2 单位深色间隔。控件周围预留至少 4 个 GUI 单位，卡片上方预留 6 个，避免裁切焦点环。输入框先画主题底板，再由原生控件画文字、光标与选取区。界面负责原生焦点、键盘导航、讲述人及命中区。传入 `reducedMotion=true` 时，颜色与内凹反馈即时更新，省去抬升与缩放。
+
+### Liquid Glass
+
+Forge 1.20.1 与 NeoForge 1.21.1 的原生 `Screen` 可调用 `client.gui.scaled.LiquidGlassTheme`。先画后方内容，再调用 `toolbar()`、`popover()`、`input()` 或 `button()`，最后画前景文字与图标。工具列和按钮使用偏通透的圆角材质，输入框与浮层增加底色以稳定文字对比。按钮可沿用 `DarkModeTheme.Interaction.control()` 的状态采样。
+
+```java
+var preferences = UiPreferences.DEFAULT;
+var search = new SearchField<>(font, x, y, width, 20, index, UiStyle.LIQUID_GLASS, preferences);
+var button = new UiButton(x, y + 24, width, 20, label, onPress, preferences, true, UiStyle.LIQUID_GLASS);
+button.setBackgroundBlurRadius(12f);
+```
+
+`UiButton.setBackgroundBlurRadius(float)` 设置液态玻璃按键的背景模糊半径，单位为 GUI 单位，默认 `12`。`0` 关闭取样并使用实色底板，大于 `32` 的值按 `32` 处理，负数及 NaN／Infinity 会抛出 `IllegalArgumentException`。`getBackgroundBlurRadius()` 可读取当前值。自绘按钮可使用 `LiquidGlassTheme.button(..., preferences, sampleBackground, blurRadius, primary, selected, emphasis, content)`，原有签名使用默认半径。
+
+确认与取消按钮使用库内透明 PNG 图标，通过 `setIcon()` 居中绘制。本地化按钮名称用于悬停提示和旁白。
+
+```java
+confirmButton.setIcon(GraphicIcon.SUCCESS);
+cancelButton.setIcon(GraphicIcon.CLOSE);
+```
+
+按钮宽高相等时呈圆形，宽高不等时呈胶囊形。轮廓、描边与焦点环由解析距离 shader 计算像素覆盖率，GUI 缩放及按下动画会自动调整抗锯齿宽度。先绘制背景，再绘制按钮，最后绘制文字与图标。背景采用密集高斯取样与圆角覆盖率过渡，按钮底色保留可见的背景颜色。`setSampleBackground(false)` 会跳过独立取样，`UiPreferences` 与全局玻璃设置继续决定模糊是否启用。
+
+旧构造函数继续使用各控件的默认外观。位于已绘制玻璃工具列里的控件可调用 `setSampleBackground(false)` 共用底层取样。搜索候选浮层仍单独取样，继续通过 `renderSuggestions()` 在普通控件与现有后处理之后绘制。高对比、关闭背景模糊或后处理不可用时使用不透明底板。减少动效时保留静态的悬停、按下和选中反馈。
 
 ### 按钮与界面切换提示
 
@@ -265,6 +305,40 @@ GlassEffectRenderer.drawRipple(g, x, y, w, h, ripple, nowMs, reducedMotion, acce
 
 `reducedMotion=true` 时，涟漪改成均匀淡出，流光与呼吸改成静态亮度。这些接口只提交原生 GUI 矩形，不新增后处理、材质或依赖；局部涟漪与 `GaussBlur.requestWave` 的屏幕折射波可分别使用。完整组合与 LDLib 接入示例见[可选玻璃效果](docs/effects.md)。
 
+### 图形化显示
+
+Forge 与 NeoForge 的原生 `Screen` 可使用 `client.gui.display` 下的图标与状态面板。状态和翻页图标有 `INFO`、`SUCCESS`、`WARNING`、`ERROR`、`PREVIOUS`、`NEXT`。通用操作图标有 `ADD`、`REMOVE`、`SEARCH`、`SETTINGS`、`REFRESH`、`CLOSE`。可用 `new GraphicIcon(textureId)` 引用自己的 16×16 透明 PNG，白色图形可按 ARGB 着色。给 `UiButton` 设置图标时仍应传入本地化按钮名称，供悬停提示和旁白使用。
+
+```java
+// 面板内框使用 Screen 的逻辑坐标。entries 是当前页的 List<GraphicDisplay.Entry>。
+var area = new GraphicDisplayLayout.Bounds(x, y, width, height);
+var layout = GraphicDisplayLayout.arrange(area, entries.size(), 28, pageCount > 1);
+
+// 在 init 中注册控件。changePage 更新当前页、布局及两个按钮的 active。
+var previous = addRenderableWidget(GraphicDisplay.pageButton(
+        layout.previous(), false, preferences, button -> changePage(-1)));
+var next = addRenderableWidget(GraphicDisplay.pageButton(
+        layout.next(), true, preferences, button -> changePage(1)));
+previous.active = previous.visible && pageNumber > 1;
+next.active = next.visible && pageNumber < pageCount;
+
+// 在 render 中使用当前页的 layout，页码从 1 开始。
+GraphicDisplay.drawRows(graphics, font, layout, entries, 1, textColor, rowColor);
+GraphicDisplay.drawPageNumber(graphics, font, layout, pageNumber, pageCount, textColor);
+super.render(graphics, mouseX, mouseY, partialTick);
+GraphicDisplay.drawRowTooltip(graphics, font, layout, entries, mouseX, mouseY);
+```
+
+默认在宽度达 240 GUI 单位时排两列，窄版排一列。需要自定义列数时，将 `Grid(最小列宽, 最多列数)` 传给 `arrange`。例如 `new Grid(68, 4)` 会随可用宽度在一至四列之间重排。
+
+```java
+var grid = new GraphicDisplayLayout.Grid(68, 4);
+int capacity = GraphicDisplayLayout.pageCapacity(area, 28, true, grid);
+var layout = GraphicDisplayLayout.arrange(area, entries.size(), 28, true, grid);
+```
+
+`pageCapacity` 用相同的内框、行高、分页开关及网格规则计算可完整显示的条目数，可用于切分当前页。容量为 0 时需给内容留出足够空间。切页或缩放后按当前内框和条目数重算布局。使用 2× 图标时应预留至少 40 GUI 单位行高。状态文字传入本地化 `Component`，超出行高可悬停查看完整标签。如果宿主还套了一层视口裁切，只在鼠标位于宿主可见区时显示提示。底板和页码状态由宿主管理，翻页控件沿用 `UiButton` 的点击、键盘焦点和旁白。
+
 ### 中性玻璃渲染预览
 
 左为调整前，右为调整后。玻璃使用实际 shader 离屏渲染与实际色板；背景、字体与排版为测试示意，并非 Minecraft 实机界面。文字柔光的接入范围及验证结果见[玻璃维护记录](docs/neutral-glass-maintenance.md)，游戏验收项目见 [TODO](TODO.md)。
@@ -286,6 +360,6 @@ $env:TMP = 'C:\jtmp'
 
 游戏端另外安装 **KotlinForForge NeoForge 5.10.0 或相容的 5.x**，不可使用 Forge 1.20.1 的 4.x。已验证前置 5.10.0 使用 Kotlin 2.2.20，与本库 Kotlin compiler 2.2.21 同一条版本线。前置由整合包提供，本库不内嵌 Kotlin／KFF。`FTB Quest Nexus/neoforge` 直接引用此项目产物提供玻璃 UI。
 
-NeoForge 打包时将 `WaveOrigin` 修正为与 Minecraft `float/count=2` 上传一致的 GLSL `vec2`，不修改根 Forge 资源；已以实际输出资源的测试验证。这项契约修正不等同已完成 GPU／外观验收。
+两平台共用的 shader 将 `WaveOrigin` 声明为 GLSL `vec2`，匹配 Minecraft 的 `float/count=2` 上传。资源测试检查各平台的实际构建输出。
 
 NeoForge 版本提供原生 Screen 的公开 API；目前不包含 Forge 1.20.1 专用的 `compat.ldlib.GlassPanelTexture`，不声明 LDLib 依赖。LDLib 接入方应维持使用相应平台版本，不能跨平台混装。实际测试与待验项目见 `neoforge/VERIFICATION.md` 与 `TODO.md`。

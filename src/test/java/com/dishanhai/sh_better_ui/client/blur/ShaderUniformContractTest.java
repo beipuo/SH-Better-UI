@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 山海：驗證實際打包資源與 Minecraft float count=2 的 glUniform2 上傳契約。 */
+/** 山海：验证两平台的构建资源与 Minecraft float count=2 的 glUniform2 上传契约。 */
 class ShaderUniformContractTest {
     @Test
     void waveOriginMatchesTheTwoComponentFloatUpload() throws Exception {
