@@ -2,9 +2,9 @@
 
 作者：山海／dishanhai。
 
-Forge 1.20.1 的共用玻璃 UI 庫，提供深色與中性淺色材質、局部高斯／方向模糊、彈簧動畫及可選 LDLib 材質接口。以獨立模組 jar 發行，消費模組不內嵌 UI 庫，更新時直接替換 UI 庫 jar。
+SH-Better-UI 是 Forge 1.20.1 與 NeoForge 1.21.1 的 Minecraft 客戶端 UI 庫。兩個平台共用玻璃材質、模糊、動畫、搜尋與物品／流體選取元件，並各自提供獨立模組 jar。消費模組以外部依賴接入，更新時替換對應平台的 UI 庫 jar。
 
-## 環境與依賴
+## Forge 1.20.1 環境與依賴
 
 - Minecraft 1.20.1、Forge 47.4.16 或更高、Java 21。
 - 必需 KotlinForForge 4.12.0（2.2.21 runtime），由整合包單獨提供；本庫不內嵌任何 jar。
@@ -13,7 +13,7 @@ Forge 1.20.1 的共用玻璃 UI 庫，提供深色與中性淺色材質、局部
 
 ## 建置
 
-執行 `build-local.ps1` 或 `簡易構建.bat`，均使用本地 Gradle 8.8／JDK 21，包含 JUnit 與 reobfJar。
+使用 `build-local.ps1` 單獨建置 Forge，或執行 `簡易構建.bat` 依序建置 Forge 與 NeoForge。兩個入口均使用 JDK 21。Forge 使用 Gradle 8.8，建置包含 JUnit 與 reobfJar。批次腳本會清理兩個平台各自的 `build/libs`，並列出新產物。
 
 首次建置時先移除命令中的 `--offline`，讓 Gradle 下載 JEI 編譯用 API。快取建立後可恢復離線建置。
 
@@ -88,6 +88,10 @@ DarkModeTheme.button(graphics, x, y, width, height, state, true, () -> {
 ```
 
 卡片懸停時抬升 2 個 GUI 單位，文字過渡 200 毫秒，卡片底板過渡 300 毫秒。按鈕在按下的第一幀即縮至 98%，放開後以 200 毫秒復位，取消時用 `motion.cancelPress(nowMs)` 即時清除回饋。焦點環為 2 單位藍邊加 2 單位深色間隔。控件周圍預留至少 4 個 GUI 單位，卡片上方預留 6 個，避免裁切焦點環。輸入框先畫主題底板，再由原生控件畫文字、游標與選取區。畫面負責原生焦點、鍵盤導航、旁白及命中區。傳入 `reducedMotion=true` 時，顏色與內凹回饋即時更新，省去抬升與縮放。
+
+### 按鈕與畫面切換提示
+
+公開的 `UiButton` 提供懸停高亮、原生功能提示及 `setSelected` 選中標記。用 `setPreview(Component.translatable(...))` 指定功能說明，預設提示顯示完整按鈕名稱。`UiAttention` 讓頁籤指示條連續移動，並提供新內容的短距淡入與目標亮邊。減少動效時立即顯示目標，保留選中標記。庫內展開控件與 JEI 面板已接入。其他消費畫面的接入、座標換算與驗證範圍見 [切換回饋說明](docs/attention-feedback.md)。
 
 ### 直接拖曳、滑動與縮放
 
@@ -176,6 +180,36 @@ if (keyCode == GLFW.GLFW_KEY_ESCAPE && panel.dismissSuggestions()) return true;
 
 `setExtraAreas` 讓 JEI 側欄避開當前畫面的面板和聯想清單。畫面提供者應使用 `panel::extraAreas`，面板永久移除時可傳入 `null` 撤銷。NeoForge 的 `mouseScrolled` 需傳入垂直滾動量。
 
+### 物品與流體篩選、選取
+
+`client.gui.filter.IngredientFilter` 是 JEI 與自建素材庫共用的不可變 `Predicate<Ingredient>`。`withKinds`、`withIds`、`withMods`、`withTags` 採完整值比對，同類任一符合，跨類全部符合，空集合解除該類限制。自訂條件使用 `and`、`or`、`negate`。名稱、ID 片段與別名仍沿用 `SearchIndex`，`JeiSearchPanel.setFilter` 同步限制搜尋結果和聯想。
+
+```java
+var allowed = IngredientFilter.items()
+        .withMods(Set.of("minecraft", "gtceu"))
+        .withTags(Set.of(ResourceLocation.tryParse("forge:ingots/iron")));
+
+var request = new IngredientPicker.Request(pickerTitle, IngredientCatalog.automatic(),
+        allowed, 8, initialSelection, uiPreferences);
+IngredientPicker.open(this, request, () -> rebuiltPickerButton, selected -> {
+    // 回到父畫面後提交草稿；空清單可用來清除篩選。
+    applySelection(selected);
+});
+```
+
+`IngredientPicker`、`IngredientCatalog`、`IngredientValues` 和 `IngredientSelection` 位於 `client.gui.selection`。`Request.single` 和 `Request.multiple` 提供預設值，完整建構子可設定業務條件、初始候選和 `UiPreferences`。選取器可依種類、名稱／ID、模組及標籤縮小結果。玩家可切換已選檢視、撤銷本地草稿修改，並透過確認回傳不可變清單。取消及 Escape 放棄草稿。從 JEI 配方返回或調整 GUI 比例後保留草稿與搜尋條件。
+
+| 來源 | 素材範圍 |
+| --- | --- |
+| `IngredientCatalog.jei()` | 目前 JEI 可見的物品與流體 |
+| `IngredientCatalog.registry()` | 原生物品預設形態及源流體 |
+| `IngredientCatalog.automatic()` | 優先使用 JEI，未就緒時使用原生註冊表 |
+| `IngredientCatalog.of(candidates)` | 呼叫端提供的固定候選快照 |
+
+`IngredientValues.item(stack)` 和 `fluid(stack)` 可用原生 stack 建立自訂候選。Forge 和 NeoForge 各自接收其平台的 `FluidStack`。`Ingredient.copy(ItemStack.class)` 或 `copy(FluidStack.class)` 回傳保留 NBT／資料元件及數量的副本。`Ingredient.key()` 用於目前執行期的形態辨識，持久化請儲存原生 stack 資料。初始選取應使用當前來源的候選 key。動態來源可自行實作 `IngredientCatalog`，在素材、語言或標籤變更後推進 `revision()`，並維持來源內同一形態的 key 穩定。JEI 候選的標籤遵循其素材 helper，原生候選讀取物品或流體註冊表標籤。
+
+嵌入式畫面可在 `JeiSearchPanel` 建構時傳入素材來源，或以 `panel.setCatalog(source)` 切換，再用 `panel.setFilter(allowed)` 套用條件。`panel.setChosen(...)` 讓宿主標記草稿，`refreshSelection()` 更新選用／移除按鈕。`IngredientSelection` 可供宿主維護草稿、限制選取數與重新驗證候選。既有 `setOnChoose` 仍在明確選用時回傳單項。
+
 ### 捲動到邊界時換頁
 
 每個分頁捲動區各自建立一個 `client.gui.scaled.ScrollPageTurn`。指標命中捲動區、子控件未消耗事件時，用本次滾輪事件算出並限制目標偏移，再交給庫判斷。向下捲到頁底時切下一頁，向上捲到頁頂時切上一頁。內容不足一屏時可直接用滾輪換頁。首尾頁停在邊界，同方向的連續輸入需間隔至少 180 毫秒才能再次換頁。
@@ -237,7 +271,7 @@ GlassEffectRenderer.drawRipple(g, x, y, w, h, ripple, nowMs, reducedMotion, acce
 
 ## NeoForge 1.21.1
 
-`neoforge/` 是獨立建置，使用 Java 21、NeoForge 21.1.265、ModDevGradle 2.0.148 與 Gradle 9.2.1。根目錄 Forge 1.20.1 的建置入口與 API 保留。NeoForge 共用玻璃色板、面板、動效與 shader，對入口、客戶端事件、tooltip 與模糊管線使用平台覆寫來源。
+`neoforge/` 是獨立建置，使用 Java 21、NeoForge 21.1.251、ModDevGradle 2.0.148 與 Gradle 9.2.1。NeoForge 共用玻璃色板、面板、動效與 shader，並以平台來源處理模組入口、客戶端事件、tooltip、模糊管線與原生素材轉接。
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Java\jdk-21.0.11'
