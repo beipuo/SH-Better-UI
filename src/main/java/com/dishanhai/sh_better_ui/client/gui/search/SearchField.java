@@ -1,0 +1,298 @@
+package com.dishanhai.sh_better_ui.client.gui.search;
+
+import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
+/** 山海：原生输入框、前缀预测与可由宿主画面置顶的搜索联想清单。 */
+public final class SearchField<T> extends EditBox {
+    private static final int SUGGESTION_LIMIT = 8;
+    private static final int GAP = 2;
+    private static final Component USAGE = Component.translatable("sh_better_ui.search.usage");
+
+    private final Font font;
+    private SearchIndex<T> index;
+    private Predicate<? super T> scope = value -> true;
+    private Predicate<String> filter = text -> true;
+    private Consumer<String> onChange;
+    private Consumer<String> onSubmit;
+    private String observedQuery = "";
+    private String undoQuery;
+    private List<SearchIndex.Suggestion<T>> suggestions;
+    private int maxLength;
+    private int selected;
+    private int firstVisible;
+    private boolean dismissed;
+
+    public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index) {
+        super(font, x, y, width, height, Component.translatable("sh_better_ui.search.label"));
+        this.font = font;
+        this.index = Objects.requireNonNull(index);
+        setMaxLength(256);
+        setHint(getMessage());
+        setTooltip(Tooltip.create(USAGE));
+        super.setResponder(ignored -> queryChanged());
+    }
+
+    public void setIndex(SearchIndex<T> index) {
+        this.index = Objects.requireNonNull(index);
+        invalidateSuggestions();
+    }
+
+    /** 数据范围变更时重新传入条件，已输入的查询保留。 */
+    public void setScope(Predicate<? super T> scope) {
+        this.scope = Objects.requireNonNull(scope);
+        invalidateSuggestions();
+    }
+
+    /** 每次实际查询变化通知一次，包含填充和撤销。 */
+    @Override
+    public void setResponder(Consumer<String> responder) {
+        onChange = responder;
+    }
+
+    /** 设置 Enter 提交回调；传入 null 恢复画面原有 Enter 行为。 */
+    public void setOnSubmit(Consumer<String> onSubmit) {
+        this.onSubmit = onSubmit;
+    }
+
+    @Override
+    public void setFilter(Predicate<String> filter) {
+        super.setFilter(Objects.requireNonNull(filter));
+        this.filter = filter;
+        invalidateSuggestions();
+    }
+
+    @Override
+    public void setMaxLength(int length) {
+        if (length < 0) throw new IllegalArgumentException("length must be nonnegative");
+        maxLength = length;
+        super.setMaxLength(length);
+        invalidateSuggestions();
+    }
+
+    @Override
+    public void setFocused(boolean focused) {
+        boolean wasFocused = isFocused();
+        super.setFocused(focused);
+        if (wasFocused != isFocused()) invalidateSuggestions();
+    }
+
+    private void queryChanged() {
+        String query = getValue();
+        if (query.equals(observedQuery)) return;
+        observedQuery = query;
+        undoQuery = null;
+        invalidateSuggestions();
+        if (onChange != null) onChange.accept(query);
+    }
+
+    private void invalidateSuggestions() {
+        suggestions = null;
+        selected = firstVisible = 0;
+        dismissed = false;
+        setSuggestion(null);
+    }
+
+    private boolean suggestionsOpen() {
+        if (!active || !isVisible() || !canConsumeInput() || dismissed) return false;
+        if (suggestions == null) {
+            suggestions = index.suggest(getValue(), scope, SUGGESTION_LIMIT, this::canFill);
+        }
+        return !suggestions.isEmpty();
+    }
+
+    /** 宿主 Screen 应先处理 Esc，再调用自己的默认关闭逻辑。 */
+    public boolean dismissSuggestions() {
+        if (!suggestionsOpen()) return false;
+        dismissed = true;
+        setSuggestion(null);
+        return true;
+    }
+
+    private boolean canFill(String text) {
+        return text.length() <= maxLength && filter.test(text);
+    }
+
+    private boolean acceptSelected() {
+        String previous = getValue();
+        String completion = suggestions.get(selected).completion();
+        if (!canFill(completion)) return false;
+        if (!completion.equals(previous)) {
+            setValue(completion);
+            if (!completion.equals(getValue())) return true;
+            undoQuery = previous;
+        }
+        dismissed = true;
+        setSuggestion(null);
+        return true;
+    }
+
+    /** 恢复最近一次填充前的查询。用户继续编辑后，撤销入口随之失效。 */
+    public boolean undoCompletion() {
+        String previous = undoQuery;
+        if (previous == null || !canFill(previous)) return false;
+        setValue(previous);
+        return previous.equals(getValue());
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scanCode, int modifiers) {
+        if (!active || !isVisible() || !canConsumeInput()) return false;
+        if (key == GLFW.GLFW_KEY_Z && undoQuery != null && Screen.hasControlDown()
+                && !Screen.hasShiftDown() && !Screen.hasAltDown() && undoCompletion()) return true;
+        if ((modifiers & (GLFW.GLFW_MOD_SHIFT | GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_ALT | GLFW.GLFW_MOD_SUPER)) == 0) {
+            switch (key) {
+                case GLFW.GLFW_KEY_ESCAPE -> { return dismissSuggestions(); }
+                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                    if (onSubmit != null) {
+                        dismissSuggestions();
+                        onSubmit.accept(getValue());
+                        return true;
+                    }
+                }
+                case GLFW.GLFW_KEY_TAB -> { if (suggestionsOpen() && acceptSelected()) return true; }
+                case GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_DOWN -> {
+                    if (suggestionsOpen()) {
+                        moveSelection(key == GLFW.GLFW_KEY_UP ? -1 : 1);
+                        return true;
+                    }
+                }
+                default -> { }
+            }
+        }
+        return super.keyPressed(key, scanCode, modifiers);
+    }
+
+    private void moveSelection(int delta) {
+        selected = Math.clamp(selected + delta, 0, suggestions.size() - 1);
+    }
+
+    /** 返回当前联想清单在宿主画面上的占用范围。 */
+    public Optional<Rect2i> suggestionArea(int screenHeight) {
+        Dropdown dropdown = dropdown(screenHeight);
+        return dropdown == null ? Optional.empty()
+                : Optional.of(new Rect2i(getX(), dropdown.top(), getWidth(), dropdown.height()));
+    }
+
+    @Override
+    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        String query = getValue();
+        String suffix = "";
+        if (suggestionsOpen() && getCursorPosition() == query.length() && getHighlighted().isEmpty()) {
+            int space = Math.max(0, getInnerWidth() - font.width(query) - 1);
+            suffix = font.plainSubstrByWidth(suggestions.get(selected).suffixFor(query), space);
+        }
+        setSuggestion(suffix.isEmpty() ? null : suffix);
+        super.renderWidget(graphics, mouseX, mouseY, partialTick);
+    }
+
+    /** 在普通控件之后绘制。鼠标与高度使用与输入框相同的画面坐标。 */
+    public void renderSuggestions(GuiGraphics graphics, int mouseX, int mouseY, int screenHeight) {
+        Dropdown dropdown = dropdown(screenHeight);
+        if (dropdown == null) return;
+        int x = getX();
+        int bottom = dropdown.top() + dropdown.height();
+        graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.SURFACE);
+        int hovered = rowAt(dropdown, mouseX, mouseY);
+        Component clippedLabel = null;
+        for (int row = 0; row < dropdown.rows(); row++) {
+            int index = firstVisible + row;
+            int y = dropdown.top() + row * dropdown.rowHeight();
+            if (index == selected || index == hovered) {
+                graphics.fill(x + 1, y + 1, x + getWidth() - 1, y + dropdown.rowHeight(),
+                        index == selected ? DarkModeTheme.BACKGROUND : DarkModeTheme.BORDER);
+            }
+            if (index == selected) {
+                graphics.fill(x + 1, y + 1, x + 3, y + dropdown.rowHeight(), DarkModeTheme.ACCENT);
+            }
+            Component label = label(suggestions.get(index));
+            String text = label.getString();
+            String visibleText = font.plainSubstrByWidth(text, getWidth() - 10);
+            if (index == hovered && !visibleText.equals(text)) clippedLabel = label;
+            graphics.drawString(font, visibleText, x + 5, y + (dropdown.rowHeight() - font.lineHeight) / 2,
+                    DarkModeTheme.TEXT, false);
+        }
+        graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.BORDER_HOVER);
+        if (clippedLabel != null) graphics.renderTooltip(font, clippedLabel, mouseX, mouseY);
+    }
+
+    /** 在宿主 Screen 的普通鼠标分派前调用，避免清单点击落到后方控件。 */
+    public boolean mouseClickedSuggestion(double mouseX, double mouseY, int button, int screenHeight) {
+        int row = rowAt(dropdown(screenHeight), mouseX, mouseY);
+        if (row < 0) {
+            if (!isMouseOver(mouseX, mouseY)) dismissSuggestions();
+            return false;
+        }
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            selected = row;
+            acceptSelected();
+        }
+        return true;
+    }
+
+    /** 在宿主 Screen 的普通滚轮分派前调用。 */
+    public boolean mouseScrolledSuggestions(double mouseX, double mouseY, double delta, int screenHeight) {
+        if (rowAt(dropdown(screenHeight), mouseX, mouseY) < 0) return false;
+        if (delta != 0) moveSelection(delta > 0 ? -1 : 1);
+        return true;
+    }
+
+    @Override
+    public void updateWidgetNarration(NarrationElementOutput output) {
+        super.updateWidgetNarration(output);
+        if (suggestionsOpen()) {
+            output.add(NarratedElementType.POSITION, Component.translatable("narrator.position.object_list",
+                    selected + 1, suggestions.size()));
+            output.add(NarratedElementType.HINT, label(suggestions.get(selected)));
+            output.add(NarratedElementType.USAGE, USAGE);
+        }
+    }
+
+    private static Component label(SearchIndex.Suggestion<?> suggestion) {
+        String name = suggestion.entry().name();
+        String completion = suggestion.completion();
+        return completion.equals(name) ? Component.literal(name)
+                : Component.translatable("sh_better_ui.search.suggestion.id", completion, name);
+    }
+
+    private Dropdown dropdown(int screenHeight) {
+        if (getWidth() <= 10 || !suggestionsOpen()) return null;
+        int rowHeight = font.lineHeight + 7;
+        int below = getY() + getHeight() + GAP;
+        int above = getY() - GAP;
+        int belowRows = Math.max(0, screenHeight - below) / rowHeight;
+        int aboveRows = Math.max(0, above) / rowHeight;
+        boolean placeBelow = belowRows >= suggestions.size() || belowRows >= aboveRows;
+        int rows = Math.min(suggestions.size(), placeBelow ? belowRows : aboveRows);
+        if (rows == 0) return null;
+
+        firstVisible = Math.clamp(firstVisible, Math.max(0, selected - rows + 1), selected);
+        firstVisible = Math.min(firstVisible, suggestions.size() - rows);
+        return new Dropdown(placeBelow ? below : above - rows * rowHeight, rows, rowHeight);
+    }
+
+    private int rowAt(Dropdown dropdown, double mouseX, double mouseY) {
+        if (dropdown == null || mouseX < getX() || mouseX >= getX() + getWidth()
+                || mouseY < dropdown.top() || mouseY >= dropdown.top() + dropdown.height()) return -1;
+        return firstVisible + (int) (mouseY - dropdown.top()) / dropdown.rowHeight();
+    }
+
+    private record Dropdown(int top, int rows, int rowHeight) {
+        int height() { return rows * rowHeight; }
+    }
+}

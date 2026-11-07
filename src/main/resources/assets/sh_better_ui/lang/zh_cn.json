@@ -5,5 +5,8 @@
   "sh_better_ui.action.partial": "操作部分完成",
   "sh_better_ui.action.failed": "操作失败",
   "sh_better_ui.action.cancelled": "操作已取消",
-  "sh_better_ui.action.timed_out": "等待回执超时"
+  "sh_better_ui.action.timed_out": "等待回执超时",
+  "sh_better_ui.search.label": "搜索",
+  "sh_better_ui.search.usage": "上下键选择，Tab 或点击填充，Esc 收起建议，Ctrl+Z（Mac 为 ⌘Z）撤销填充",
+  "sh_better_ui.search.suggestion.id": "%1$s · %2$s"
 }

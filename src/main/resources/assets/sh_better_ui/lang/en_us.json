@@ -5,5 +5,8 @@
   "sh_better_ui.action.partial": "Partially completed",
   "sh_better_ui.action.failed": "Action failed",
   "sh_better_ui.action.cancelled": "Cancelled",
-  "sh_better_ui.action.timed_out": "Response timed out"
+  "sh_better_ui.action.timed_out": "Response timed out",
+  "sh_better_ui.search.label": "Search",
+  "sh_better_ui.search.usage": "Use Up and Down to select, Tab or click to fill, Esc to dismiss, and Ctrl+Z (⌘Z on Mac) to undo a fill",
+  "sh_better_ui.search.suggestion.id": "%1$s · %2$s"
 }
