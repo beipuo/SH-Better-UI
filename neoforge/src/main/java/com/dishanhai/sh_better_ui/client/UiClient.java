@@ -1,0 +1,62 @@
+package com.dishanhai.sh_better_ui.client;
+
+import com.dishanhai.sh_better_ui.ShBetterUi;
+import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+
+/** 山海：整個進程只註冊一條共用後處理管線；消費端僅提供畫面 predicates。 */
+@EventBusSubscriber(modid = ShBetterUi.MOD_ID, value = Dist.CLIENT)
+public final class UiClient {
+    private UiClient() {
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
+        GaussBlur.onScreenRenderPost(event);
+    }
+
+    @SubscribeEvent
+    public static void onScreenInit(ScreenEvent.Init.Post event) {
+        if (GaussBlur.isAllowed(event.getScreen())) GaussBlur.warmUp();
+    }
+
+    @SubscribeEvent
+    public static void onScreenClosing(ScreenEvent.Closing event) {
+        GaussBlur.clear();
+        GaussBlur.clearTopLayer();
+    }
+
+    @SubscribeEvent
+    public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        Minecraft.getInstance().execute(GaussBlur::release);
+    }
+
+    /** 資源重載仍停留在玻璃畫面時，立即以新資源恢復管線，不必重開畫面。 */
+    private static void reloadCurrentScreen() {
+        GaussBlur.release();
+        Screen screen = Minecraft.getInstance().screen;
+        if (screen != null && GaussBlur.isAllowed(screen)) GaussBlur.warmUp();
+    }
+
+    @EventBusSubscriber(modid = ShBetterUi.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+    public static final class ReloadRegistration {
+        private ReloadRegistration() {
+        }
+
+        @SubscribeEvent
+        public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
+            // 等待資源準備完成，再回主執行緒重建目前畫面需要的 GL 資源。
+            event.registerReloadListener((barrier, resources, preparationProfiler, reloadProfiler,
+                                          preparationExecutor, reloadExecutor) ->
+                    barrier.wait(null).thenRunAsync(UiClient::reloadCurrentScreen, Minecraft.getInstance()));
+        }
+    }
+}

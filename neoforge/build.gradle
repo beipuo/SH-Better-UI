@@ -1,0 +1,110 @@
+// Author: dishanhai
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'org.jetbrains.kotlin.jvm' version '2.2.21'
+}
+
+group = 'com.dishanhai'
+version = mod_version
+base { archivesName = "${mod_id}-neoforge-${minecraft_version}" }
+java { toolchain.languageVersion = JavaLanguageVersion.of(21); withSourcesJar() }
+kotlin {
+    jvmToolchain(21)
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21 }
+}
+repositories {
+    mavenCentral()
+    maven { url = 'https://thedarkcolour.github.io/KotlinForForge/' }
+}
+
+// Share stable drawing and motion API; only loader/render entry points are overridden.
+def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
+        'com/dishanhai/sh_better_ui/client/UiClient.java',
+        'com/dishanhai/sh_better_ui/client/blur/GaussBlur.java',
+        'com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java']
+sourceSets {
+    main {
+        java.srcDir('../src/main/java')
+        java.exclude { it.file.toPath().startsWith(file('../src/main/java').toPath()) &&
+                platformFiles.contains(it.path) }
+        resources.srcDir('../src/main/resources')
+        resources.exclude('META-INF/mods.toml')
+    }
+    test {
+        java.srcDir('../src/test/java')
+        resources.srcDir('../src/test/resources')
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+kotlin.sourceSets.main.kotlin {
+    srcDir('../src/main/kotlin')
+    exclude('**/compat/ldlib/**')
+}
+
+neoForge {
+    version = neo_version
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+    }
+    mods { sh_better_ui { sourceSet sourceSets.main } }
+}
+dependencies {
+    implementation "thedarkcolour:kotlinforforge-neoforge:${kff_version}"
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.ow2.asm:asm:9.8'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    // Existing source-boundary tests resolve paths relative to the original source root.
+    workingDir = projectDir.parentFile
+}
+processResources {
+    inputs.property('mod_version', mod_version)
+    inputs.property('waveOriginUniformType', 'vec2')
+    filesMatching('META-INF/neoforge.mods.toml') { expand(mod_version: mod_version, neo_version: neo_version) }
+    filesMatching('pack.mcmeta') {
+        expand(mod_name: 'SH-Better-UI')
+        filter { it.replace('"pack_format": 15', '"pack_format": 34') }
+    }
+    // Minecraft float/count=2 uploads through glUniform2; its GLSL declaration must be vec2.
+    // Keep this platform correction out of the original Forge resource tree.
+    filesMatching('assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh') {
+        filter {
+            it.replace('uniform float WaveOrigin[2];', 'uniform vec2 WaveOrigin;')
+                    .replace('vec2 origin = vec2(WaveOrigin[0], WaveOrigin[1]);', 'vec2 origin = WaveOrigin;')
+                    .replace('// PostChain 的 float uniform 走 glUniform1fv，原点用 float[2]，不要写成 vec2。',
+                            '// Minecraft float/count=2 uses glUniform2, matching a GLSL vec2.')
+        }
+    }
+}
+jar {
+    manifest.attributes('Implementation-Title': 'SH-Better-UI NeoForge',
+            'Implementation-Version': project.version, 'Implementation-Vendor': 'dishanhai')
+}
+tasks.register('verifyLibraryJar') {
+    dependsOn jar
+    doLast {
+        def archive = tasks.jar.archiveFile.get().asFile
+        def zip = new java.util.zip.ZipFile(archive)
+        try {
+            ['META-INF/neoforge.mods.toml', 'com/dishanhai/sh_better_ui/ShBetterUi.class',
+             'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
+             'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh'].each {
+                if (zip.getEntry(it) == null) throw new GradleException("Missing library entry: ${it}")
+            }
+            def forbidden = zip.entries().findAll {
+                it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
+                it.name.startsWith('thedarkcolour/') || it.name.startsWith('com/dishanhai/gt_shanhai/') ||
+                it.name.startsWith('com/dishanhai/sh_better_ui/compat/ldlib/') || it.name == 'META-INF/mods.toml'
+            }
+            if (!forbidden.isEmpty()) throw new GradleException("Unexpected embedded entries: ${forbidden*.name}")
+        } finally { zip.close() }
+    }
+}
+tasks.named('build') { dependsOn 'verifyLibraryJar' }

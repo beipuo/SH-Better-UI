@@ -16,3 +16,8 @@ __pycache__/
 /docs/
 /src_collection/
 TODO.md
+/neoforge/.gradle/
+/neoforge/.kotlin/
+/neoforge/build/
+/neoforge/run/
+/neoforge/libs/

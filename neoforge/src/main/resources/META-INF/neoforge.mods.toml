@@ -1,0 +1,28 @@
+# Author: dishanhai
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+[[mods]]
+modId="sh_better_ui"
+version="${mod_version}"
+displayName="SH-Better-UI"
+authors="dishanhai"
+description="Shared glass UI, blur and animation library."
+[[dependencies.sh_better_ui]]
+modId="neoforge"
+type="required"
+versionRange="[${neo_version},)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.sh_better_ui]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+[[dependencies.sh_better_ui]]
+modId="kotlinforforge"
+type="required"
+versionRange="[5.10.0,6)"
+ordering="AFTER"
+side="BOTH"
