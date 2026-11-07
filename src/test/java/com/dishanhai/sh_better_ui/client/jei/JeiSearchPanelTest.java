@@ -1,6 +1,9 @@
 package com.dishanhai.sh_better_ui.client.jei;
 
 import com.dishanhai.sh_better_ui.client.gui.search.JeiSearchPanel;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.filter.IngredientFilter;
+import com.dishanhai.sh_better_ui.client.gui.selection.IngredientCatalog;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -12,8 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,6 +38,9 @@ class JeiSearchPanelTest {
             panel.restore(saved);
 
             assertEquals(saved, panel.snapshot());
+            assertTrue(((UiButton) button(panel, "uses")).isSelected());
+            assertFalse(((UiButton) button(panel, "obtaining")).isSelected());
+            assertNotNull(button(panel, "uses").getTooltip());
             assertEquals(new Request(variant, JeiIntegration.Direction.USES), backend.lookups.getLast());
             var choose = new ArrayList<JeiIntegration.Ingredient>();
             panel.setOnChoose(choose::add);
@@ -43,6 +51,8 @@ class JeiSearchPanelTest {
             assertTrue(button(panel, "open").isActive());
             button(panel, "open").onPress();
             button(panel, "obtaining").onPress();
+            assertTrue(((UiButton) button(panel, "obtaining")).isSelected());
+            assertFalse(((UiButton) button(panel, "uses")).isSelected());
             button(panel, "open").onPress();
             assertEquals(List.of(new Request(variant, JeiIntegration.Direction.USES),
                     new Request(variant, JeiIntegration.Direction.OBTAINING)), backend.opens);
@@ -132,6 +142,151 @@ class JeiSearchPanelTest {
         }
     }
 
+    @Test
+    void customCatalogFiltersResultsAndSuggestionsTogetherWithoutJei() {
+        var metal = ResourceLocation.tryParse("forge:ingots/iron");
+        var iron = new TestIngredient("iron", "Iron Ingot", ResourceLocation.tryParse("minecraft:iron_ingot"),
+                "Minecraft", List.of("tieding"), JeiIntegration.Kind.ITEM, true, List.of(metal));
+        var other = item("other", "other:iron_ingot", "Other", "tieding", true);
+        var water = new TestIngredient("water", "Water", ResourceLocation.tryParse("minecraft:water"),
+                "Minecraft", List.of("tieding"), JeiIntegration.Kind.FLUID, true, List.of());
+        var panel = newPanel();
+        panel.setCatalog(IngredientCatalog.of(List.of(water, other, iron)));
+        panel.setFilter(IngredientFilter.items().withMods(Set.of("minecraft")).withTags(Set.of(metal)));
+        var search = (EditBox) panel.widgets().getFirst();
+        search.setValue("tieding");
+        search.setFocused(true);
+
+        var dropdown = panel.extraAreas(400).getLast();
+        assertTrue(panel.mouseClicked(dropdown.getX() + 1, dropdown.getY() + 1, 0, 400));
+        assertEquals("Iron Ingot", search.getValue());
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+        assertEquals(iron.key(), panel.snapshot().selectedKey());
+        assertFalse(button(panel, "open").isActive());
+
+        panel.setFilter(IngredientFilter.fluids());
+        assertEquals("Iron Ingot", search.getValue());
+        search.setValue("tieding");
+        search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0);
+        assertEquals(water.key(), panel.snapshot().selectedKey());
+    }
+
+    @Test
+    void chosenDraftStateIsIndependentFromPreviewAndOnlyChangesOnChoose() {
+        var iron = item("iron", "minecraft:iron_ingot", "Minecraft", "iron", true);
+        var copper = item("copper", "minecraft:copper_ingot", "Minecraft", "copper", true);
+        var panel = newPanel();
+        panel.setCatalog(IngredientCatalog.of(List.of(iron, copper)));
+        var staged = new HashSet<String>();
+        var commits = new ArrayList<JeiIntegration.Ingredient>();
+        panel.setChosen(ingredient -> staged.contains(ingredient.key()));
+        panel.setOnChoose(ingredient -> {
+            if (!staged.remove(ingredient.key())) staged.add(ingredient.key());
+            commits.add(ingredient);
+            panel.refreshSelection();
+        });
+        ((Button) panel.widgets().get(2)).onPress();
+        assertTrue(commits.isEmpty());
+        button(panel, "choose").onPress();
+        assertTrue(((UiButton) button(panel, "unchoose")).isSelected());
+        ((Button) panel.widgets().get(3)).onPress();
+        assertFalse(((UiButton) button(panel, "choose")).isSelected());
+        button(panel, "choose").onPress();
+        assertEquals(Set.of(iron.key(), copper.key()), staged);
+        ((Button) panel.widgets().get(2)).onPress();
+        button(panel, "unchoose").onPress();
+        assertFalse(((UiButton) button(panel, "choose")).isSelected());
+        assertEquals(Set.of(copper.key()), staged);
+        assertEquals(List.of(iron, copper, iron), commits);
+    }
+
+    @Test
+    void customCatalogRevisionDiscardsStalePreviewBeforeChoose() {
+        var old = item("old", "minecraft:iron_ingot", "Minecraft", "iron", true);
+        var replacement = item("new", "minecraft:iron_ingot", "Minecraft", "iron", true);
+        class Catalog implements IngredientCatalog {
+            long version;
+            List<JeiIntegration.Ingredient> values = List.of(old);
+
+            @Override
+            public long revision() { return version; }
+
+            @Override
+            public List<JeiIntegration.Ingredient> ingredients() { return values; }
+        }
+        var catalog = new Catalog();
+        var panel = newPanel();
+        panel.setCatalog(catalog);
+        var commits = new ArrayList<JeiIntegration.Ingredient>();
+        panel.setOnChoose(commits::add);
+        ((Button) panel.widgets().get(2)).onPress();
+        assertTrue(button(panel, "choose").isActive());
+        catalog.values = List.of(replacement);
+        catalog.version++;
+        // 模拟鼠标按下后、回调前来源更新，旧素材不得提交。
+        button(panel, "choose").onPress();
+        assertTrue(commits.isEmpty());
+        assertFalse(button(panel, "choose").isActive());
+        ((Button) panel.widgets().get(2)).onPress();
+        button(panel, "choose").onPress();
+        assertEquals(List.of(replacement), commits);
+    }
+
+    @Test
+    void stableCustomCatalogRefreshesRecipesWhenJeiDisconnectsOrRejoins() {
+        var iron = item("custom:iron", "minecraft:iron_ingot", "Minecraft", "iron", true);
+        var first = new TestBackend(iron);
+        var next = new TestBackend(iron);
+        var oldLayout = new TestLayout();
+        var newLayout = new TestLayout();
+        first.preview = oldLayout;
+        next.preview = newLayout;
+        JeiIntegration.install(first);
+        try {
+            var panel = newPanel();
+            panel.setCatalog(IngredientCatalog.of(List.of(iron)));
+            ((Button) panel.widgets().get(2)).onPress();
+            panel.tick();
+            assertEquals(1, oldLayout.ticks);
+            assertTrue(button(panel, "open").isActive());
+
+            JeiIntegration.uninstall(first);
+            panel.tick();
+            assertEquals(1, oldLayout.ticks);
+            assertFalse(button(panel, "open").isActive());
+            assertEquals(iron.key(), panel.snapshot().selectedKey());
+
+            JeiIntegration.install(next);
+            panel.tick();
+            assertEquals(1, oldLayout.ticks);
+            assertEquals(1, newLayout.ticks);
+            assertTrue(button(panel, "open").isActive());
+        } finally {
+            JeiIntegration.uninstall(first);
+            JeiIntegration.uninstall(next);
+        }
+    }
+
+    @Test
+    void catalogReplacementAndSameKeyRefreshUseTheCurrentIngredient() {
+        var old = item("stable", "minecraft:iron_ingot", "Minecraft", "iron", true);
+        var replacement = item("stable", "other:iron_ingot", "Other", "iron", true);
+        var panel = newPanel();
+        panel.setCatalog(IngredientCatalog.of(List.of(old)));
+        var search = (EditBox) panel.widgets().getFirst();
+        search.setValue("iron");
+        search.setFocused(true);
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+        assertEquals(old.key(), panel.snapshot().selectedKey());
+        var commits = new ArrayList<JeiIntegration.Ingredient>();
+        panel.setOnChoose(commits::add);
+        // 两个固定来源的 revision 相同，替换来源本身仍必须刷新。
+        panel.setCatalog(IngredientCatalog.of(List.of(replacement)));
+        button(panel, "choose").onPress();
+        assertEquals(List.of(replacement), commits);
+        assertEquals("iron", panel.snapshot().query());
+    }
+
     private static JeiSearchPanel newPanel() {
         Font font = new Font(id -> null, false) {
             @Override
@@ -164,7 +319,12 @@ class JeiSearchPanelTest {
     }
 
     private record TestIngredient(String key, String name, ResourceLocation id, String modName, List<String> aliases,
-                                  JeiIntegration.Kind kind, boolean visible) implements JeiIntegration.Ingredient {
+                                  JeiIntegration.Kind kind, boolean visible, List<ResourceLocation> tags)
+            implements JeiIntegration.Ingredient {
+        private TestIngredient(String key, String name, ResourceLocation id, String modName, List<String> aliases,
+                               JeiIntegration.Kind kind, boolean visible) {
+            this(key, name, id, modName, aliases, kind, visible, List.of());
+        }
         @Override
         public int width() { return 16; }
 

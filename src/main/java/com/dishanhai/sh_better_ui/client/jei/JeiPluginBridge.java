@@ -30,6 +30,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,7 +145,7 @@ public final class JeiPluginBridge implements IModPlugin {
                 ResourceLocation id = helper.getResourceLocation(value);
                 String name = helper.getDisplayName(value);
                 String modName = modIds.getModNameForModId(helper.getDisplayModId(value));
-                rows.add(new IngredientEntry<>(this, typed, renderer, key, name.isBlank() ? id.toString() : name,
+                rows.add(new IngredientEntry<>(this, typed, helper, renderer, key, name.isBlank() ? id.toString() : name,
                         id, modName, List.copyOf(ingredients.getIngredientAliases(typed)), kind));
             }
         }
@@ -152,7 +153,9 @@ public final class JeiPluginBridge implements IModPlugin {
         @Override
         public List<JeiIntegration.Recipe> recipes(JeiIntegration.Ingredient ingredient,
                                                    JeiIntegration.Direction direction, int limit) {
-            if (limit <= 0 || !(ingredient instanceof IngredientEntry<?> entry) || !owns(entry)) return List.of();
+            if (limit <= 0) return List.of();
+            IngredientEntry<?> entry = resolve(ingredient);
+            if (entry == null) return List.of();
             List<IFocus<?>> focus = focuses(entry.typed(), direction);
             IRecipeManager manager = runtime.getRecipeManager();
             return manager.createRecipeCategoryLookup().limitFocus(focus).get()
@@ -168,7 +171,8 @@ public final class JeiPluginBridge implements IModPlugin {
 
         @Override
         public boolean open(JeiIntegration.Ingredient ingredient, JeiIntegration.Direction direction) {
-            if (!(ingredient instanceof IngredientEntry<?> entry) || !owns(entry)) return false;
+            IngredientEntry<?> entry = resolve(ingredient);
+            if (entry == null) return false;
             List<IFocus<?>> focus = focuses(entry.typed(), direction);
             if (runtime.getRecipeManager().createRecipeCategoryLookup().limitFocus(focus).get().findAny().isEmpty()) {
                 return false;
@@ -179,6 +183,25 @@ public final class JeiPluginBridge implements IModPlugin {
 
         private boolean owns(IngredientEntry<?> entry) {
             return entry.owner() == this && entry.visible();
+        }
+
+        private IngredientEntry<?> resolve(JeiIntegration.Ingredient ingredient) {
+            if (ingredient instanceof IngredientEntry<?> entry) return owns(entry) ? entry : null;
+            if (!active || !ingredient.visible()) return null;
+            return switch (ingredient.kind()) {
+                case ITEM -> resolve(ingredient, VanillaTypes.ITEM_STACK);
+                case FLUID -> resolve(ingredient, runtime.getJeiHelpers().getPlatformFluidHelper().getFluidIngredientType());
+            };
+        }
+
+        private <T> IngredientEntry<T> resolve(JeiIntegration.Ingredient ingredient, IIngredientType<T> type) {
+            if (!ingredients.getRegisteredIngredientTypes().contains(type)) return null;
+            var typed = ingredient.copy(type.getIngredientClass())
+                    .flatMap(value -> ingredients.createTypedIngredient(type, value));
+            if (typed.isEmpty() || !visibility.isIngredientVisible(typed.get())) return null;
+            return new IngredientEntry<>(this, typed.get(), ingredients.getIngredientHelper(type),
+                    ingredients.getIngredientRenderer(type), ingredient.key(), ingredient.name(), ingredient.id(),
+                    ingredient.modName(), ingredient.aliases(), ingredient.kind());
         }
 
         private List<IFocus<?>> focuses(ITypedIngredient<?> typed, JeiIntegration.Direction direction) {
@@ -200,6 +223,11 @@ public final class JeiPluginBridge implements IModPlugin {
             revision.incrementAndGet();
         }
 
+        // JEI 19 adds this callback; the matching method also compiles against JEI 15.
+        public <T> void onIngredientsUpdated(IIngredientHelper<T> helper, Collection<ITypedIngredient<T>> updated) {
+            revision.incrementAndGet();
+        }
+
         @Override
         public <T> void onIngredientVisibilityChanged(ITypedIngredient<T> ingredient, boolean visible) {
             revision.incrementAndGet();
@@ -211,9 +239,23 @@ public final class JeiPluginBridge implements IModPlugin {
         }
     }
 
-    private record IngredientEntry<T>(Backend owner, ITypedIngredient<T> typed, IIngredientRenderer<T> renderer,
+    private record IngredientEntry<T>(Backend owner, ITypedIngredient<T> typed, IIngredientHelper<T> helper,
+                                      IIngredientRenderer<T> renderer,
                                       String key, String name, ResourceLocation id, String modName, List<String> aliases,
                                       JeiIntegration.Kind kind) implements JeiIntegration.Ingredient {
+        @Override
+        public List<ResourceLocation> tags() {
+            return visible() ? helper.getTagStream(typed.getIngredient())
+                    .sorted(Comparator.comparing(ResourceLocation::toString)).toList() : List.of();
+        }
+
+        @Override
+        public <V> Optional<V> copy(Class<V> type) {
+            java.util.Objects.requireNonNull(type);
+            if (!visible() || !type.isInstance(typed.getIngredient())) return Optional.empty();
+            return Optional.of(type.cast(helper.copyIngredient(typed.getIngredient())));
+        }
+
         @Override
         public boolean visible() {
             return owner.active && owner.visibility.isIngredientVisible(typed);

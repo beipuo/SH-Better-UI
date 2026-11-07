@@ -27,6 +27,12 @@ public final class JeiIntegration {
         ResourceLocation id();
         String modName();
         List<String> aliases();
+        default List<ResourceLocation> tags() { return List.of(); }
+        /** 返回独立素材副本，未知类型或已失效的素材返回空值。 */
+        default <T> Optional<T> copy(Class<T> type) {
+            Objects.requireNonNull(type);
+            return Optional.empty();
+        }
         Kind kind();
         boolean visible();
         int width();

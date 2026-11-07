@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.jei;
 
 import com.dishanhai.sh_better_ui.client.gui.search.JeiSearchPanel;
+import com.dishanhai.sh_better_ui.client.gui.selection.IngredientCatalog;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -49,6 +50,30 @@ class JeiIntegrationTest {
         } finally {
             JeiIntegration.uninstall(first);
             JeiIntegration.uninstall(replacement);
+        }
+    }
+
+    @Test
+    void automaticCatalogUsesJeiAndChangesRevisionAcrossSourceTransitions() {
+        var backend = new TestBackend();
+        var automatic = IngredientCatalog.automatic();
+        try {
+            JeiIntegration.install(backend);
+            long online = automatic.revision();
+            assertSame(JeiIntegration.ingredients(), automatic.ingredients());
+            assertEquals(online, automatic.revision());
+            backend.revision++;
+            assertTrue(automatic.revision() > online);
+            long updated = automatic.revision();
+            JeiIntegration.uninstall(backend);
+            long offline = automatic.revision();
+            assertTrue(offline > updated);
+            assertTrue(automatic.isAvailable());
+            assertFalse(IngredientCatalog.jei().isAvailable());
+            JeiIntegration.install(backend);
+            assertTrue(automatic.revision() > offline);
+        } finally {
+            JeiIntegration.uninstall(backend);
         }
     }
 

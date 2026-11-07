@@ -24,6 +24,7 @@ def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/UiClient.java',
         'com/dishanhai/sh_better_ui/client/blur/GaussBlur.java',
         'com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java',
+        'com/dishanhai/sh_better_ui/client/gui/selection/IngredientValues.java',
         'com/dishanhai/sh_better_ui/client/jei/JeiPlatformTooltip.java']
 sourceSets {
     main {

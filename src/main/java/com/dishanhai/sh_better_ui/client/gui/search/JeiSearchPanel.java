@@ -1,6 +1,12 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
+import com.dishanhai.sh_better_ui.client.gui.scaled.GuiRenderUtil;
+import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiAttention;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.selection.IngredientCatalog;
 import com.dishanhai.sh_better_ui.client.jei.JeiIntegration;
 import com.dishanhai.sh_better_ui.client.jei.JeiIntegration.Direction;
 import com.dishanhai.sh_better_ui.client.jei.JeiIntegration.Ingredient;
@@ -10,7 +16,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.renderer.Rect2i;
@@ -24,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** 山海：供原生 Screen 嵌入的 JEI 搜索与只读配方预览。所有方法在客户端线程使用。 */
 public final class JeiSearchPanel {
@@ -34,11 +40,14 @@ public final class JeiSearchPanel {
     private static final int ICON = 16;
     private static final Component MOD_FILTER = text("mod_filter");
     private static final Component UNAVAILABLE = text("unavailable");
+    private static final Component CATALOG_UNAVAILABLE = Component.translatable("sh_better_ui.picker.unavailable");
     private static final Component NO_RESULTS = text("no_results");
     private static final Component NO_RECIPES = text("no_recipes");
     private static final Component PREVIEW_UNAVAILABLE = text("preview_unavailable");
 
     private final Font font;
+    private final UiPreferences preferences;
+    private final UiAttention attention = new UiAttention();
     private final Bounds panel;
     private final Bounds list;
     private final Bounds detail;
@@ -46,14 +55,18 @@ public final class JeiSearchPanel {
     private final SearchField<String> modSearch;
     private final List<ResultRow> rows;
     private final List<AbstractWidget> widgets;
-    private final Button obtaining;
-    private final Button uses;
-    private final Button open;
-    private final Button choose;
+    private final UiButton obtaining;
+    private final UiButton uses;
+    private final UiButton open;
+    private final UiButton choose;
 
     private SearchIndex<Ingredient> index = new SearchIndex<>(List.of());
+    private IngredientCatalog catalog;
+    private Predicate<? super Ingredient> filter = ingredient -> true;
+    private Predicate<? super Ingredient> chosen = ingredient -> false;
     private List<SearchIndex.Entry<Ingredient>> results = List.of();
     private long revision = Long.MIN_VALUE;
+    private long recipeRevision = Long.MIN_VALUE;
     private Language language;
     private String modQuery = "";
     private boolean available;
@@ -66,8 +79,19 @@ public final class JeiSearchPanel {
     private Consumer<? super Ingredient> onChoose;
 
     public JeiSearchPanel(Font font, int x, int y, int width, int height) {
+        this(font, x, y, width, height, UiPreferences.DEFAULT);
+    }
+
+    public JeiSearchPanel(Font font, int x, int y, int width, int height, UiPreferences preferences) {
+        this(font, x, y, width, height, preferences, IngredientCatalog.jei());
+    }
+
+    public JeiSearchPanel(Font font, int x, int y, int width, int height, UiPreferences preferences,
+                          IngredientCatalog catalog) {
         if (width < 144 || height < 132) throw new IllegalArgumentException("JEI panel requires at least 144 by 132");
         this.font = Objects.requireNonNull(font);
+        this.preferences = Objects.requireNonNull(preferences);
+        this.catalog = Objects.requireNonNull(catalog);
         panel = new Bounds(x, y, width, height);
         int innerX = x + PAD;
         int innerWidth = width - 2 * PAD;
@@ -125,9 +149,10 @@ public final class JeiSearchPanel {
         });
         modSearch.setResponder(query -> {
             modQuery = query.strip().toLowerCase(Locale.ROOT);
-            search.setScope(this::inModScope);
+            search.setScope(this::inScope);
             refreshResults(true);
         });
+        search.setScope(this::inScope);
         refreshData();
     }
 
@@ -139,6 +164,30 @@ public final class JeiSearchPanel {
     /** 只有明确点击选择按钮时才调用。传 null 隐藏选择按钮。 */
     public void setOnChoose(Consumer<? super Ingredient> onChoose) {
         this.onChoose = onChoose;
+        updateControls();
+    }
+
+    /** 默认仍使用 JEI。可注入注册表或调用方维护的素材来源，保留当前查询与预览键。 */
+    public void setCatalog(IngredientCatalog catalog) {
+        this.catalog = Objects.requireNonNull(catalog);
+        language = null;
+        refreshData();
+    }
+
+    /** 结果与搜索联想使用同一条件。可重复调用以刷新依赖外部状态的条件。 */
+    public void setFilter(Predicate<? super Ingredient> filter) {
+        this.filter = Objects.requireNonNull(filter);
+        search.setScope(this::inScope);
+        refreshResults(true);
+    }
+
+    /** 草稿标记独立于当前预览项，由宿主持有单选或多选状态。 */
+    public void setChosen(Predicate<? super Ingredient> chosen) {
+        this.chosen = Objects.requireNonNull(chosen);
+        refreshSelection();
+    }
+
+    public void refreshSelection() {
         updateControls();
     }
 
@@ -185,7 +234,8 @@ public final class JeiSearchPanel {
         graphics.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), DarkModeTheme.BACKGROUND);
         graphics.renderOutline(panel.x(), panel.y(), panel.width(), panel.height(), DarkModeTheme.BORDER_HOVER);
         if (!available) {
-            drawText(graphics, UNAVAILABLE.getString(), list.x() + GAP, list.y() + GAP, panel.width() - 4 * PAD,
+            Component status = catalog == IngredientCatalog.jei() ? UNAVAILABLE : CATALOG_UNAVAILABLE;
+            drawText(graphics, status.getString(), list.x() + GAP, list.y() + GAP, panel.width() - 4 * PAD,
                     DarkModeTheme.TEXT_SECONDARY);
         } else if (results.isEmpty()) {
             drawText(graphics, NO_RESULTS.getString(), list.x() + GAP, list.y() + GAP, list.width() - 2 * GAP,
@@ -206,9 +256,17 @@ public final class JeiSearchPanel {
                 || modSearch.suggestionArea(screenHeight).filter(area -> area.contains(mouseX, mouseY)).isPresent();
         if (selected != null) {
             Button current = direction == Direction.OBTAINING ? obtaining : uses;
-            graphics.renderOutline(current.getX(), current.getY(), current.getWidth(), current.getHeight(),
-                    DarkModeTheme.ACCENT);
-            drawRecipe(graphics, mouseX, mouseY, overSuggestion);
+            long now = PageTransition.nowMs();
+            attention.select(List.of(selected.key(), direction), current.getX(), current.getY(),
+                    current.getWidth(), current.getHeight(), now);
+            var frame = attention.sample(now, preferences);
+            DarkModeTheme.selectionIndicator(graphics, frame, preferences);
+            int contentY = current.getY() + CONTROL_HEIGHT + 1;
+            DarkModeTheme.attentionTarget(graphics, detail.x(), contentY, detail.width(),
+                    Math.max(0, open.getY() - GAP - contentY), frame, preferences);
+            drawRecipe(graphics, mouseX, mouseY, overSuggestion, frame);
+        } else {
+            attention.clear();
         }
         if (!overSuggestion) drawIngredientTooltip(graphics, mouseX, mouseY);
         search.renderSuggestions(graphics, mouseX, mouseY, screenHeight);
@@ -236,24 +294,34 @@ public final class JeiSearchPanel {
         return search.dismissSuggestions() | modSearch.dismissSuggestions();
     }
 
-    private Button button(String key, int x, int y, int width, Runnable action) {
+    private UiButton button(String key, int x, int y, int width, Runnable action) {
         Component label = text(key);
-        return Button.builder(label, ignored -> action.run()).bounds(x, y, width, CONTROL_HEIGHT)
-                .tooltip(Tooltip.create(label)).build();
+        var button = new UiButton(x, y, width, CONTROL_HEIGHT, label, ignored -> action.run(), preferences, false);
+        button.setPreview(text(key + ".preview"));
+        return button;
     }
 
     private void refreshData() {
-        boolean ready = JeiIntegration.isAvailable();
-        long version = JeiIntegration.revision();
+        boolean ready = catalog.isAvailable();
+        long version = catalog.revision();
+        long currentRecipeRevision = JeiIntegration.revision();
         Language currentLanguage = Language.getInstance();
-        if (ready == available && version == revision && currentLanguage == language) return;
+        if (ready == available && version == revision && currentLanguage == language) {
+            if (recipeRevision != currentRecipeRevision) {
+                recipeRevision = currentRecipeRevision;
+                refreshRecipe();
+                updateControls();
+            }
+            return;
+        }
+        recipeRevision = currentRecipeRevision;
         available = ready;
         revision = version;
         language = currentLanguage;
         var entries = new ArrayList<SearchIndex.Entry<Ingredient>>();
         var mods = new LinkedHashMap<String, SearchIndex.Entry<String>>();
         if (available) {
-            for (Ingredient ingredient : JeiIntegration.ingredients()) {
+            for (Ingredient ingredient : catalog.ingredients()) {
                 if (!ingredient.visible() || ingredient.name().isBlank()) continue;
                 var id = ingredient.id();
                 entries.add(new SearchIndex.Entry<>(ingredient, ingredient.name(), List.of(id.toString()), ingredient.aliases()));
@@ -275,8 +343,12 @@ public final class JeiSearchPanel {
                 || ingredient.modName().toLowerCase(Locale.ROOT).contains(modQuery);
     }
 
+    private boolean inScope(Ingredient ingredient) {
+        return ingredient.visible() && filter.test(ingredient) && inModScope(ingredient);
+    }
+
     private void refreshResults(boolean resetScroll) {
-        results = index.search(search.getValue(), this::inModScope);
+        results = index.search(search.getValue(), this::inScope);
         if (resetScroll) firstResult = 0;
         else if (available) firstResult = Math.min(firstResult, maxScroll());
         Ingredient match = null;
@@ -349,12 +421,19 @@ public final class JeiSearchPanel {
         boolean hasSelection = selected != null;
         obtaining.visible = uses.visible = open.visible = hasSelection;
         obtaining.active = uses.active = hasSelection;
+        obtaining.setSelected(hasSelection && direction == Direction.OBTAINING);
+        uses.setSelected(hasSelection && direction == Direction.USES);
         open.active = recipe != null;
         choose.visible = choose.active = hasSelection && onChoose != null;
+        boolean staged = hasSelection && chosen.test(selected);
+        choose.setSelected(staged);
+        choose.setMessage(text(staged ? "unchoose" : "choose"));
+        choose.setPreview(text(staged ? "unchoose.preview" : "choose.preview"));
         open.setWidth(choose.visible ? (detail.width() - GAP) / 2 : detail.width());
     }
 
-    private void drawRecipe(GuiGraphics graphics, int mouseX, int mouseY, boolean overSuggestion) {
+    private void drawRecipe(GuiGraphics graphics, int mouseX, int mouseY, boolean overSuggestion,
+                            UiAttention.Frame frame) {
         int titleY = obtaining.getY() + CONTROL_HEIGHT + 2;
         int contentY = titleY + font.lineHeight + GAP;
         int contentBottom = open.getY() - GAP;
@@ -365,26 +444,37 @@ public final class JeiSearchPanel {
         boolean secondLineFits = contentY + font.lineHeight <= contentBottom;
         Component title = recipe == null ? NO_RECIPES
                 : layoutFits || secondLineFits ? recipe.title() : PREVIEW_UNAVAILABLE;
-        drawText(graphics, title.getString(), detail.x() + GAP, titleY, width, DarkModeTheme.TEXT_SECONDARY);
+        int lastTextY = secondLineFits && !layoutFits ? contentY : titleY;
+        int textOffset = Math.min(Math.round(frame.contentOffsetY()),
+                Math.max(0, contentBottom - lastTextY - font.lineHeight));
+        int movingTitleY = titleY + textOffset;
+        GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
+                drawText(graphics, title.getString(), detail.x() + GAP, movingTitleY, width,
+                        DarkModeTheme.TEXT_SECONDARY));
         if (recipe == null) return;
 
         if (!layoutFits) {
             if (secondLineFits) {
-                drawText(graphics, PREVIEW_UNAVAILABLE.getString(), detail.x() + GAP, contentY, width,
-                        DarkModeTheme.TEXT_SECONDARY);
+                GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
+                        drawText(graphics, PREVIEW_UNAVAILABLE.getString(), detail.x() + GAP,
+                                contentY + textOffset, width, DarkModeTheme.TEXT_SECONDARY));
             }
             return;
         }
         int previewX = detail.x() + (detail.width() - layout.width()) / 2;
-        int previewY = contentY + (contentBottom - contentY - layout.height()) / 2;
+        int previewY = contentY + (contentBottom - contentY - layout.height()) / 2
+                + Math.round(frame.contentOffsetY());
         graphics.enableScissor(detail.x() + GAP, contentY, detail.right() - GAP, contentBottom);
         try {
-            layout.render(graphics, previewX, previewY, overSuggestion ? -1 : mouseX, overSuggestion ? -1 : mouseY);
+            GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
+                    layout.render(graphics, previewX, previewY, overSuggestion ? -1 : mouseX,
+                            overSuggestion ? -1 : mouseY));
         } finally {
             graphics.disableScissor();
         }
-        if (!overSuggestion && mouseX >= previewX && mouseX < previewX + layout.width()
-                && mouseY >= previewY && mouseY < previewY + layout.height()) {
+        if (!overSuggestion && frame.contentAlpha() > 0f
+                && mouseX >= previewX && mouseX < previewX + layout.width()
+                && mouseY >= Math.max(previewY, contentY) && mouseY < Math.min(previewY + layout.height(), contentBottom)) {
             layout.renderOverlays(graphics, mouseX, mouseY);
         }
     }
@@ -457,6 +547,10 @@ public final class JeiSearchPanel {
             if (ingredient != null && ingredient == selected) {
                 output.add(NarratedElementType.HINT, Component.translatable("sh_better_ui.jei.row_selected", ingredient.name()));
             }
+            if (ingredient != null && chosen.test(ingredient)) {
+                output.add(NarratedElementType.HINT,
+                        Component.translatable("sh_better_ui.picker.row_chosen", ingredient.name()));
+            }
         }
 
         @Override
@@ -475,15 +569,21 @@ public final class JeiSearchPanel {
             if (ingredient == null) return;
             int x = getX();
             int y = getY();
-            boolean chosen = ingredient == selected;
-            int border = isFocused() ? DarkModeTheme.TEXT : chosen ? DarkModeTheme.ACCENT : DarkModeTheme.BORDER;
+            boolean previewed = ingredient == selected;
+            boolean staged = chosen.test(ingredient);
+            int border = isFocused() ? DarkModeTheme.TEXT : previewed ? DarkModeTheme.ACCENT : DarkModeTheme.BORDER;
             graphics.fill(x, y, x + getWidth(), y + ROW_HEIGHT,
                     isHoveredOrFocused() ? DarkModeTheme.BORDER : DarkModeTheme.SURFACE);
             graphics.renderOutline(x, y, getWidth(), ROW_HEIGHT, border);
-            if (chosen) graphics.fill(x + 1, y + 1, x + 3, y + ROW_HEIGHT - 1, DarkModeTheme.ACCENT);
+            if (previewed) graphics.fill(x + 1, y + 1, x + 3, y + ROW_HEIGHT - 1, DarkModeTheme.ACCENT);
+            if (staged) {
+                int markX = x + getWidth() - 12;
+                graphics.renderOutline(markX, y + 6, 8, 8, DarkModeTheme.TEXT);
+                graphics.fill(markX + 2, y + 8, markX + 6, y + 12, DarkModeTheme.TEXT);
+            }
             drawIcon(graphics, ingredient, x + 3, y + 2);
             drawText(graphics, getMessage().getString(), x + 23, y + (ROW_HEIGHT - font.lineHeight) / 2,
-                    getWidth() - 27, DarkModeTheme.TEXT);
+                    getWidth() - (staged ? 39 : 27), DarkModeTheme.TEXT);
         }
     }
 }
