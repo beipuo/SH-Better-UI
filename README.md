@@ -15,6 +15,8 @@ Forge 1.20.1 的共用玻璃 UI 庫，提供深色與中性淺色材質、局部
 
 執行 `build-local.ps1` 或 `簡易構建.bat`，均使用本地 Gradle 8.8／JDK 21，包含 JUnit 與 reobfJar。
 
+首次建置時先移除命令中的 `--offline`，讓 Gradle 下載 JEI 編譯用 API。快取建立後可恢復離線建置。
+
 `簡易構建.bat` 使用 UTF-8 無 BOM／Windows CRLF 換行，請保留此格式。雙擊執行後會保留結果視窗；自動化呼叫可傳入 `--no-pause`，退出碼沿用建置結果。
 
 ```powershell
@@ -66,6 +68,134 @@ LDLib 可用 `GlassPanelTexture.clearPanel()` 與 `clearButton()`；按鈕已位
 主模組設定頁新增「終極終端與樣板生成工具使用淺色玻璃」選項，寫入本機 `config/gt_shanhai/ui-client.toml`，預設關閉，重新開啟相關畫面後生效；終極終端的設定與報告畫面共用此選項。
 
 庫不包含交易、機器、配方、AE 或 GTCEu 邏輯。遊戲內外觀、第三方 shader 相容及多種 GUI scale 仍須實機驗收。
+
+### Slate 暗黑模式
+
+`client.gui.scaled.DarkModeTheme` 提供 Forge／NeoForge 共用的原生繪製接口。`background()` 畫不透明的 Slate 900 底色，`card()`、`button()`、`input()` 分別畫圓角卡片、按鈕與輸入框。以 `State.titleText()`、`secondaryText()`、`controlText()` 取得文字色，提示文字可用 `TEXT_MUTED`。主要操作與焦點用藍色，成功狀態可搭配 `SUCCESS` 與文字或圖示。
+
+每個控件保留一個 `Interaction.card()` 或 `Interaction.control()`，每幀傳入實際懸停、按住、焦點與啟用狀態。以按鈕為例：
+
+```java
+private final DarkModeTheme.Interaction motion = DarkModeTheme.Interaction.control();
+
+// 由原生控件提供狀態，message 為已翻譯的 Component。
+var state = motion.sample(hovered, pressed, focused, enabled, reducedMotion, PageTransition.nowMs());
+DarkModeTheme.button(graphics, x, y, width, height, state, true, () -> {
+    int textX = x + (width - font.width(message)) / 2;
+    int textY = y + (height - font.lineHeight) / 2;
+    graphics.drawString(font, message, textX, textY, state.controlText(), false);
+});
+```
+
+卡片懸停時抬升 2 個 GUI 單位，文字過渡 200 毫秒，卡片底板過渡 300 毫秒。按鈕在按下的第一幀即縮至 98%，放開後以 200 毫秒復位，取消時用 `motion.cancelPress(nowMs)` 即時清除回饋。焦點環為 2 單位藍邊加 2 單位深色間隔。控件周圍預留至少 4 個 GUI 單位，卡片上方預留 6 個，避免裁切焦點環。輸入框先畫主題底板，再由原生控件畫文字、游標與選取區。畫面負責原生焦點、鍵盤導航、旁白及命中區。傳入 `reducedMotion=true` 時，顏色與內凹回饋即時更新，省去抬升與縮放。
+
+### 直接拖曳、滑動與縮放
+
+- 每個拖曳區持有一個 `PointerDrag`。用 `DarkModeTheme.dragHandle()` 畫把手，以同一矩形命中。若把手畫在會抬升的卡片內，命中也要計入 `state.cardOffset()`。在子控件未消耗事件時呼叫 `begin(button, mouseX, mouseY)`，用 `active()` 顯示按住狀態，再將 `offsetX()/offsetY()` 加到物件原座標，讓預覽跟隨指標。拖動期間可用 `DarkModeTheme.dropTarget()` 標記經畫面驗證的落點。`release()` 會納入放開位置，畫面在提交前應重新驗證。失焦、關閉或取消時呼叫 `cancel()`。
+- 列表拖動時，將 `move()` 回傳的 `Delta.y()` 交給 `ScrollPageTurn.dragOffset(scrollOffset, delta.y(), maxScroll)`，並立即套用新偏移。放開時也套用 `release()` 回傳的最後一段位移。超出邊界的位移會被截去，反向時列表立即跟手；需要捲動換頁的區域仍可使用下面的滾輪入口。
+- `ViewportTransform.zoomAt(anchorX, anchorY, factor, minScale, maxScale)` 接收滾輪或平台手勢提供的相對比例，維持錨點下的內容位置。將同一個結果交給 `GuiRenderUtil.applyViewport()` 繪製，並用 `contentX()/contentY()` 將指標換回內容座標做命中測試。畫面保留既有裁切與鍵盤操作，並負責接收裝置手勢。
+
+### 使用者掌控與無障礙
+
+`UiPreferences` 將高對比、減少動效與背景模糊設定交給共用繪製入口。由消費畫面讀取可用的設定並傳入 `DarkModeTheme.Interaction`、`ButtonFeedback.visual()`、`PageTransition.advance()` 或 `InterruptibleAnimation.sample()`。高對比使用清楚的邊界與不透明底板，減少動效時保留可辨識的狀態。文字排版沿用原生字體，畫面在 GUI 比例變更時重算版面。
+
+- `UiHistory<S>` 可保存返回和本地撤銷需要的獨立快照。返回與撤銷各用一個實例。切入子頁前保存搜尋、篩選和捲動位置；提交可逆編輯前保存編輯狀態。由畫面套用 `restore()` 取出的快照。伺服器資料的撤銷則由業務回執確認。
+- `UiConfirmation.open()` 在當前畫面上開啟原生模態確認。`Prompt` 由畫面傳入本地化標題、操作對象與後果，以及確認和取消按鈕名稱。確認回調只執行一次；取消與 Escape 回到父畫面，並用提供的焦點查詢找到重建後的控件。可提供僅繪圖的背景回調保留原畫面脈絡，傳 `null` 時使用純色底。長內容支援滾輪及 Page Up／Page Down。
+- `UiDisclosure` 提供有原生鍵盤操作與旁白的展開按鈕。畫面重排時可重建按鈕，保留 `UiDisclosure` 與草稿，回調只切換可見性與版面。
+- `ButtonFeedback.status()` 提供等待、成功、部分完成、失敗、取消及逾時等狀態。可透過 `Component.translatable(status.translationKey())` 顯示本地化文字，或在狀態變更時通知旁白。收到取消回執後再呼叫 `resolveCancelled()`。
+
+### 搜尋、預測與自動填充
+
+`client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的純文字名稱、任意數量的 ID 和別名建立快照。多詞查詢要求每個詞都命中，詞可落在不同欄位。比對忽略大小寫與多餘空白。拼音全拼、首字母或業務同義詞可以作為別名傳入。
+
+- `search(query, scope)` 按來源順序回傳命中項目，空查詢回傳範圍內全部項目。`suggest(query, scope, limit)` 依名稱、ID 的精確／前綴／包含命中排序，最後列出別名或跨欄位命中。自繪輸入框可用 `Suggestion.suffixFor(query)` 取得可直接追加的灰字後綴。
+- `SearchField` 沿用原生 `EditBox`。輸入變更會更新聯想，游標在末端且沒有選取文字時才顯示灰字。上下鍵選擇，`Tab` 或點擊填充，`Esc` 收起聯想並保留輸入。`setOnSubmit` 接收 `Enter` 提交的當前查詢，`Ctrl+Z`（Mac 為 `⌘Z`）或 `undoCompletion()` 恢復填充前的查詢。
+- `setResponder` 在查詢實際變更時通知一次。分類切換時以 `setScope` 重新提供範圍，資料或語言變更時以 `setIndex` 替換索引；兩者都保留輸入文字。
+
+原生 `Screen` 接入範例，`refreshResults` 和 `submitSearch` 為畫面自己的方法。
+
+```java
+// import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
+// import com.dishanhai.sh_better_ui.client.gui.search.SearchIndex;
+private SearchField<String> search;
+
+// 在 init() 建立；名稱來自遊戲本地化。
+var entries = List.of(new SearchIndex.Entry<>("iron",
+        Component.translatable("item.minecraft.iron_ingot").getString(),
+        List.of("minecraft:iron_ingot"), List.of("tieding", "td")));
+var index = new SearchIndex<>(entries);
+search = addRenderableWidget(new SearchField<>(font, 16, 16, 168, 20, index));
+search.setResponder(query -> refreshResults(index.search(query)));
+search.setOnSubmit(this::submitSearch);
+
+// 在 render() 的普通控件繪製完成後。
+search.renderSuggestions(graphics, mouseX, mouseY, height);
+
+// 在 mouseClicked() 的普通分派前。
+if (search.mouseClickedSuggestion(mouseX, mouseY, button, height)) return true;
+
+// 在 mouseScrolled() 的普通分派前；NeoForge 請傳入垂直滾動量。
+if (search.mouseScrolledSuggestions(mouseX, mouseY, verticalDelta, height)) return true;
+
+// 在 keyPressed() 的 super 呼叫前。Screen 預設會先處理 Esc 關閉。
+if (keyCode == GLFW.GLFW_KEY_ESCAPE && search.dismissSuggestions()) return true;
+```
+
+搜尋框與聯想清單使用同一套 GUI 座標。重建畫面時可先保存 `getValue()`，再用 `setValue()` 還原，並以同一個範圍條件更新結果和聯想。
+
+### JEI 接入與配方預覽
+
+JEI 為可選前置。Forge 1.20.1 以 JEI `15.49.0.200` 編譯，NeoForge 1.21.1 以 JEI `19.69.0.456` 編譯。兩版各自發布，消費模組可以只依賴 SH-Better-UI 的公開接口。未安裝 JEI 時，共用搜尋仍可使用。
+
+- `client.jei.JeiIntegration` 提供素材快照、圖示與提示、配方查詢及開啟 JEI 的接口。使用 `isAvailable()` 判斷 JEI 是否已載入當前世界的資料，`revision()` 變更時重新取得 `ingredients()`。使用 `Ingredient.key()` 區分同一註冊 ID 的變體。`recipes(ingredient, direction, limit)` 查詢可見配方，`open(ingredient, direction)` 開啟 JEI 的完整取得方式或用途。
+- `client.gui.search.JeiSearchPanel` 提供可嵌入原生 `Screen` 的搜尋與唯讀預覽。用名稱、ID、別名及模組篩選找物品／流體，選中結果後查看原生提示或配方。在配方區切換「取得方式」和「用途」，也可開啟完整 JEI 頁面。若呼叫端設定 `setOnChoose`，玩家可用「選用」把素材交回呼叫端。
+
+嵌入方式如下。面板需要 `144 × 132` GUI 像素，建議預留 `320 × 200` 以上讓結果和配方並排。`panel` 由畫面持有，畫面調整尺寸時可保存 `snapshot()`，重建後用 `restore(snapshot)` 還原搜尋和選取。
+
+```java
+// 在 Screen.init()，panelLeft、panelTop、panelWidth、panelHeight 由畫面排版決定。
+panel = new JeiSearchPanel(font, panelLeft, panelTop, panelWidth, panelHeight);
+for (var widget : panel.widgets()) addRenderableWidget(widget);
+JeiIntegration.setExtraAreas(this, panel::extraAreas);
+
+// 在 Screen.render()，先畫面板，再由 Screen 繪製原生控件，最後畫覆層。
+panel.renderBackground(graphics);
+super.render(graphics, mouseX, mouseY, partialTick);
+panel.renderOverlays(graphics, mouseX, mouseY, height);
+
+// 在 Screen.tick()。
+panel.tick();
+
+// 在 Screen.mouseClicked() 和 mouseScrolled() 的普通分派前。
+if (panel.mouseClicked(mouseX, mouseY, button, height)) return true;
+if (panel.mouseScrolled(mouseX, mouseY, verticalDelta, height)) return true;
+
+// 在 Screen.keyPressed() 的 super 呼叫前。
+if (keyCode == GLFW.GLFW_KEY_ESCAPE && panel.dismissSuggestions()) return true;
+```
+
+`setExtraAreas` 讓 JEI 側欄避開當前畫面的面板和聯想清單。畫面提供者應使用 `panel::extraAreas`，面板永久移除時可傳入 `null` 撤銷。NeoForge 的 `mouseScrolled` 需傳入垂直滾動量。
+
+### 捲動到邊界時換頁
+
+每個分頁捲動區各自建立一個 `client.gui.scaled.ScrollPageTurn`。指標命中捲動區、子控件未消耗事件時，用本次滾輪事件算出並限制目標偏移，再交給庫判斷。向下捲到頁底時切下一頁，向上捲到頁頂時切上一頁。內容不足一屏時可直接用滾輪換頁。首尾頁停在邊界，同方向的連續輸入需間隔至少 180 毫秒才能再次換頁。
+
+```java
+private final ScrollPageTurn pageTurn = new ScrollPageTurn();
+
+// 在捲動區的滾輪回調中。頁碼從 0 開始，偏移向下遞增。
+double target = Math.clamp(scrollTarget - wheelDelta * pixelsPerStep, 0.0, maxScroll);
+int targetPage = pageTurn.targetPage(wheelDelta, target, maxScroll,
+        currentPage, pageCount, PageTransition.nowMs());
+if (targetPage != currentPage) {
+    // 使用原換頁入口。下一頁從頂端開始，上一頁從底端開始。
+    openPage(targetPage, targetPage < currentPage);
+    return true;
+}
+scrollTarget = target;
+```
+
+由畫面在換頁後計算新頁面的滾動範圍、定位並更新現有轉場。更換列表來源或重新開啟捲動區時呼叫 `pageTurn.reset()`。
 
 ### 可打斷動畫
 
