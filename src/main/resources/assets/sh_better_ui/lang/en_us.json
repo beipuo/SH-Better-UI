@@ -5,6 +5,7 @@
   "sh_better_ui.display.next": "Next page",
   "sh_better_ui.display.page": "%1$s / %2$s",
   "sh_better_ui.network.field": "%1$s: %2$s",
+  "sh_better_ui.toast.task_completed": "Task complete",
   "sh_better_ui.action.pending": "Waiting for a response",
   "sh_better_ui.action.succeeded": "Completed",
   "sh_better_ui.action.partial": "Partially completed",

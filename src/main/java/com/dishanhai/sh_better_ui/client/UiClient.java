@@ -2,11 +2,13 @@ package com.dishanhai.sh_better_ui.client;
 
 import com.dishanhai.sh_better_ui.ShBetterUi;
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -21,6 +23,15 @@ public final class UiClient {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
         GaussBlur.onScreenRenderPost(event);
+        if (event.getScreen() == Minecraft.getInstance().screen) UiToast.renderOverlay(event.getGuiGraphics());
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onHudRenderPost(RenderGuiEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen == null && minecraft.getOverlay() == null && !minecraft.options.hideGui) {
+            UiToast.renderOverlay(event.getGuiGraphics());
+        }
     }
 
     @SubscribeEvent
@@ -36,6 +47,7 @@ public final class UiClient {
 
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        UiToast.clear();
         Minecraft.getInstance().execute(GaussBlur::release);
     }
 

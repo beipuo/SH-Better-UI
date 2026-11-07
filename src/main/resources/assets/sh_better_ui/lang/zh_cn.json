@@ -5,6 +5,7 @@
   "sh_better_ui.display.next": "下一页",
   "sh_better_ui.display.page": "%1$s / %2$s",
   "sh_better_ui.network.field": "%1$s：%2$s",
+  "sh_better_ui.toast.task_completed": "任务完成",
   "sh_better_ui.action.pending": "正在等待回执",
   "sh_better_ui.action.succeeded": "操作已完成",
   "sh_better_ui.action.partial": "操作部分完成",
