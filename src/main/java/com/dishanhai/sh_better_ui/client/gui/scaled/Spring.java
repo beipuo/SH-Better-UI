@@ -1,7 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 /**
- * 可中途改目标的单弹簧。改目标时 value 与 velocity 原样保留，所以被打断的动画从当前状态接着走，不会跳也不会重播。
+ * 山海：可中途改目标的单弹簧。先推进到命令时间，再保留 value 与 velocity 改目标，不会跳也不会重播。
  *
  * <p>积分与 {@link GuiRenderUtil.FluidSpring} 相同：显式积分，单步超过 50ms 截断，再拆成 4ms 子步。
  * 时间用毫秒，调用方传 {@code System.currentTimeMillis()}（或任何单调毫秒）。</p>
@@ -69,6 +69,7 @@ public final class Spring {
     /** 立刻改目标，value 与 velocity 保持。非有限值忽略。 */
     public void setTarget(float newTarget, long nowMs) {
         if (!Float.isFinite(newTarget)) return;
+        update(nowMs);
         if (this.settled) this.lastMs = nowMs;
         this.hasPending = false;
         this.target = newTarget;
@@ -86,11 +87,11 @@ public final class Spring {
             return;
         }
         if (!Float.isFinite(newTarget)) return;
+        update(nowMs);
         if (this.settled) this.lastMs = nowMs;
         this.hasPending = true;
         this.pendingTarget = newTarget;
-        this.pendingAtMs = nowMs + delayMs;
-        this.settled = false;
+        this.pendingAtMs = nowMs > Long.MAX_VALUE - delayMs ? Long.MAX_VALUE : nowMs + delayMs;
     }
 
     /** value=目标=给定值，速度清零，立即静止，挂起的延迟目标作废。 */
@@ -105,16 +106,25 @@ public final class Spring {
 
     /** 推进到 {@code nowMs}。静止后重复调用无副作用。 */
     public void update(long nowMs) {
-        if (this.settled) return;
-        double dt = (nowMs - this.lastMs) / 1000.0;
-        this.lastMs = nowMs;
-        if (this.hasPending) {
-            if (nowMs < this.pendingAtMs) return;
+        if ((this.settled && !this.hasPending) || nowMs <= this.lastMs) return;
+        if (this.hasPending && nowMs >= this.pendingAtMs) {
+            advanceTo(this.pendingAtMs);
             this.hasPending = false;
             this.target = this.pendingTarget;
+            this.settled = reachedTarget();
+            if (this.settled) {
+                this.value = this.target;
+                this.velocity = 0f;
+            }
         }
-        if (dt <= 0.0) return;
-        if (dt > MAX_STEP_S) dt = MAX_STEP_S;
+        advanceTo(nowMs);
+    }
+
+    private void advanceTo(long nowMs) {
+        if (nowMs <= this.lastMs) return;
+        double dt = Math.min((nowMs - (double) this.lastMs) / 1000.0, MAX_STEP_S);
+        this.lastMs = nowMs;
+        if (this.settled) return;
 
         int steps = Math.max(1, (int) Math.ceil(dt / SUBSTEP_S));
         double h = dt / steps;
@@ -139,8 +149,18 @@ public final class Spring {
         return this.target;
     }
 
+    /** 最终目的地：存在延迟目标时返回延迟目标，否则返回当前物理目标。 */
+    public float destination() {
+        return this.hasPending ? this.pendingTarget : this.target;
+    }
+
+    /** 当前速度，单位为 value/秒；改目标不会清零。 */
+    public float velocity() {
+        return this.velocity;
+    }
+
     public boolean settled() {
-        return this.settled;
+        return this.settled && !this.hasPending;
     }
 
     private boolean reachedTarget() {
