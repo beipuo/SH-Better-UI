@@ -101,6 +101,17 @@ public final class UiButton extends Button {
         var state = motion.sample(isHovered(), justPressed, isFocused(), active, preferences, now);
         justPressed = false;
         int x = getX(), y = getY(), width = getWidth(), height = getHeight();
+        if (style == UiStyle.NETWORK) {
+            if (width <= 2 || height <= 2) return;
+            NetworkTheme.drawTab(graphics, x, y, width, height, state, selected);
+            graphics.enableScissor(x + 1, y + 1, x + width - 1, y + height - 1);
+            try {
+                drawContent(graphics, x, y, width, height, NetworkTheme.controlText(state, selected));
+            } finally {
+                graphics.disableScissor();
+            }
+            return;
+        }
         float emphasis = selected && !preferences.reducedMotion()
                 ? 1f - GuiMotion.clamp01((now - selectedAt) / 360f) : 0f;
         boolean liquidGlass = style == UiStyle.LIQUID_GLASS;

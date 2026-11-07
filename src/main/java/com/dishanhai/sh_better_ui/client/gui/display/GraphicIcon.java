@@ -24,6 +24,12 @@ public record GraphicIcon(ResourceLocation texture) {
     public static final GraphicIcon SETTINGS = builtIn("settings");
     public static final GraphicIcon REFRESH = builtIn("refresh");
     public static final GraphicIcon CLOSE = builtIn("close");
+    public static final GraphicIcon HOME = builtIn("home");
+    public static final GraphicIcon LIST = builtIn("list");
+    public static final GraphicIcon WIRELESS = builtIn("wireless");
+    public static final GraphicIcon TOPOLOGY = builtIn("topology");
+    public static final GraphicIcon STATISTICS = builtIn("statistics");
+    public static final GraphicIcon MEMBERS = builtIn("members");
 
     public GraphicIcon {
         Objects.requireNonNull(texture, "texture");

@@ -4,6 +4,7 @@
   "sh_better_ui.display.previous": "Previous page",
   "sh_better_ui.display.next": "Next page",
   "sh_better_ui.display.page": "%1$s / %2$s",
+  "sh_better_ui.network.field": "%1$s: %2$s",
   "sh_better_ui.action.pending": "Waiting for a response",
   "sh_better_ui.action.succeeded": "Completed",
   "sh_better_ui.action.partial": "Partially completed",
