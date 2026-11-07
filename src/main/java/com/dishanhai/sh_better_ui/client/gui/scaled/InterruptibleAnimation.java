@@ -67,6 +67,10 @@ public final class InterruptibleAnimation {
         return sample(nowMs);
     }
 
+    public float sample(long nowMs, UiPreferences preferences) {
+        return sample(nowMs, preferences.reducedMotion());
+    }
+
     /** 上次取样的位置，不推进时间。 */
     public float value() {
         return spring.value();

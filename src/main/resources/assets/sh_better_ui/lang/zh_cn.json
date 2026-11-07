@@ -1,0 +1,9 @@
+{
+  "sh_better_ui.action.ready": "就绪",
+  "sh_better_ui.action.pending": "正在等待回执",
+  "sh_better_ui.action.succeeded": "操作已完成",
+  "sh_better_ui.action.partial": "操作部分完成",
+  "sh_better_ui.action.failed": "操作失败",
+  "sh_better_ui.action.cancelled": "操作已取消",
+  "sh_better_ui.action.timed_out": "等待回执超时"
+}

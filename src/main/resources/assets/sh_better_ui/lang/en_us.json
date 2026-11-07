@@ -1,0 +1,9 @@
+{
+  "sh_better_ui.action.ready": "Ready",
+  "sh_better_ui.action.pending": "Waiting for a response",
+  "sh_better_ui.action.succeeded": "Completed",
+  "sh_better_ui.action.partial": "Partially completed",
+  "sh_better_ui.action.failed": "Action failed",
+  "sh_better_ui.action.cancelled": "Cancelled",
+  "sh_better_ui.action.timed_out": "Response timed out"
+}

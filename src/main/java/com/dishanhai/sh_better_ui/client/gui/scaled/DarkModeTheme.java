@@ -1,0 +1,263 @@
+package com.dishanhai.sh_better_ui.client.gui.scaled;
+
+import net.minecraft.client.gui.GuiGraphics;
+
+/** 山海：独立的 Slate 暗色主题。由消费端控件提供交互状态并绘制内容。 */
+public final class DarkModeTheme {
+    public static final int BACKGROUND = 0xFF0F172A;
+    public static final int SURFACE = 0xFF1E293B;
+    public static final int BORDER = 0xFF334155;
+    public static final int BORDER_HOVER = 0xFF64748B;
+    public static final int TEXT = 0xFFF1F5F9;
+    public static final int TEXT_SECONDARY = 0xFFCBD5E1;
+    public static final int TEXT_MUTED = 0xFF94A3B8;
+    public static final int ACCENT = 0xFF3B82F6;
+    public static final int SUCCESS = 0xFF22C55E;
+    private static final int CONTRAST_EDGE = 0xFFCBD5E1;
+    private static final int CONTRAST_FOCUS = 0xFF93C5FD;
+
+    private static final int CARD_REST = 0x801E293B;
+    private static final int PRIMARY = 0xFF1D4ED8;
+    private static final int PRIMARY_HOVER = 0xFF2563EB;
+    private static final int SHADOW = 0xFF020617;
+    private static final int CONTROL_RADIUS = 4;
+    private static final int CARD_RADIUS = 6;
+    private static final int FOCUS_WIDTH = 2;
+    private static final int FOCUS_OFFSET = 2;
+    private static final long CONTROL_MS = 200L;
+    private static final long CARD_MS = 300L;
+
+    private DarkModeTheme() {}
+
+    public static void background(GuiGraphics g, int x, int y, int width, int height) {
+        if (width > 0 && height > 0) g.fill(x, y, x + width, y + height, BACKGROUND);
+    }
+
+    static void modalPanel(GuiGraphics g, int x, int y, int width, int height, boolean highContrast) {
+        rounded(g, x, y, width, height, CARD_RADIUS, 1,
+                highContrast ? CONTRAST_EDGE : BORDER, highContrast ? BACKGROUND : 0xF21E293B);
+    }
+
+    /** 卡片背景与内容一起移动。消费端可用 State.cardOffset() 对齐卡片内的控件命中。 */
+    public static void card(GuiGraphics g, int x, int y, int width, int height, State state, Runnable content) {
+        if (width <= 0 || height <= 0) return;
+        g.pose().pushPose();
+        try {
+            g.pose().translate(0f, state.cardOffset(), 0f);
+            if (state.hover() > 0f) {
+                for (int spread = 3; spread >= 1; spread--) {
+                    rounded(g, x - spread, y - spread + 3, width + 2 * spread, height + 2 * spread,
+                            CARD_RADIUS + spread, 0, 0, opacity(SHADOW, state.hover() * (4 - spread) / 12f));
+                }
+            }
+            focus(g, x, y, width, height, CARD_RADIUS, state);
+            rounded(g, x, y, width, height, CARD_RADIUS, 1, edge(state),
+                    state.highContrast() ? SURFACE : GuiMotion.lerpColor(CARD_REST, SURFACE, state.hover()));
+            content.run();
+        } finally {
+            g.pose().popPose();
+        }
+    }
+
+    /** 按钮内容与底板一起缩放。焦点环保留在原生控件边界外侧。 */
+    public static void button(GuiGraphics g, int x, int y, int width, int height,
+                              State state, boolean primary, Runnable content) {
+        if (width <= 0 || height <= 0) return;
+        GuiRenderUtil.withButtonMotion(g, x, y, width, height, state.buttonScale(), 0f, () -> {
+            if (primary && state.enabled() && state.hover() > 0f) {
+                for (int spread = 3; spread >= 1; spread--) {
+                    rounded(g, x - spread, y - spread, width + 2 * spread, height + 2 * spread,
+                            CONTROL_RADIUS + spread, 1,
+                            opacity(ACCENT, state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
+                }
+            }
+            rounded(g, x, y, width, height, CONTROL_RADIUS, 1, edge(state), state.buttonFill(primary));
+            if (width > 2 * CONTROL_RADIUS && height > 3) {
+                int highlight = opacity(0xFFFFFFFF, (0.15f + 0.05f * state.hover()) * (1f - state.press()));
+                g.fill(x + CONTROL_RADIUS, y + 1, x + width - CONTROL_RADIUS, y + 2, highlight);
+                if (state.press() > 0f) {
+                    rounded(g, x + 1, y + 1, width - 2, height - 2, CONTROL_RADIUS - 1, 1,
+                            opacity(SHADOW, 0.3f * state.press()), 0);
+                }
+            }
+            content.run();
+        });
+        focus(g, x, y, width, height, CONTROL_RADIUS, state);
+    }
+
+    /** 输入框底板。由原生输入控件继续处理光标、选择区、输入及旁白。 */
+    public static void input(GuiGraphics g, int x, int y, int width, int height, State state) {
+        if (width <= 0 || height <= 0) return;
+        focus(g, x, y, width, height, CONTROL_RADIUS, state);
+        rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
+                state.focused() ? state.focusColor() : edge(state), SURFACE);
+    }
+
+    /** 绘制可识别的拖曳把手。以同一矩形命中，并用 PointerDrag.active() 表示按住。 */
+    public static void dragHandle(GuiGraphics g, int x, int y, int width, int height, State state) {
+        button(g, x, y, width, height, state, false, () -> {
+            int cx = x + width / 2;
+            int cy = y + height / 2;
+            int ink = state.secondaryText();
+            if (width < 8 || height < 10) {
+                if (width >= 4 && height >= 5) {
+                    g.fill(x + 1, cy - 1, x + width - 1, cy, ink);
+                    g.fill(x + 1, cy + 1, x + width - 1, cy + 2, ink);
+                }
+                return;
+            }
+            for (int dy = -3; dy <= 3; dy += 3) {
+                g.fill(cx - 2, cy + dy, cx - 1, cy + dy + 1, ink);
+                g.fill(cx + 1, cy + dy, cx + 2, cy + dy + 1, ink);
+            }
+        });
+    }
+
+    /** 对已验证可接收的落点画内侧预览边，不改变布局和焦点。 */
+    public static void dropTarget(GuiGraphics g, int x, int y, int width, int height) {
+        if (width > 0 && height > 0) rounded(g, x, y, width, height, CARD_RADIUS, 2, ACCENT, 0);
+    }
+
+    private static int edge(State state) {
+        if (state.highContrast()) return CONTRAST_EDGE;
+        return GuiMotion.lerpColor(BORDER, BORDER_HOVER, Math.max(state.hover(), state.press()));
+    }
+
+    private static void focus(GuiGraphics g, int x, int y, int width, int height, int radius, State state) {
+        if (!state.focused()) return;
+        int outer = FOCUS_OFFSET + FOCUS_WIDTH;
+        rounded(g, x - outer, y - outer, width + 2 * outer, height + 2 * outer,
+                radius + outer, FOCUS_WIDTH, state.focusColor(), 0);
+        rounded(g, x - FOCUS_OFFSET, y - FOCUS_OFFSET, width + 2 * FOCUS_OFFSET, height + 2 * FOCUS_OFFSET,
+                radius + FOCUS_OFFSET, FOCUS_OFFSET, BACKGROUND, 0);
+    }
+
+    private static int opacity(int argb, float alpha) {
+        return (argb & 0x00FFFFFF) | (Math.round(255f * alpha) << 24);
+    }
+
+    /** 圆角边线与填色各自绘制，半透明卡片内不会叠加边框色。 */
+    private static void rounded(GuiGraphics g, int x, int y, int width, int height,
+                                int radius, int stroke, int edge, int fill) {
+        int maxRadius = Math.min(width, height) / 2;
+        radius = Math.min(radius, maxRadius);
+        int innerRadius = Math.max(0, radius - stroke);
+        int cap = Math.max(radius, stroke);
+        for (int row = 0; row < height;) {
+            int rows = row == cap ? Math.max(1, height - 2 * cap) : 1;
+            int outer = cornerInset(row, height, radius);
+            int left = x + outer;
+            int right = x + width - outer;
+            if (stroke > 0 && (row < stroke || row >= height - stroke || width <= 2 * stroke)) {
+                band(g, left, right, y + row, rows, edge);
+            } else {
+                int inner = stroke + cornerInset(row - stroke, height - 2 * stroke, innerRadius);
+                band(g, left, x + inner, y + row, rows, edge);
+                band(g, x + inner, x + width - inner, y + row, rows, fill);
+                band(g, x + width - inner, right, y + row, rows, edge);
+            }
+            row += rows;
+        }
+    }
+
+    private static int cornerInset(int row, int height, int radius) {
+        int cornerRow = Math.min(row, height - 1 - row);
+        if (cornerRow >= radius) return 0;
+        double dy = radius - cornerRow - 0.5;
+        return (int) Math.round(radius - Math.sqrt(radius * radius - dy * dy));
+    }
+
+    private static void band(GuiGraphics g, int left, int right, int y, int rows, int color) {
+        if (left < right && (color >>> 24) != 0) g.fill(left, y, right, y + rows, color);
+    }
+
+    /** 每个控件保留一份。使用 {@link PageTransition#nowMs()} 提供单调时间。 */
+    public static final class Interaction {
+        private final long hoverMs;
+        private final Tween hover = new Tween();
+        private final Tween textHover = new Tween();
+        private final Tween press = new Tween();
+
+        private Interaction(long hoverMs) { this.hoverMs = hoverMs; }
+
+        public static Interaction card() { return new Interaction(CARD_MS); }
+
+        public static Interaction control() { return new Interaction(CONTROL_MS); }
+
+        public State sample(boolean hovered, boolean pressed, boolean focused, boolean enabled,
+                            boolean reducedMotion, long nowMs) {
+            return sample(hovered, pressed, focused, enabled, reducedMotion, false, nowMs);
+        }
+
+        public State sample(boolean hovered, boolean pressed, boolean focused, boolean enabled,
+                            UiPreferences preferences, long nowMs) {
+            return sample(hovered, pressed, focused, enabled,
+                    preferences.reducedMotion(), preferences.highContrast(), nowMs);
+        }
+
+        private State sample(boolean hovered, boolean pressed, boolean focused, boolean enabled,
+                             boolean reducedMotion, boolean highContrast, long nowMs) {
+            boolean immediate = reducedMotion || !enabled;
+            boolean hoverTarget = enabled && hovered;
+            boolean pressTarget = enabled && pressed;
+            return new State(hover.update(hoverTarget, immediate, nowMs, hoverMs),
+                    textHover.update(hoverTarget, immediate, nowMs, CONTROL_MS),
+                    press.update(pressTarget, immediate || pressTarget, nowMs, CONTROL_MS),
+                    enabled && focused, enabled, reducedMotion, highContrast);
+        }
+
+        /** 取消按压时立即清除反馈。 */
+        public void cancelPress(long nowMs) {
+            press.update(false, true, nowMs, CONTROL_MS);
+        }
+    }
+
+    public record State(float hover, float textHover, float press, boolean focused, boolean enabled,
+                        boolean reducedMotion, boolean highContrast) {
+        public State(float hover, float textHover, float press, boolean focused, boolean enabled,
+                     boolean reducedMotion) {
+            this(hover, textHover, press, focused, enabled, reducedMotion, false);
+        }
+
+        public int titleText() { return enabled ? GuiMotion.lerpColor(0xFFE2E8F0, TEXT, textHover) : TEXT_MUTED; }
+        public int secondaryText() {
+            return highContrast ? TEXT_SECONDARY : GuiMotion.lerpColor(TEXT_MUTED, TEXT_SECONDARY, textHover);
+        }
+        public int controlText() { return enabled ? TEXT : TEXT_MUTED; }
+        int focusColor() { return highContrast ? CONTRAST_FOCUS : ACCENT; }
+
+        /** 卡片当前的绘制 Y 偏移，子控件命中应使用同一偏移。 */
+        public float cardOffset() { return reducedMotion ? 0f : -2f * hover; }
+
+        float buttonScale() { return reducedMotion ? 1f : GuiMotion.lerp(1f, 0.98f, press); }
+
+        int buttonFill(boolean primary) {
+            return primary && enabled ? GuiMotion.lerpColor(PRIMARY, PRIMARY_HOVER, hover)
+                    : GuiMotion.lerpColor(SURFACE, BORDER, hover);
+        }
+    }
+
+    private static final class Tween {
+        private float start;
+        private float target;
+        private long startedAt;
+
+        private float update(boolean on, boolean immediate, long nowMs, long duration) {
+            float next = on ? 1f : 0f;
+            if (immediate) {
+                start = target = next;
+                startedAt = nowMs;
+                return next;
+            }
+            float progress = GuiMotion.clamp01((nowMs - startedAt) / (float) duration);
+            float remaining = 1f - progress;
+            float value = GuiMotion.lerp(start, target, 1f - remaining * remaining * remaining);
+            if (next != target) {
+                start = value;
+                target = next;
+                startedAt = nowMs;
+            }
+            return value;
+        }
+    }
+}

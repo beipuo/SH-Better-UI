@@ -31,6 +31,12 @@ public class PageTransition {
         if (progress(nowMs) >= 1.0f) currentStage = targetStage;
     }
 
+    /** 在减少动效时直接完成换页。 */
+    public void advance(int stage, long nowMs, UiPreferences preferences) {
+        if (preferences.reducedMotion()) reset(stage, nowMs);
+        else advance(stage, nowMs);
+    }
+
     public int currentStage() { return currentStage; }
     public int targetStage() { return targetStage; }
 

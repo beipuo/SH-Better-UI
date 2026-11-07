@@ -1,0 +1,190 @@
+package com.dishanhai.sh_better_ui.client.gui.scaled;
+
+import com.dishanhai.sh_better_ui.client.glass.GlassBlur;
+import com.dishanhai.sh_better_ui.client.glass.GuiRect;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+/** 山海：用原生模态确认控件处理有重要后果的操作。 */
+public final class UiConfirmation {
+    private UiConfirmation() {}
+
+    public record Prompt(Component title, Component details, Component confirm, Component cancel) {
+        public Prompt {
+            Objects.requireNonNull(title);
+            Objects.requireNonNull(details);
+            Objects.requireNonNull(confirm);
+            Objects.requireNonNull(cancel);
+        }
+    }
+
+    /**
+     * 仅从当前画面打开。背景回调只绘制已有内容；传 null 时用纯色底。
+     * 恢复焦点的回调在父画面重建后查询控件，确认回调只执行一次。
+     */
+    public static boolean open(Screen parent, Prompt prompt, UiPreferences preferences,
+                               Consumer<GuiGraphics> context, Supplier<? extends GuiEventListener> restoreFocus,
+                               Runnable onConfirm) {
+        Minecraft client = Minecraft.getInstance();
+        if (parent == null || client.screen != parent) return false;
+        Objects.requireNonNull(prompt);
+        Objects.requireNonNull(preferences);
+        Objects.requireNonNull(restoreFocus);
+        Objects.requireNonNull(onConfirm);
+        var choice = new Choice(client, parent, restoreFocus, onConfirm);
+        var screen = new ConfirmationScreen(prompt, preferences, context, choice);
+        choice.screen = screen;
+        client.setScreen(screen);
+        return client.screen == screen;
+    }
+
+    private static final class Choice {
+        private final Minecraft client;
+        private final Screen parent;
+        private final Supplier<? extends GuiEventListener> restoreFocus;
+        private final Runnable onConfirm;
+        private Screen screen;
+
+        private Choice(Minecraft client, Screen parent, Supplier<? extends GuiEventListener> restoreFocus,
+                       Runnable onConfirm) {
+            this.client = client;
+            this.parent = parent;
+            this.restoreFocus = restoreFocus;
+            this.onConfirm = onConfirm;
+        }
+
+        private void finish(boolean confirmed) {
+            if (screen == null || client.screen != screen) return;
+            Screen modal = screen;
+            screen = null;
+            try {
+                client.setScreen(parent);
+            } finally {
+                if (client.screen == modal) screen = modal;
+            }
+            if (client.screen != parent) return;
+            GuiEventListener target = restoreFocus.get();
+            if (target != null && parent.children().contains(target)) parent.setFocused(target);
+            if (confirmed) onConfirm.run();
+        }
+    }
+
+    private static final class ConfirmationScreen extends ConfirmScreen {
+        private final UiPreferences preferences;
+        private final Consumer<GuiGraphics> context;
+        private final Choice choice;
+        private final Prompt prompt;
+        private Button confirmButton, cancelButton;
+        private List<FormattedCharSequence> titleLines, detailLines;
+        private int buttonY;
+        private int scrollLine;
+
+        private ConfirmationScreen(Prompt prompt, UiPreferences preferences, Consumer<GuiGraphics> context,
+                                   Choice choice) {
+            super(choice::finish, prompt.title(), prompt.details(), prompt.confirm(), prompt.cancel());
+            this.preferences = preferences;
+            this.context = context;
+            this.choice = choice;
+            this.prompt = prompt;
+        }
+
+        @Override
+        protected void addButtons(int y) {
+            buttonY = Math.max(0, Math.min(y, height - 34));
+            int buttonWidth = Math.max(1, Math.min(150, (width - 36) / 2));
+            confirmButton = new UiButton(width / 2 - buttonWidth - 6, buttonY, buttonWidth, 26, prompt.confirm(),
+                    button -> choice.finish(true), preferences, true);
+            cancelButton = new UiButton(width / 2 + 6, buttonY, buttonWidth, 26, prompt.cancel(),
+                    button -> choice.finish(false), preferences, false);
+            addExitButton(confirmButton);
+            addExitButton(cancelButton);
+            setInitialFocus();
+            titleLines = font.split(prompt.title(), Math.max(1, width - 40));
+            detailLines = font.split(prompt.details(), Math.max(1, width - 40));
+            scrollLine = Math.min(scrollLine, maxScrollLine());
+        }
+
+        @Override
+        public void onClose() { choice.finish(false); }
+
+        // NeoForge 还会在 init 后调用此方法，保留取消按钮作为安全的默认焦点。
+        protected void setInitialFocus() {
+            if (cancelButton != null && getFocused() != cancelButton) setInitialFocus(cancelButton);
+        }
+
+        @Override
+        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            drawLayer(graphics);
+            if (titleLines == null) return;
+            int rows = Math.min(visibleLines(), titleLines.size() + 1 + detailLines.size() - scrollLine);
+            for (int row = 0; row < rows; row++) {
+                int index = scrollLine + row;
+                if (index == titleLines.size()) continue;
+                boolean heading = index < titleLines.size();
+                var line = heading ? titleLines.get(index) : detailLines.get(index - titleLines.size() - 1);
+                graphics.drawString(font, line, (width - font.width(line)) / 2,
+                        textTop() + row * lineHeight(), heading ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_SECONDARY,
+                        false);
+            }
+            confirmButton.render(graphics, mouseX, mouseY, partialTick);
+            cancelButton.render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public boolean keyPressed(int key, int scanCode, int modifiers) {
+            if (key == GLFW.GLFW_KEY_PAGE_UP && scroll(-visibleLines())) return true;
+            if (key == GLFW.GLFW_KEY_PAGE_DOWN && scroll(visibleLines())) return true;
+            return super.keyPressed(key, scanCode, modifiers);
+        }
+
+        // 两个平台的 Screen 分别提供垂直滚轮和双轴滚轮签名。
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+            return mouseY >= textTop() && mouseY < buttonY - 6 && delta != 0 && scroll(delta > 0 ? -1 : 1);
+        }
+
+        public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
+            return mouseScrolled(mouseX, mouseY, deltaY);
+        }
+
+        private int textTop() { return Math.max(8, Math.min(68, buttonY - 44)); }
+
+        private int lineHeight() { return font.lineHeight + 2; }
+
+        private int visibleLines() { return Math.max(1, (buttonY - 8 - textTop()) / lineHeight()); }
+
+        private int maxScrollLine() { return Math.max(0, titleLines.size() + 1 + detailLines.size() - visibleLines()); }
+
+        private boolean scroll(int delta) {
+            if (titleLines == null) return false;
+            int next = Math.clamp(scrollLine + delta, 0, maxScrollLine());
+            if (next == scrollLine) return false;
+            scrollLine = next;
+            return true;
+        }
+
+        private void drawLayer(GuiGraphics graphics) {
+            DarkModeTheme.background(graphics, 0, 0, width, height);
+            if (context != null) context.accept(graphics);
+            graphics.fill(0, 0, width, height, 0xA00F172A);
+            int top = Math.max(2, textTop() - 10);
+            int bottom = Math.min(height - 2, buttonY + 34);
+            if (bottom <= top || width <= 16) return;
+            if (context != null && preferences.useBackdropBlur()) {
+                GlassBlur.backdrop(graphics, new GuiRect(8, top, width - 16, bottom - top));
+            }
+            DarkModeTheme.modalPanel(graphics, 8, top, width - 16, bottom - top, preferences.highContrast());
+        }
+    }
+}

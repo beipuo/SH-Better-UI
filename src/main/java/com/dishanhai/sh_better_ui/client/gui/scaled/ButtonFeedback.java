@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -23,6 +24,15 @@ public final class ButtonFeedback {
     public enum Tone { SUCCESS, PARTIAL, FAILED, NEUTRAL }
 
     public enum Phase { IDLE, PENDING, FLASH }
+
+    /** 用于本地化文字或旁白，独立于结果颜色的播放时长。 */
+    public enum Status {
+        READY, PENDING, SUCCEEDED, PARTIAL, FAILED, CANCELLED, TIMED_OUT;
+
+        public String translationKey() {
+            return "sh_better_ui.action." + name().toLowerCase(Locale.ROOT);
+        }
+    }
 
     /** 连发回调；返回 false 停止本次连发（比如数量已到边界）。{@code repeatIndex} 从 1 起。 */
     @FunctionalInterface
@@ -58,6 +68,7 @@ public final class ButtonFeedback {
 
     private static final class ActionState {
         Phase phase = Phase.IDLE;
+        Status status = Status.READY;
         int requestId;
         long pendingAtMs;
         long pendingTimeoutMs = PENDING_TIMEOUT_MS;
@@ -204,6 +215,7 @@ public final class ButtonFeedback {
             actions.put(actionKey, st);
         }
         st.lastBeginMs = nowMs;
+        st.status = Status.READY;
         return true;
     }
 
@@ -217,6 +229,7 @@ public final class ButtonFeedback {
         ActionState st = actions.computeIfAbsent(actionKey, k -> new ActionState());
         if (st.phase == Phase.PENDING) pendingIds.remove(st.requestId);
         st.phase = Phase.PENDING;
+        st.status = Status.PENDING;
         st.requestId = requestId;
         st.pendingAtMs = nowMs;
         st.pendingTimeoutMs = Math.max(1L, timeoutMs);
@@ -225,6 +238,15 @@ public final class ButtonFeedback {
 
     /** 回执到了：对得上还在等的请求就开始闪色并返回 true；未知、已超时的 id 返回 false。 */
     public boolean resolve(int requestId, Tone tone, long nowMs) {
+        return complete(requestId, tone, resultStatus(tone), nowMs);
+    }
+
+    /** 收到取消确认后调用。请求仍在等待时才接受，迟到或重复的回执无效。 */
+    public boolean resolveCancelled(int requestId, long nowMs) {
+        return complete(requestId, Tone.NEUTRAL, Status.CANCELLED, nowMs);
+    }
+
+    private boolean complete(int requestId, Tone tone, Status status, long nowMs) {
         Long key = pendingIds.get(requestId);
         if (key == null) return false;
         ActionState st = actions.get(key);
@@ -234,15 +256,16 @@ public final class ButtonFeedback {
             return false;
         }
         pendingIds.remove(requestId);
-        startFlash(st, tone, nowMs);
+        startFlash(st, tone, status, nowMs);
         return true;
     }
 
     /** 不经回执直接闪（本地预检就失败的情况）。正在等的回执作废。 */
     public void flash(long actionKey, Tone tone, long nowMs) {
+        Status status = resultStatus(tone);
         ActionState st = actions.computeIfAbsent(actionKey, k -> new ActionState());
         if (st.phase == Phase.PENDING) pendingIds.remove(st.requestId);
-        startFlash(st, tone, nowMs);
+        startFlash(st, tone, status, nowMs);
     }
 
     /** 小幅横抖一下、不压下：忙碌中再点、数量到边界、按钮不可用。 */
@@ -255,6 +278,14 @@ public final class ButtonFeedback {
         if (st == null) return Phase.IDLE;
         advance(st, nowMs);
         return st.phase;
+    }
+
+    /** 查询可供文字和旁白使用的状态。结果保留至下一次动作或空闲回收。 */
+    public Status status(long actionKey, long nowMs) {
+        ActionState st = actions.get(actionKey);
+        if (st == null) return Status.READY;
+        advance(st, nowMs);
+        return st.status;
     }
 
     /** 正在闪的颜色；没在闪返回 NEUTRAL。 */
@@ -284,16 +315,26 @@ public final class ButtonFeedback {
     private void advance(ActionState st, long nowMs) {
         if (st.phase == Phase.PENDING && nowMs - st.pendingAtMs >= st.pendingTimeoutMs) {
             pendingIds.remove(st.requestId);
-            startFlash(st, Tone.NEUTRAL, st.pendingAtMs + st.pendingTimeoutMs);
+            startFlash(st, Tone.NEUTRAL, Status.TIMED_OUT, st.pendingAtMs + st.pendingTimeoutMs);
         }
         if (st.phase == Phase.FLASH && nowMs - st.flashAtMs >= FLASH_MS) {
             st.phase = Phase.IDLE;
         }
     }
 
-    private static void startFlash(ActionState st, Tone tone, long atMs) {
+    private static Status resultStatus(Tone tone) {
+        return switch (tone) {
+            case SUCCESS -> Status.SUCCEEDED;
+            case PARTIAL -> Status.PARTIAL;
+            case FAILED -> Status.FAILED;
+            case NEUTRAL -> Status.READY;
+        };
+    }
+
+    private static void startFlash(ActionState st, Tone tone, Status status, long atMs) {
         st.phase = Phase.FLASH;
         st.tone = tone;
+        st.status = status;
         st.flashAtMs = atMs;
     }
 
@@ -329,6 +370,10 @@ public final class ButtonFeedback {
         }
         if (reduceMotion) return new Visual(press, 1f, 0f, tone, mix, pending, pendingPhase);
         return new Visual(press, pressScale(press), shake, tone, mix, pending, pendingPhase);
+    }
+
+    public Visual visual(long pressKey, long actionKey, boolean enabled, long nowMs, UiPreferences preferences) {
+        return visual(pressKey, actionKey, enabled, nowMs, preferences.reducedMotion());
     }
 
     /** 压下缩放：1 → 0.95；回弹的负值让按钮略微胀出（最多 1.03）。 */

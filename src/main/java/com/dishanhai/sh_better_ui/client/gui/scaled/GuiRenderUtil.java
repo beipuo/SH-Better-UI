@@ -101,6 +101,12 @@ public class GuiRenderUtil {
         g.pose().translate(-cx, -cy, 0);
     }
 
+    /** 应用视口变换，调用方须自行 pushPose/popPose。命中使用同一变换的 contentX/contentY。 */
+    public static void applyViewport(GuiGraphics g, ViewportTransform viewport) {
+        g.pose().translate((float) viewport.x(), (float) viewport.y(), 0f);
+        g.pose().scale((float) viewport.scale(), (float) viewport.scale(), 1f);
+    }
+
     /** 弹入缩放系数 0.94→1.0（ease-out）。{@link #popScaleAt} 和模糊挖洞共用，保证洞和面板同大小。 */
     public static float popScale(float t) {
         if (t >= 1f) return 1f;
