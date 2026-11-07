@@ -1,7 +1,7 @@
 package com.dishanhai.sh_better_ui.client.blur;
 
 /**
- * 商店模糊的「液态玻璃」样式：色调、饱和度、颗粒、提亮、内缘亮边、边缘折射、浮层外缘阴影。
+ * 山海：商店模糊的「液态玻璃」样式：色调、饱和度、颗粒、提亮、内缘亮边、边缘折射、浮层外缘阴影。
  *
  * <p>只描述数值，不碰 GL，所以可以直接单测。长度类字段（折射、亮边宽、阴影半径）用虚拟 GUI 单位，
  * 写入 uniform 时乘 {@code scale} 换成 framebuffer 像素；其余是无量纲比例，不随缩放。
@@ -27,9 +27,12 @@ public final class GlassStyle {
     /** 商店玻璃主题的毛玻璃底：只糊面板后面的世界，叠一点冷色调与提亮，亮边由面板自己画。 */
     public static final GlassStyle BACKDROP = new GlassStyle(
             0.70f, 0.85f, 1.0f, 0.12f, 0.25f, 0.020f, 0.030f, 0f, 0f, 0f, 0f, 0f);
-    /** 通用浅色透明玻璃：保留背景本色，以轻微提亮、柔和亮边和边缘折射形成玻璃感。 */
+    /** 山海：浅灰玻璃保留低强度提亮，弱化高光与折射，背景略去饱和。 */
     public static final GlassStyle CLEAR = new GlassStyle(
-            0.96f, 0.98f, 1.0f, 0.08f, 0.10f, 0.012f, 0.035f, 0.55f, 3f, 5f, 0f, 0f);
+            0.80f, 0.83f, 0.85f, 0.025f, -0.08f, 0.006f, 0.008f, 0.18f, 0.8f, 2f, 0f, 0f);
+    /** 山海：中性烟灰的细腻毛玻璃，微量提亮与边缘柔光，不做边缘折射。 */
+    public static final GlassStyle FROSTED = new GlassStyle(
+            0.25f, 0.25f, 0.25f, 0.025f, -0.12f, 0.006f, 0.004f, 0.10f, 0f, 1.5f, 0f, 0f);
     /**
      * 玻璃主题的区域分隔（余额栏、网格区、详情区）：在根板毛玻璃之上再糊一层，色调压向深海军蓝、去饱和，
      * 区域比根板暗一档，分区边界一眼可见，区域里的浅色字也更清楚。
@@ -71,6 +74,12 @@ public final class GlassStyle {
         this.rimWidthV = rimWidthV;
         this.shadowV = shadowV;
         this.shadowStrength = shadowStrength;
+    }
+
+    /** 山海：玻璃底采用更密的核；飞行与页面方向模糊保留原来的采样模式。 */
+    public float blurMode(boolean smooth) {
+        if (!smooth) return 0f;
+        return this == CLEAR || this == FROSTED ? 2f : 1f;
     }
 
     /**

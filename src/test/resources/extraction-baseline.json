@@ -37,6 +37,9 @@
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/shop/ShopGlassTooltip.java": "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java",
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/RepeatCurve.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/RepeatCurve.java"
   },
+  "maintained_shader_hashes": {
+    "program/shop_gauss_blur.fsh": "bf930c5d1a2f68f71d2883c4001e805b832106d15da5597664458a64399c1b23"
+  },
   "shader_hashes": {
     "post/shop_gauss_blur.json": "9b3c1dfc3d7964ee0864fe0f325ead3a716a7affbb583f381518070281d78964",
     "program/shop_gauss_blur.json": "c2d60fb8aa40f29a86b231f0c3bb6f053723ab4bf69c1d425dad6ec9e963d8f0",

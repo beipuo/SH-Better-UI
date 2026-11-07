@@ -1,5 +1,6 @@
 #version 150
 
+// 山海：Smooth=2 专用于毛玻璃底，65 点连续取样；原有页面/飞行动效的核保持不变。
 // 商店内容区的局部可分离高斯模糊 + 液态玻璃层。
 // 只处理 Rect 内部、Hole 外部的像素；Rect 外的像素原样输出。
 // Java 侧同时按 Rect 开了 scissor，所以整屏后处理的成本只跟矩形面积成正比。
@@ -209,6 +210,21 @@ void main() {
     vec3 rgb;
     if (axisRadius < 0.5) {
         rgb = texture(DiffuseSampler, fetchUv(baseUv, uv, lo, hi)).rgb;
+    } else if (Smooth > 1.5) {
+        // 毛玻璃底：增加取样密度和覆盖范围，大半径下减少稀疏取样形成的条纹与轮廓残影。
+        float stepPx = max(1.0, axisRadius / 24.0);
+        float sigma = max(axisRadius * 0.45, stepPx);
+        vec2 step = BlurDir * oneTexel * stepPx;
+        vec4 sum = texture(DiffuseSampler, fetchUv(baseUv, uv, lo, hi));
+        float wsum = 1.0;
+        for (int i = 1; i <= 32; i++) {
+            float dist = float(i) * stepPx;
+            float w = exp(-0.5 * (dist * dist) / (sigma * sigma));
+            sum += texture(DiffuseSampler, fetchUv(baseUv + step * float(i), uv, lo, hi)) * w;
+            sum += texture(DiffuseSampler, fetchUv(baseUv - step * float(i), uv, lo, hi)) * w;
+            wsum += w * 2.0;
+        }
+        rgb = sum.rgb / wsum;
     } else if (Smooth > 0.5) {
         // 文字背后要连续的高斯，步长细到 radius/10。
         float stepPx = max(1.0, axisRadius / 10.0);

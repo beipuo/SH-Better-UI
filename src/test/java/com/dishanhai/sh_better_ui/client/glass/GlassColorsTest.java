@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** 山海：验证玻璃叠色的亮度与文字对比，不代表游戏画面验收。 */
 class GlassColorsTest {
     @Test
     void darkModeRetainsExistingPaletteAndClearModeUsesDarkInk() {
@@ -12,8 +13,24 @@ class GlassColorsTest {
         assertEquals(GlassPalette.BUTTON_FILL, GlassColors.DARK.BUTTON_FILL);
         assertTrue(luma(GlassColors.CLEAR.TEXT) < 0.22);
         assertTrue(luma(GlassColors.CLEAR.TEXT_MUTED) < 0.35);
-        assertTrue(luma(GlassColors.CLEAR.ROW_FILL) > 0.85);
-        assertTrue(luma(GlassColors.CLEAR.BUTTON_FILL) > 0.85);
+        assertTrue(luma(GlassColors.CLEAR.ROW_FILL) < 0.85);
+        assertTrue(luma(GlassColors.CLEAR.BUTTON_FILL) < 0.85);
+    }
+
+    @Test
+    void clearGlassKeepsDarkInkReadableWithoutStackingIntoWhite() {
+        for (int scene : new int[]{0xFF000000, 0xFFFFFFFF, 0xFF405C30, 0xFFC09B73}) {
+            int background = over(GlassColors.CLEAR.PANEL_FILL, scene);
+            for (int layer = 0; layer < 5; layer++) {
+                assertTrue(luma(background) < 0.86, "Layered clear glass must stay below near-white");
+                assertTrue(contrast(GlassColors.CLEAR.TEXT, background) >= 4.5,
+                        "Clear glass must retain dark-text contrast on bright and dark scenes");
+                background = over(GlassColors.CLEAR.BUTTON_FILL_HOVER, background);
+            }
+        }
+        assertTrue((GlassColors.CLEAR.BUTTON_FILL >>> 24) <= 80,
+                "Inner controls should overlay a thin tint rather than another opaque white plate");
+        assertTrue((GlassColors.CLEAR.LIT >>> 24) <= 48, "Highlights must not overpower the surface");
     }
 
     private static double luma(int argb) {

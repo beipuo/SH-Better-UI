@@ -636,7 +636,7 @@ public final class GaussBlur {
             rectUniform.set(rect[0], rect[1], rect[2], rect[3]);
             holeUniform.set(hole[0], hole[1], hole[2], hole[3]);
             progressUniform.set(strength);
-            smoothUniform.set(smooth ? 1f : 0f);
+            smoothUniform.set((glass == null ? GlassStyle.NONE : glass).blurMode(smooth));
             waveOriginUniform.set(wave[0], wave[1]);
             waveRadiusUniform.set(wave[2]);
             waveThickUniform.set(wave[3]);

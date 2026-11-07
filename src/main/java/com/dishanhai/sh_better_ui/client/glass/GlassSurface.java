@@ -2,28 +2,30 @@ package com.dishanhai.sh_better_ui.client.glass;
 
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 /**
  * 山海：中性浅色玻璃底。先画背景模糊，再画半透明板与细亮边；调用方随后绘制文字和图标。
  * 不持有界面状态，原生 Screen 和 LDLib 都可以复用。模糊不可用时底板仍可见。
  */
 public final class GlassSurface {
-    private static final int PANEL_FILL = 0xA6F4F8FF;
-    private static final int CONTROL_FILL = 0xB3FFFFFF;
-    private static final int CONTROL_HOVER = 0xD1FFFFFF;
-    private static final int EDGE = 0xA6FFFFFF;
-    private static final int EDGE_HOVER = 0xD9FFFFFF;
-    private static final int EDGE_SHADE = 0x7098A8B4;
-    private static final int HIGHLIGHT = 0x99FFFFFF;
+    private static final float CLEAR_BLUR_RADIUS = 14f;
+    private static final float CONTROL_BLUR_RADIUS = 8f;
+    static final float SMOKE_BLUR_RADIUS = 16f;
 
     private GlassSurface() {}
 
     /** 面板和卡片；坐标为当前 pose 下的 GUI 单位。 */
     public static void panel(GuiGraphics g, int x, int y, int w, int h) {
         if (w < 3 || h < 3) return;
-        GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.CLEAR, 8f);
-        plate(g, x, y, w, h, PANEL_FILL, EDGE);
+        GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.CLEAR, CLEAR_BLUR_RADIUS);
+        GlassColors colors = GlassColors.CLEAR;
+        plate(g, x, y, w, h, colors.PANEL_FILL, colors.ROOT_EDGE,
+                colors.DISPLAY_EDGE, colors.LIT);
     }
 
     /** 按钮与页签；hover 为 0..1，可直接接入现有弹簧动画。 */
@@ -34,17 +36,20 @@ public final class GlassSurface {
     /** 已位于毛玻璃面板内时可关闭重复背景采样。 */
     public static void control(GuiGraphics g, int x, int y, int w, int h, float hover, boolean sampleBackground) {
         if (w < 3 || h < 3) return;
+        GlassColors colors = GlassColors.CLEAR;
         float t = GuiMotion.clamp01(hover);
-        if (sampleBackground) GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.CLEAR, 5f);
+        if (sampleBackground) GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f,
+                GlassStyle.CLEAR, CONTROL_BLUR_RADIUS);
         plate(g, x, y, w, h,
-                GuiMotion.lerpColor(CONTROL_FILL, CONTROL_HOVER, t),
-                GuiMotion.lerpColor(EDGE, EDGE_HOVER, t));
+                clearControlFill(t, sampleBackground),
+                GuiMotion.lerpColor(colors.BUTTON_EDGE, colors.ROOT_EDGE, t),
+                colors.DISPLAY_EDGE, colors.LIT);
     }
 
-    /** 山海：烟灰面板采用中等背景模糊，不额外提亮、折射或绘制强高光。 */
+    /** 山海：烟灰面板采用密采样毛玻璃，保留微量提亮与柔和边缘光。 */
     public static void smokePanel(GuiGraphics g, int x, int y, int w, int h) {
         if (w < 3 || h < 3) return;
-        GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.NONE, 12f);
+        GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.FROSTED, SMOKE_BLUR_RADIUS);
         GlassColors colors = GlassColors.SMOKE;
         plate(g, x, y, w, h, colors.PANEL_FILL, colors.ROOT_EDGE,
                 colors.DISPLAY_EDGE, colors.LIT);
@@ -60,8 +65,36 @@ public final class GlassSurface {
                 colors.BUTTON_EDGE, colors.DISPLAY_EDGE, colors.LIT);
     }
 
-    private static void plate(GuiGraphics g, int x, int y, int w, int h, int fill, int edge) {
-        plate(g, x, y, w, h, fill, edge, EDGE_SHADE, HIGHLIGHT);
+    /** 山海：先画低强度字形柔光，再画原文字；在玻璃底板之后调用，不对文字做背景模糊。 */
+    public static void drawString(GuiGraphics g, Font font, String text, int x, int y, int color) {
+        if (text == null || text.isEmpty()) return;
+        drawString(g, font, Component.literal(text).getVisualOrderText(), x, y, color);
+    }
+
+    /** 同上，保留消费端已经排版的富文本与双向文字。 */
+    public static void drawString(GuiGraphics g, Font font, FormattedCharSequence text, int x, int y, int color) {
+        int glow = textGlowColor(color);
+        if (glow == 0) {
+            g.drawString(font, text, x, y, color, false);
+            return;
+        }
+        g.flush();
+        font.drawInBatch8xOutline(text, x, y, color, glow,
+                g.pose().last().pose(), g.bufferSource(), LightTexture.FULL_BRIGHT);
+        g.flush();
+    }
+
+    static int textGlowColor(int color) {
+        // Font.adjustColor 将 alpha 0..3 当成不透明；柔光淡出到这个范围时必须停止绘制。
+        int alpha = (color & 0xFC000000) == 0 ? 255 : color >>> 24;
+        int glowAlpha = Math.round(12f * alpha / 255f);
+        return glowAlpha < 4 ? 0 : glowAlpha << 24 | 0xFFFFFF;
+    }
+
+    static int clearControlFill(float hover, boolean standalone) {
+        GlassColors colors = GlassColors.CLEAR;
+        int fill = GuiMotion.lerpColor(colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER, hover);
+        return standalone ? (colors.PANEL_FILL & 0xFF000000) | (fill & 0xFFFFFF) : fill;
     }
 
     private static void plate(GuiGraphics g, int x, int y, int w, int h,

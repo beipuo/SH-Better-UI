@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** 山海：玻璃材质参数的数值回归。 */
 class GlassStyleTest {
 
     @Test
@@ -68,15 +69,41 @@ class GlassStyleTest {
     }
 
     @Test
-    void clearStyleKeepsTheSceneBrightWithAVisibleLensEdge() {
+    void clearStyleKeepsReducedLiftAndASubtleLensEdge() {
         float[] tint = new float[4];
         float[] params = new float[4];
         float[] edge = new float[4];
         GlassStyle.CLEAR.write(1f, tint, params, edge);
-        assertTrue(tint[0] >= 0.9f && tint[1] >= 0.9f && tint[2] >= 0.9f);
-        assertTrue(tint[3] > 0f && tint[3] <= 0.15f);
-        assertTrue(params[2] > 0f);
-        assertTrue(params[3] > 0f && edge[0] > 0f);
+        assertTrue(Math.max(tint[0], Math.max(tint[1], tint[2])) < 0.9f);
+        assertTrue(tint[3] > 0f && tint[3] <= 0.05f);
+        assertTrue(params[2] > 0f && params[2] <= 0.012f,
+                "Retain gentle lift instead of removing it or washing the surface white");
+        assertTrue(params[0] <= 0f, "Frosting should soften rather than amplify background colors");
+        assertTrue(params[3] > 0f && params[3] <= 0.2f && edge[0] > 0f && edge[0] <= 1f);
         assertEquals(0f, edge[3], 0f);
+    }
+
+    @Test
+    void frostedBackgroundKeepsNeutralTintAndGentleEdgeLight() {
+        float[] tint = new float[4], params = new float[4], edge = new float[4];
+        GlassStyle.FROSTED.write(1f, tint, params, edge);
+        assertEquals(tint[0], tint[1], 0f);
+        assertEquals(tint[1], tint[2], 0f);
+        assertTrue(params[0] < 0f);
+        assertTrue(params[2] > 0f && params[2] <= 0.012f);
+        assertTrue(params[3] > 0f && params[3] <= 0.2f);
+        assertEquals(0f, edge[0], 0f);
+    }
+
+    @Test
+    void denseSamplingIsLimitedToFrostedSurfaces() {
+        assertEquals(2f, GlassStyle.CLEAR.blurMode(true));
+        assertEquals(2f, GlassStyle.FROSTED.blurMode(true));
+        for (GlassStyle style : new GlassStyle[]{GlassStyle.NONE, GlassStyle.SWAP,
+                GlassStyle.OVERLAY, GlassStyle.BACKDROP, GlassStyle.CONTROL}) {
+            assertEquals(1f, style.blurMode(true));
+            assertEquals(0f, style.blurMode(false));
+        }
+        assertEquals(0f, GlassStyle.CLEAR.blurMode(false));
     }
 }

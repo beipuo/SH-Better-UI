@@ -35,9 +35,11 @@ class ExtractionContract(unittest.TestCase):
             self.assertFalse((CONSUMER / relative / "gt_shanhai/shaders" / suffix).exists(), suffix)
             self.assertNotIn("gt_shanhai:", migrated.read_text(encoding="utf-8"))
 
-    def test_shader_formulas_are_unchanged_after_namespace_migration(self):
+    def test_shader_formulas_match_approved_baseline(self):
         baseline = json.loads((ROOT / "src/test/resources/extraction-baseline.json").read_text(encoding="utf-8"))
-        for suffix, expected in baseline["shader_hashes"].items():
+        # Author: dishanhai. Retain migration history while pinning explicitly maintained shaders.
+        approved = baseline["shader_hashes"] | baseline.get("maintained_shader_hashes", {})
+        for suffix, expected in approved.items():
             path = ROOT / "src/main/resources/assets/sh_better_ui/shaders" / suffix
             source = path.read_text(encoding="utf-8").replace("sh_better_ui:", "UI_NAMESPACE:")
             self.assertEqual(expected, hashlib.sha256(source.encode()).hexdigest(), suffix)

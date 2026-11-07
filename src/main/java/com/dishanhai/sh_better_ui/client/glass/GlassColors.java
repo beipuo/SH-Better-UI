@@ -10,13 +10,14 @@ public final class GlassColors {
             GlassPalette.ROW_EDGE, GlassPalette.ROW_FILL, GlassPalette.ROW_FILL_HOVER,
             GlassPalette.ROOT_EDGE, GlassPalette.CELL_FILL, GlassPalette.LIT);
 
+    /** 山海：柔和浅灰；根板承托深色文字，内层薄叠色，避免按钮和高光叠成亮白板。 */
     public static final GlassColors CLEAR = new GlassColors(
             0xFF276B8B, 0xFF1C2B35, 0xFF194A61, 0xFF3B5363,
             0xFF4D6471, 0xFF75818A, 0xFF276C50,
-            0xA6FFFFFF, 0x66F4F8FF, 0x99F4F8FF,
-            0xA6FFFFFF, 0x4DF4F8FF, 0xCCF4F8FF,
-            0x8098ACB8, 0xB3F4F8FF, 0xDCF4F8FF,
-            0xA6FFFFFF, 0xCCF4F8FF, 0x99FFFFFF);
+            0x70D7E1E6, 0x40C1CCD2, 0x66CBD5DB,
+            0x407C8E98, 0x18A9B6BE, 0xBBC5CDD2,
+            0x507C8E98, 0x20B5C1C8, 0x40C5D0D6,
+            0x80DAE3E8, 0x20B5C1C8, 0x24FFFFFF);
 
     /** 山海：低亮度中性烟灰；内层只做轻微分区，避免多层控件叠成白板。 */
     public static final GlassColors SMOKE = new GlassColors(

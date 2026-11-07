@@ -182,7 +182,9 @@ public class GlassTheme {
             g.drawCenteredString(font, text, cx, y, color);
             return;
         }
-        g.drawString(font, text, cx - font.width(text) / 2, y, color, false);
+        int x = cx - font.width(text) / 2;
+        if (colors == GlassColors.SMOKE) GlassSurface.drawString(g, font, text, x, y, color);
+        else g.drawString(font, text, x, y, color, false);
     }
 
     /** 原版界面背景那层 75%~80% 的黑幕会把玻璃盖成实心；玻璃主题换成很淡的一层冷色。返回 false 表示调用方照旧画原版背景。 */
@@ -203,7 +205,8 @@ public class GlassTheme {
         if (!glass) return;
         if (colors == GlassColors.SMOKE) {
             GlassBlur.backdrop(g, new GuiRect(x, y, w, h), strength,
-                    com.dishanhai.sh_better_ui.client.blur.GlassStyle.NONE, 12f);
+                    com.dishanhai.sh_better_ui.client.blur.GlassStyle.FROSTED,
+                    GlassSurface.SMOKE_BLUR_RADIUS);
             return;
         }
         com.dishanhai.sh_better_ui.client.glass.GlassBlur.backdrop(g,
