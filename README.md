@@ -339,6 +339,96 @@ var layout = GraphicDisplayLayout.arrange(area, entries.size(), 28, true, grid);
 
 `pageCapacity` 用相同的内框、行高、分页开关及网格规则计算可完整显示的条目数，可用于切分当前页。容量为 0 时需给内容留出足够空间。切页或缩放后按当前内框和条目数重算布局。使用 2× 图标时应预留至少 40 GUI 单位行高。状态文字传入本地化 `Component`，超出行高可悬停查看完整标签。如果宿主还套了一层视口裁切，只在鼠标位于宿主可见区时显示提示。底板和页码状态由宿主管理，翻页控件沿用 `UiButton` 的点击、键盘焦点和旁白。
 
+### 网络风格图形化 UI API
+
+`client.gui.scaled.NetworkTheme` 提供深色半透明圆角面板、蓝色描边的标题／设置行、原生编辑框和描边页签。Forge 与 NeoForge 的原生 `Screen` 使用同一套接口。所有边界均为 GUI 逻辑坐标，缩放后在 `init()` 重算。
+
+- `NetworkTheme.drawPanel()` 绘制面板，`drawField()` 显示标题或只读设置行。`labelColor()` 可给标签部分着色，数值部分保留自己的颜色。
+- `NetworkTheme.tab()` 返回 `UiButton`。以 `setSelected()` 标记当前页，标签传入本地化 `Component`，供提示与旁白读取。图标按钮预留至少 20×20 GUI 单位。内置图标为 16×16 px 透明 PNG，依次为 `HOME`、`LIST`、`WIRELESS`、`TOPOLOGY`、`STATISTICS`、`MEMBERS`、`SETTINGS` 和 `ADD`，也可以传入自己的 `GraphicIcon`。
+- `NetworkTheme.editBox()` 返回原生 `EditBox`。先用 `setValue()` 写入初值，再注册 `setResponder()`。用 `setFilter()` 限制输入，用接入方自己的确认操作提交。
+- `NetworkToggle` 由 `setValue()` 更新显示。鼠标、Enter 或空格会请求取反。接入方等待回包时可设置 `active = false`，收到结果后更新显示值并恢复操作。开关行至少 40×14 GUI 单位。
+- 状态图文沿用 `GraphicDisplay.drawRows()`，可通过 `Component` 样式为不同数值着色。`UiPreferences` 控制高对比与减少动效。
+
+```java
+// init() 中注册控件。Bounds 是 GraphicDisplayLayout.Bounds。
+var home = addRenderableWidget(NetworkTheme.tab(new Bounds(x + 12, y - 24, 20, 20),
+        Component.translatable("example.tab.home"), GraphicIcon.HOME, preferences,
+        button -> showHomePage()));
+home.setSelected(isHomePage());
+
+var name = addRenderableWidget(NetworkTheme.editBox(font, new Bounds(x + 12, y + 38, 160, 18),
+        Component.translatable("example.setting.name"), preferences));
+name.setValue(savedName);
+name.setResponder(value -> nameDraft = value);
+
+var bypass = addRenderableWidget(new NetworkToggle(new Bounds(x + 12, y + 100, 160, 18),
+        Component.translatable("example.setting.bypass"), serverBypassEnabled, preferences,
+        enabled -> requestBypassChange(enabled)));
+
+// render() 中先画底板、标题与状态行，再让 super.render(...) 绘制原生控件。
+NetworkTheme.drawPanel(graphics, new Bounds(x, y, 184, 132), preferences);
+NetworkTheme.drawField(graphics, font, new Bounds(x + 12, y + 10, 160, 18), networkTitle, preferences);
+var statusLayout = GraphicDisplayLayout.arrange(new Bounds(x + 12, y + 62, 160, 30),
+        statusEntries.size(), 30, false, new GraphicDisplayLayout.Grid(160, 1));
+GraphicDisplay.drawRows(graphics, font, statusLayout, statusEntries, 1, DarkModeTheme.TEXT, 0);
+```
+
+示例中的翻译键、页面切换、草稿、状态条目与回包逻辑由接入方提供。
+
+### 整页网络布局与 Screen 模板
+
+`client.gui.display.NetworkScreen` 可以直接传给 `Minecraft#setScreen`。模板会布置 1–7 个顶部图标页签、独立的右侧新增按钮、网络标题、设置行、状态图文和开关。画面有返回图标，也支持 Escape 返回父画面。每个页签保留自己的页码，窄窗口自动折行，内容过高时按完整行分页。
+
+```java
+// 在客户端线程执行。以下翻译键及 state、otherTabs 由接入方提供。
+var overview = new NetworkScreen.Tab(
+        Component.translatable("your_mod.network.overview"), GraphicIcon.HOME, state::networkTitle,
+        List.of(
+                new NetworkScreen.Edit(Component.translatable("your_mod.network.name"), box -> {
+                    box.setMaxLength(40);
+                    box.setValue(state.nameDraft());
+                    box.setResponder(state::setNameDraft);
+                }),
+                new NetworkScreen.Field(Component.translatable("your_mod.network.priority"), state::priorityText),
+                new NetworkScreen.Field(Component.translatable("your_mod.network.limit"), state::limitText),
+                new NetworkScreen.Status(state::transferAndBufferEntry),
+                new NetworkScreen.Toggle(Component.translatable("your_mod.network.surge"),
+                        state::surgeEnabled, state::canChangeSurge, state::requestSurge),
+                new NetworkScreen.Toggle(Component.translatable("your_mod.network.bypass"),
+                        state::bypassEnabled, state::canChangeBypass, state::requestBypass),
+                new NetworkScreen.Toggle(Component.translatable("your_mod.network.chunk_loading"),
+                        state::chunkLoadingEnabled, state::canChangeChunkLoading, state::requestChunkLoading)
+        ));
+
+var tabs = new ArrayList<NetworkScreen.Tab>();
+tabs.add(overview);
+tabs.addAll(otherTabs); // 最多再加 6 页，每页提供自己的标题和内容行。
+var add = new NetworkScreen.AddAction(Component.translatable("your_mod.network.create"), state::openCreate);
+Minecraft.getInstance().setScreen(new NetworkScreen(parent,
+        Component.translatable("your_mod.network.screen"), preferences, tabs, add));
+```
+
+`Status` 返回一个 `GraphicDisplay.Entry`。它的标签可用 `CommonComponents.NEW_LINE` 连接传输与缓存两行，并分别设置数值颜色。`Edit` 的配置会在切页、翻页或缩放后重建控件，草稿保存在接入方的状态里。`Toggle` 每帧读取已确认的值，提交回调只发出请求。等待确认时让 `canChange...` 返回 `false`。
+
+已有画面可单独调用 `NetworkLayout.arrange(width, height, tabCount, hasAdd, rowKinds, font.lineHeight, pageIndex)`。传入的行类型为 `FIELD`、`STATUS`、`TOGGLE`，返回的 `Bounds` 可直接交给 `NetworkTheme`、`GraphicDisplay` 或原生控件。结果的 `firstRow` 是当前页对应的原始行下标，`pageIndex` 从 0 开始。空间不足以容纳完整控件时返回空值。
+
+### 小弹窗提醒
+
+在 Forge 或 NeoForge 的客户端收到任务结果后，调用 `client.gui.scaled.UiToast`。库会在当前界面或游戏 HUD 上显示提示，不占用鼠标或键盘焦点。
+
+```java
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
+
+UiToast.taskCompleted(Component.translatable("your_mod.task.example"));
+UiToast.show(UiToast.Kind.WARNING,
+        Component.translatable("your_mod.notice.warning"),
+        Component.empty(), UiToast.Effect.POP);
+```
+
+默认从屏幕右侧外滑入左上角，停留后向右退出。可选 `DROP_FROM_TOP`（从顶部滑落）、`FADE`（淡入淡出）、`POP`（缩放弹出）和 `NONE`（直接显示）。状态有 `INFO`、`SUCCESS`、`WARNING` 和 `ERROR`。
+
+提示依次显示，默认基础停留时间为 3500 毫秒，受 Minecraft 通知时长设置影响。完整 `show` 重载可传入停留时间与 `UiPreferences`，启用减少动效时会直接显示。视觉内容最多六行，建议传入本地化短句。系统旁白启用时会朗读完整内容。
+
 ### 中性玻璃渲染预览
 
 左为调整前，右为调整后。玻璃使用实际 shader 离屏渲染与实际色板；背景、字体与排版为测试示意，并非 Minecraft 实机界面。文字柔光的接入范围及验证结果见[玻璃维护记录](docs/neutral-glass-maintenance.md)，游戏验收项目见 [TODO](TODO.md)。
