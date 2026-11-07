@@ -21,10 +21,13 @@ public final class UiDisclosure {
 
     public Button button(int x, int y, int width, int height, Component showLabel, Component hideLabel,
                          UiPreferences preferences, Consumer<Boolean> onChanged) {
-        return new UiButton(x, y, width, height, expanded ? hideLabel : showLabel, button -> {
+        var control = new UiButton(x, y, width, height, expanded ? hideLabel : showLabel, button -> {
             expanded = !expanded;
             button.setMessage(expanded ? hideLabel : showLabel);
+            ((UiButton) button).setSelected(expanded);
             onChanged.accept(expanded);
         }, preferences, false);
+        control.setSelected(expanded);
+        return control;
     }
 }

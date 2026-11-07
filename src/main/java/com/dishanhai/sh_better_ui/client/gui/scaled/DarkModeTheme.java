@@ -62,16 +62,23 @@ public final class DarkModeTheme {
     /** 按钮内容与底板一起缩放。焦点环保留在原生控件边界外侧。 */
     public static void button(GuiGraphics g, int x, int y, int width, int height,
                               State state, boolean primary, Runnable content) {
+        button(g, x, y, width, height, state, primary, false, 0f, content);
+    }
+
+    /** 选中项持续保留底边标记，emphasis 是新选择的短暂强调强度。 */
+    public static void button(GuiGraphics g, int x, int y, int width, int height,
+                              State state, boolean primary, boolean selected, float emphasis, Runnable content) {
         if (width <= 0 || height <= 0) return;
         GuiRenderUtil.withButtonMotion(g, x, y, width, height, state.buttonScale(), 0f, () -> {
-            if (primary && state.enabled() && state.hover() > 0f) {
+            if (state.enabled() && state.hover() > 0f) {
                 for (int spread = 3; spread >= 1; spread--) {
                     rounded(g, x - spread, y - spread, width + 2 * spread, height + 2 * spread,
                             CONTROL_RADIUS + spread, 1,
                             opacity(ACCENT, state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
                 }
             }
-            rounded(g, x, y, width, height, CONTROL_RADIUS, 1, edge(state), state.buttonFill(primary));
+            rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
+                    selected ? state.focusColor() : edge(state), state.buttonFill(primary, selected, emphasis));
             if (width > 2 * CONTROL_RADIUS && height > 3) {
                 int highlight = opacity(0xFFFFFFFF, (0.15f + 0.05f * state.hover()) * (1f - state.press()));
                 g.fill(x + CONTROL_RADIUS, y + 1, x + width - CONTROL_RADIUS, y + 2, highlight);
@@ -80,9 +87,30 @@ public final class DarkModeTheme {
                             opacity(SHADOW, 0.3f * state.press()), 0);
                 }
             }
+            if (selected && width > 4 && height > 3) {
+                g.fill(x + 2, y + height - 3, x + width - 2, y + height - 1, state.focusColor());
+            }
             content.run();
         });
         focus(g, x, y, width, height, CONTROL_RADIUS, state);
+    }
+
+    /** 页签底部的移动指示条，可用于自绘或原生控件。 */
+    public static void selectionIndicator(GuiGraphics g, UiAttention.Frame frame, UiPreferences preferences) {
+        if (!frame.visible() || frame.width() <= 0 || frame.height() <= 0) return;
+        int x = Math.round(frame.x());
+        int bottom = Math.round(frame.y() + frame.height());
+        g.fill(x, bottom - 2, Math.round(frame.x() + frame.width()), bottom,
+                preferences.highContrast() ? CONTRAST_FOCUS : ACCENT);
+    }
+
+    /** 内容目标区域的短暂内侧亮边，在减少动效时仅保留选中控件的静态标记。 */
+    public static void attentionTarget(GuiGraphics g, int x, int y, int width, int height,
+                                       UiAttention.Frame frame, UiPreferences preferences) {
+        if (!frame.visible() || preferences.reducedMotion() || frame.emphasis() <= 0f
+                || width <= 0 || height <= 0) return;
+        rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
+                opacity(preferences.highContrast() ? CONTRAST_FOCUS : ACCENT, frame.emphasis()), 0);
     }
 
     /** 输入框底板。由原生输入控件继续处理光标、选择区、输入及旁白。 */
@@ -120,7 +148,7 @@ public final class DarkModeTheme {
 
     private static int edge(State state) {
         if (state.highContrast()) return CONTRAST_EDGE;
-        return GuiMotion.lerpColor(BORDER, BORDER_HOVER, Math.max(state.hover(), state.press()));
+        return GuiMotion.lerpColor(BORDER, ACCENT, Math.max(state.hover(), state.press()));
     }
 
     private static void focus(GuiGraphics g, int x, int y, int width, int height, int radius, State state) {
@@ -223,7 +251,7 @@ public final class DarkModeTheme {
         public int secondaryText() {
             return highContrast ? TEXT_SECONDARY : GuiMotion.lerpColor(TEXT_MUTED, TEXT_SECONDARY, textHover);
         }
-        public int controlText() { return enabled ? TEXT : TEXT_MUTED; }
+        public int controlText() { return enabled ? GuiMotion.lerpColor(0xFFE2E8F0, TEXT, textHover) : TEXT_MUTED; }
         int focusColor() { return highContrast ? CONTRAST_FOCUS : ACCENT; }
 
         /** 卡片当前的绘制 Y 偏移，子控件命中应使用同一偏移。 */
@@ -233,7 +261,12 @@ public final class DarkModeTheme {
 
         int buttonFill(boolean primary) {
             return primary && enabled ? GuiMotion.lerpColor(PRIMARY, PRIMARY_HOVER, hover)
-                    : GuiMotion.lerpColor(SURFACE, BORDER, hover);
+                    : GuiMotion.lerpColor(SURFACE, 0xFF334B6B, hover);
+        }
+
+        int buttonFill(boolean primary, boolean selected, float emphasis) {
+            float strength = selected && !primary ? 0.22f + 0.18f * GuiMotion.clamp01(emphasis) : 0f;
+            return GuiMotion.lerpColor(buttonFill(primary), ACCENT, strength);
         }
     }
 

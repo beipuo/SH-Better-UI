@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -201,6 +202,37 @@ public class GuiRenderUtil {
             draw.run();
         } finally {
             g.pose().popPose();
+        }
+    }
+
+    /** 新内容短距淡入。保留外层 RGBA；命中与交互应使用 Frame.contentMouseY。 */
+    public static void withAttentionContent(GuiGraphics g, UiAttention.Frame frame, Runnable draw) {
+        withAttentionContent(g, frame.contentAlpha(), frame.contentOffsetY(), draw);
+    }
+
+    /** 原生渲染器自行设置实际位移坐标时，可传 offsetY=0，仅应用淡入。 */
+    public static void withAttentionContent(GuiGraphics g, float alpha, float offsetY, Runnable draw) {
+        if (alpha >= 1f && offsetY == 0f) {
+            draw.run();
+            return;
+        }
+        float[] color = RenderSystem.getShaderColor().clone();
+        g.flush();
+        g.pose().pushPose();
+        try {
+            g.pose().translate(0f, offsetY, 0f);
+            g.setColor(color[0], color[1], color[2], color[3] * GuiMotion.clamp01(alpha));
+            draw.run();
+        } finally {
+            try {
+                g.flush();
+            } finally {
+                try {
+                    g.setColor(color[0], color[1], color[2], color[3]);
+                } finally {
+                    g.pose().popPose();
+                }
+            }
         }
     }
 

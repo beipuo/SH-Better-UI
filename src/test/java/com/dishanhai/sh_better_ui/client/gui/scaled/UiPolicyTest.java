@@ -33,13 +33,18 @@ class UiPolicyTest {
         var changes = new ArrayList<Boolean>();
         var button = disclosure.button(0, 0, 120, 26, show, hide, changes::add);
         assertSame(show, button.getMessage());
+        assertNotNull(button.getTooltip());
+        assertFalse(((UiButton) button).isSelected());
         button.onPress();
         assertSame(hide, button.getMessage());
         assertTrue(disclosure.expanded());
+        assertTrue(((UiButton) button).isSelected());
         var rebuilt = disclosure.button(4, 8, 140, 26, show, hide, changes::add);
         assertSame(hide, rebuilt.getMessage());
+        assertTrue(((UiButton) rebuilt).isSelected());
         rebuilt.onPress();
         assertFalse(disclosure.expanded());
+        assertFalse(((UiButton) rebuilt).isSelected());
         assertEquals(java.util.List.of(true, false), changes);
     }
 

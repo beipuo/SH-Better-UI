@@ -83,6 +83,18 @@ class DarkModeThemeTest {
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     }
 
+    @Test
+    void selectedControlsKeepReadableTextDuringHoverAndPeakEmphasis() {
+        var interaction = DarkModeTheme.Interaction.control();
+        for (boolean hovered : new boolean[]{false, true}) {
+            var state = interaction.sample(hovered, false, false, true, true, 0);
+            for (boolean primary : new boolean[]{false, true}) {
+                assertTrue(contrast(state.controlText(), state.buttonFill(primary, true, 0f)) >= 4.5);
+                assertTrue(contrast(state.controlText(), state.buttonFill(primary, true, 1f)) >= 4.5);
+            }
+        }
+    }
+
     private static double luminance(int color) {
         return 0.2126 * linear(color, 16) + 0.7152 * linear(color, 8) + 0.0722 * linear(color, 0);
     }

@@ -1,5 +1,6 @@
 {
   "sh_better_ui.action.ready": "Ready",
+  "sh_better_ui.control.selected": "Currently selected",
   "sh_better_ui.action.pending": "Waiting for a response",
   "sh_better_ui.action.succeeded": "Completed",
   "sh_better_ui.action.partial": "Partially completed",
