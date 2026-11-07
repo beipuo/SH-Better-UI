@@ -223,6 +223,11 @@ public final class JeiSearchPanel {
         return List.copyOf(areas);
     }
 
+    /** 宿主可据此暂停登记底层控件的 Screen 延迟提示。 */
+    public boolean hasOpenSuggestions(int screenHeight) {
+        return search.suggestionArea(screenHeight).isPresent() || modSearch.suggestionArea(screenHeight).isPresent();
+    }
+
     public void tick() {
         refreshData();
         if (layout != null) layout.tick();
@@ -252,8 +257,7 @@ public final class JeiSearchPanel {
 
     /** 在普通控件之后绘制配方、原生提示与下拉层。 */
     public void renderOverlays(GuiGraphics graphics, int mouseX, int mouseY, int screenHeight) {
-        boolean overSuggestion = search.suggestionArea(screenHeight).filter(area -> area.contains(mouseX, mouseY)).isPresent()
-                || modSearch.suggestionArea(screenHeight).filter(area -> area.contains(mouseX, mouseY)).isPresent();
+        boolean suggestionsOpen = hasOpenSuggestions(screenHeight);
         if (selected != null) {
             Button current = direction == Direction.OBTAINING ? obtaining : uses;
             long now = PageTransition.nowMs();
@@ -264,11 +268,11 @@ public final class JeiSearchPanel {
             int contentY = current.getY() + CONTROL_HEIGHT + 1;
             DarkModeTheme.attentionTarget(graphics, detail.x(), contentY, detail.width(),
                     Math.max(0, open.getY() - GAP - contentY), frame, preferences);
-            drawRecipe(graphics, mouseX, mouseY, overSuggestion, frame);
+            drawRecipe(graphics, mouseX, mouseY, suggestionsOpen, frame);
         } else {
             attention.clear();
         }
-        if (!overSuggestion) drawIngredientTooltip(graphics, mouseX, mouseY);
+        if (!suggestionsOpen) drawIngredientTooltip(graphics, mouseX, mouseY);
         search.renderSuggestions(graphics, mouseX, mouseY, screenHeight);
         modSearch.renderSuggestions(graphics, mouseX, mouseY, screenHeight);
     }
@@ -432,7 +436,7 @@ public final class JeiSearchPanel {
         open.setWidth(choose.visible ? (detail.width() - GAP) / 2 : detail.width());
     }
 
-    private void drawRecipe(GuiGraphics graphics, int mouseX, int mouseY, boolean overSuggestion,
+    private void drawRecipe(GuiGraphics graphics, int mouseX, int mouseY, boolean suggestionsOpen,
                             UiAttention.Frame frame) {
         int titleY = obtaining.getY() + CONTROL_HEIGHT + 2;
         int contentY = titleY + font.lineHeight + GAP;
@@ -467,12 +471,12 @@ public final class JeiSearchPanel {
         graphics.enableScissor(detail.x() + GAP, contentY, detail.right() - GAP, contentBottom);
         try {
             GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
-                    layout.render(graphics, previewX, previewY, overSuggestion ? -1 : mouseX,
-                            overSuggestion ? -1 : mouseY));
+                    layout.render(graphics, previewX, previewY, suggestionsOpen ? -1 : mouseX,
+                            suggestionsOpen ? -1 : mouseY));
         } finally {
             graphics.disableScissor();
         }
-        if (!overSuggestion && frame.contentAlpha() > 0f
+        if (!suggestionsOpen && frame.contentAlpha() > 0f
                 && mouseX >= previewX && mouseX < previewX + layout.width()
                 && mouseY >= Math.max(previewY, contentY) && mouseY < Math.min(previewY + layout.height(), contentBottom)) {
             layout.renderOverlays(graphics, mouseX, mouseY);

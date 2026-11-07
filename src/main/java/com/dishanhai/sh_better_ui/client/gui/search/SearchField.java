@@ -22,6 +22,7 @@ import java.util.function.Predicate;
 public final class SearchField<T> extends EditBox {
     private static final int SUGGESTION_LIMIT = 8;
     private static final int GAP = 2;
+    private static final float DROPDOWN_Z = 300f;
     private static final Component USAGE = Component.translatable("sh_better_ui.search.usage");
 
     private final Font font;
@@ -189,6 +190,11 @@ public final class SearchField<T> extends EditBox {
                 : Optional.of(new Rect2i(getX(), dropdown.top(), getWidth(), dropdown.height()));
     }
 
+    /** 与候选行的点击和滚轮判定使用相同的边界。 */
+    public boolean isOverSuggestions(double mouseX, double mouseY, int screenHeight) {
+        return rowAt(dropdown(screenHeight), mouseX, mouseY) >= 0;
+    }
+
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         String query = getValue();
@@ -201,14 +207,30 @@ public final class SearchField<T> extends EditBox {
         super.renderWidget(graphics, mouseX, mouseY, partialTick);
     }
 
-    /** 在普通控件之后绘制。鼠标与高度使用与输入框相同的画面坐标。 */
+    /**
+     * 在普通控件之后、画面裁切之外绘制；使用和输入框相同的坐标。
+     * 宿主在候选打开时应暂停登记底层控件的 Screen 延迟提示。有后处理时在后处理结束后绘制。
+     */
     public void renderSuggestions(GuiGraphics graphics, int mouseX, int mouseY, int screenHeight) {
         Dropdown dropdown = dropdown(screenHeight);
         if (dropdown == null) return;
+        Component clippedLabel;
+        graphics.flush();
+        graphics.pose().pushPose();
+        try {
+            graphics.pose().translate(0f, 0f, DROPDOWN_Z);
+            clippedLabel = drawDropdown(graphics, dropdown, rowAt(dropdown, mouseX, mouseY));
+            graphics.flush();
+        } finally {
+            graphics.pose().popPose();
+        }
+        if (clippedLabel != null) graphics.renderComponentTooltip(font, List.of(clippedLabel), mouseX, mouseY);
+    }
+
+    private Component drawDropdown(GuiGraphics graphics, Dropdown dropdown, int hovered) {
         int x = getX();
         int bottom = dropdown.top() + dropdown.height();
         graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.SURFACE);
-        int hovered = rowAt(dropdown, mouseX, mouseY);
         Component clippedLabel = null;
         for (int row = 0; row < dropdown.rows(); row++) {
             int index = firstVisible + row;
@@ -228,7 +250,7 @@ public final class SearchField<T> extends EditBox {
                     DarkModeTheme.TEXT, false);
         }
         graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.BORDER_HOVER);
-        if (clippedLabel != null) graphics.renderTooltip(font, clippedLabel, mouseX, mouseY);
+        return clippedLabel;
     }
 
     /** 在宿主 Screen 的普通鼠标分派前调用，避免清单点击落到后方控件。 */
@@ -271,7 +293,7 @@ public final class SearchField<T> extends EditBox {
     }
 
     private Dropdown dropdown(int screenHeight) {
-        if (getWidth() <= 10 || !suggestionsOpen()) return null;
+        if (getWidth() <= 10 || getY() >= screenHeight || getY() + getHeight() <= 0 || !suggestionsOpen()) return null;
         int rowHeight = font.lineHeight + 7;
         int below = getY() + getHeight() + GAP;
         int above = getY() - GAP;

@@ -4,6 +4,8 @@ import net.minecraft.client.gui.Font;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.glfw.GLFW;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,6 +74,40 @@ class SearchFieldTest {
         assertTrue(field.mouseScrolledSuggestions(10, 40, -1, 54));
         assertTrue(field.mouseClickedSuggestion(10, 40, GLFW.GLFW_MOUSE_BUTTON_LEFT, 54));
         assertEquals("Iridium", field.getValue());
+    }
+
+    @Test
+    void dropdownDoesNotAppearOrCaptureClicksWhenItsAnchorIsOffscreen() {
+        var field = fieldAt(120);
+        field.setValue("Ir");
+        assertTrue(field.suggestionArea(120).isEmpty());
+        assertFalse(field.mouseClickedSuggestion(10, 105, GLFW.GLFW_MOUSE_BUTTON_LEFT, 120));
+        assertEquals("Ir", field.getValue());
+    }
+
+    @Test
+    void hoverAndClickShareTheExclusiveBottomAndRightEdges() {
+        var field = fieldAt(18);
+        field.setValue("Ir");
+        var area = field.suggestionArea(54).orElseThrow();
+        int right = area.getX() + area.getWidth();
+        int bottom = area.getY() + area.getHeight();
+        assertTrue(field.isOverSuggestions(right - 1, bottom - 1, 54));
+        assertFalse(field.isOverSuggestions(right, bottom - 1, 54));
+        assertFalse(field.isOverSuggestions(right - 1, bottom, 54));
+        assertTrue(field.mouseClickedSuggestion(right - 1, bottom - 1, GLFW.GLFW_MOUSE_BUTTON_LEFT, 54));
+    }
+
+    @Test
+    void glassTooltipRaisesThePlateBeforePaintingOnBothPlatforms() throws Exception {
+        var source = Path.of("src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java");
+        for (var path : List.of(source, Path.of("neoforge").resolve(source))) {
+            String code = Files.readString(path);
+            int depth = code.indexOf("g.pose().translate(0f, 0f, TOOLTIP_Z)");
+            int smoke = code.indexOf("GlassSurface.smokePanel(g");
+            int glass = code.indexOf("GlassTheme.GLASS.tooltipPanel(g");
+            assertTrue(depth >= 0 && depth < smoke && depth < glass, path.toString());
+        }
     }
 
     @Test

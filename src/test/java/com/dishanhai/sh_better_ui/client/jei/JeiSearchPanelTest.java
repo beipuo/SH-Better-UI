@@ -79,6 +79,7 @@ class JeiSearchPanelTest {
             int screenHeight = 400;
             var areas = panel.extraAreas(screenHeight);
             assertEquals(2, areas.size());
+            assertTrue(panel.hasOpenSuggestions(screenHeight));
             var dropdown = areas.getLast();
             assertTrue(panel.mouseClicked(dropdown.getX() + 1, dropdown.getY() + 1,
                     GLFW.GLFW_MOUSE_BUTTON_LEFT, screenHeight));
@@ -86,6 +87,7 @@ class JeiSearchPanelTest {
             assertNull(panel.snapshot().selectedKey());
             assertTrue(backend.lookups.isEmpty());
             assertEquals(1, panel.extraAreas(screenHeight).size());
+            assertFalse(panel.hasOpenSuggestions(screenHeight));
 
             assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
             assertEquals(visible.key(), panel.snapshot().selectedKey());

@@ -15,9 +15,11 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -384,13 +386,22 @@ public final class IngredientPicker {
                 graphics.drawString(font, font.plainSubstrByWidth(summary().getString(), width - 2 * MARGIN),
                         MARGIN, countY, DarkModeTheme.TEXT_SECONDARY, false);
             }
-            super.render(graphics, mouseX, mouseY, partialTick);
+            boolean overSuggestions = getFocused() instanceof SearchField<?> search
+                    && search.isOverSuggestions(mouseX, mouseY, height);
+            super.render(graphics, overSuggestions ? -1 : mouseX, overSuggestions ? -1 : mouseY, partialTick);
             if (panel != null) {
-                boolean overTagSuggestions = tagSearch.suggestionArea(height)
-                        .filter(area -> area.contains(mouseX, mouseY)).isPresent();
-                panel.renderOverlays(graphics, overTagSuggestions ? -1 : mouseX,
-                        overTagSuggestions ? -1 : mouseY, height);
+                boolean tagSuggestionsOpen = tagSearch.suggestionArea(height).isPresent();
+                panel.renderOverlays(graphics, tagSuggestionsOpen ? -1 : mouseX,
+                        tagSuggestionsOpen ? -1 : mouseY, height);
                 tagSearch.renderSuggestions(graphics, mouseX, mouseY, height);
+            }
+        }
+
+        @Override
+        public void setTooltipForNextRenderPass(List<FormattedCharSequence> lines, ClientTooltipPositioner positioner,
+                                                boolean override) {
+            if (panel == null || (!panel.hasOpenSuggestions(height) && tagSearch.suggestionArea(height).isEmpty())) {
+                super.setTooltipForNextRenderPass(lines, positioner, override);
             }
         }
 

@@ -16,7 +16,7 @@ import java.util.List;
 public final class GlassTooltip {
 
     private static final int PAD = 4;
-    private static final float TEXT_Z = 400f;
+    private static final float TOOLTIP_Z = 400f;
 
     private GlassTooltip() {
     }
@@ -46,10 +46,11 @@ public final class GlassTooltip {
 
         g.pose().pushPose();
         try {
+            g.flush();
+            g.pose().translate(0f, 0f, TOOLTIP_Z);
             if (smoke) GlassSurface.smokePanel(g, x - PAD, y - PAD, w + PAD * 2, h + PAD * 2);
             else GlassTheme.GLASS.tooltipPanel(g, x - PAD, y - PAD, w + PAD * 2, h + PAD * 2);
             g.flush();
-            g.pose().translate(0f, 0f, TEXT_Z);
             int ty = y;
             for (int i = 0; i < components.size(); i++) {
                 ClientTooltipComponent c = components.get(i);
@@ -63,6 +64,7 @@ public final class GlassTooltip {
                 c.renderImage(font, x, ty, g);
                 ty += c.getHeight() + (i == 0 ? 2 : 0);
             }
+            g.flush();
         } finally {
             g.pose().popPose();
         }
