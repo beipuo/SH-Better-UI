@@ -59,6 +59,7 @@ minecraft {
 }
 
 processResources {
+    from('LICENSE')
     filteringCharset = 'UTF-8'
     def properties = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version,
                       mod_authors: mod_authors, mod_description: mod_description,

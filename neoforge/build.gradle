@@ -70,6 +70,7 @@ tasks.withType(Test).configureEach {
     workingDir = projectDir.parentFile
 }
 processResources {
+    from('../LICENSE')
     inputs.property('mod_version', mod_version)
     inputs.property('neo_version', neo_version)
     filesMatching('META-INF/neoforge.mods.toml') { expand(mod_version: mod_version, neo_version: neo_version) }
