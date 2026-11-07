@@ -6,6 +6,7 @@ license="All Rights Reserved"
 modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
+logoFile="cover.png"
 authors="${mod_authors}"
 description="${mod_description}"
 

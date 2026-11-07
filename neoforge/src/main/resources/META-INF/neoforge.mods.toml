@@ -6,6 +6,7 @@ license="All Rights Reserved"
 modId="sh_better_ui"
 version="${mod_version}"
 displayName="SH-Better-UI"
+logoFile="cover.png"
 authors="dishanhai"
 description="Shared glass UI, blur and animation library."
 [[dependencies.sh_better_ui]]
