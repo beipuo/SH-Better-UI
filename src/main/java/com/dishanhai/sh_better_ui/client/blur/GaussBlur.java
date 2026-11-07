@@ -696,7 +696,7 @@ public final class GaussBlur {
                     mc.getTextureManager(),
                     mc.getResourceManager(),
                     mc.getMainRenderTarget(),
-                    new ResourceLocation(ShBetterUi.MOD_ID, "shaders/post/shop_gauss_blur.json"));
+                    ResourceLocation.fromNamespaceAndPath(ShBetterUi.MOD_ID, "shaders/post/shop_gauss_blur.json"));
             created.resize(fbW, fbH);
             chain = created;
             chainWidth = fbW;

@@ -24,8 +24,19 @@ if exist "%~dp0build\libs" (
 call "%~dp0gradle-install\gradle-8.8\bin\gradle.bat" build --offline --no-daemon --console=plain
 set "BUILD_EXIT=%ERRORLEVEL%"
 if not "%BUILD_EXIT%"=="0" goto finish
-echo 正式包：build\libs\sh_better_ui-1.0.0.jar
-echo 開發包：build\libs\sh_better_ui-1.0.0-dev.jar
+echo Forge 產物：
+dir /b "%~dp0build\libs\*.jar"
+if exist "%~dp0neoforge\build\libs" rmdir /s /q "%~dp0neoforge\build\libs"
+if exist "%~dp0neoforge\build\libs" (
+    echo 無法清除舊的 neoforge\build\libs 目錄
+    set "BUILD_EXIT=1"
+    goto finish
+)
+call "%~dp0neoforge\gradlew.bat" -p "%~dp0neoforge" build --offline --no-daemon --console=plain
+set "BUILD_EXIT=%ERRORLEVEL%"
+if not "%BUILD_EXIT%"=="0" goto finish
+echo NeoForge 1.21.1 產物：
+dir /b "%~dp0neoforge\build\libs\*.jar"
 
 :finish
 echo.

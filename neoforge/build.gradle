@@ -70,6 +70,7 @@ tasks.withType(Test).configureEach {
 }
 processResources {
     inputs.property('mod_version', mod_version)
+    inputs.property('neo_version', neo_version)
     inputs.property('waveOriginUniformType', 'vec2')
     filesMatching('META-INF/neoforge.mods.toml') { expand(mod_version: mod_version, neo_version: neo_version) }
     filesMatching('pack.mcmeta') {
