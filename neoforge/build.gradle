@@ -16,13 +16,15 @@ kotlin {
 repositories {
     mavenCentral()
     maven { url = 'https://thedarkcolour.github.io/KotlinForForge/' }
+    maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
 }
 
 // Share stable drawing and motion API; only loader/render entry points are overridden.
 def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/UiClient.java',
         'com/dishanhai/sh_better_ui/client/blur/GaussBlur.java',
-        'com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java']
+        'com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java',
+        'com/dishanhai/sh_better_ui/client/jei/JeiPlatformTooltip.java']
 sourceSets {
     main {
         java.srcDir('../src/main/java')
@@ -53,6 +55,7 @@ neoForge {
 }
 dependencies {
     implementation "thedarkcolour:kotlinforforge-neoforge:${kff_version}"
+    compileOnly 'mezz.jei:jei-1.21.1-common-api:19.69.0.456'
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.ow2.asm:asm:9.8'
@@ -101,7 +104,8 @@ tasks.register('verifyLibraryJar') {
             def forbidden = zip.entries().findAll {
                 it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
                 it.name.startsWith('thedarkcolour/') || it.name.startsWith('com/dishanhai/gt_shanhai/') ||
-                it.name.startsWith('com/dishanhai/sh_better_ui/compat/ldlib/') || it.name == 'META-INF/mods.toml'
+                it.name.startsWith('com/dishanhai/sh_better_ui/compat/ldlib/') ||
+                it.name.startsWith('mezz/jei/') || it.name == 'META-INF/mods.toml'
             }
             if (!forbidden.isEmpty()) throw new GradleException("Unexpected embedded entries: ${forbidden*.name}")
         } finally { zip.close() }

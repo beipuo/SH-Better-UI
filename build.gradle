@@ -20,13 +20,17 @@ kotlin {
     compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21 }
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
+}
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     // KotlinForForge is installed separately. Never unpack or embed its classes.
     implementation files('libs/kotlinforforge-4.12.0-all.jar')
     compileOnly files('libs/ldlib-forge-1.20.1-1.0.33.b.jar')
+    compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.49.0.200')
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
@@ -111,7 +115,7 @@ tasks.register('verifyLibraryJar') {
             def forbidden = zip.entries().findAll {
                 it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
                 it.name.startsWith('kotlinx/') || it.name.startsWith('thedarkcolour/') ||
-                it.name.startsWith('com/dishanhai/gt_shanhai/')
+                it.name.startsWith('com/dishanhai/gt_shanhai/') || it.name.startsWith('mezz/jei/')
             }.collect { it.name }
             if (!forbidden.isEmpty()) throw new GradleException("UI library contains embedded dependency classes: ${forbidden.take(5)}")
         } finally { zip.close() }

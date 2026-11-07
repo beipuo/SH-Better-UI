@@ -8,5 +8,15 @@
   "sh_better_ui.action.timed_out": "等待回执超时",
   "sh_better_ui.search.label": "搜索",
   "sh_better_ui.search.usage": "上下键选择，Tab 或点击填充，Esc 收起建议，Ctrl+Z（Mac 为 ⌘Z）撤销填充",
-  "sh_better_ui.search.suggestion.id": "%1$s · %2$s"
+  "sh_better_ui.search.suggestion.id": "%1$s · %2$s",
+  "sh_better_ui.jei.mod_filter": "筛选模组",
+  "sh_better_ui.jei.unavailable": "JEI 当前不可用",
+  "sh_better_ui.jei.no_results": "没有匹配的物品或流体",
+  "sh_better_ui.jei.no_recipes": "没有可显示的配方",
+  "sh_better_ui.jei.preview_unavailable": "此配方可在 JEI 中查看",
+  "sh_better_ui.jei.obtaining": "获取方式",
+  "sh_better_ui.jei.uses": "用途",
+  "sh_better_ui.jei.open": "在 JEI 中打开",
+  "sh_better_ui.jei.choose": "选用",
+  "sh_better_ui.jei.row_selected": "已选中：%s"
 }

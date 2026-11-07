@@ -8,5 +8,15 @@
   "sh_better_ui.action.timed_out": "Response timed out",
   "sh_better_ui.search.label": "Search",
   "sh_better_ui.search.usage": "Use Up and Down to select, Tab or click to fill, Esc to dismiss, and Ctrl+Z (⌘Z on Mac) to undo a fill",
-  "sh_better_ui.search.suggestion.id": "%1$s · %2$s"
+  "sh_better_ui.search.suggestion.id": "%1$s · %2$s",
+  "sh_better_ui.jei.mod_filter": "Filter by mod",
+  "sh_better_ui.jei.unavailable": "JEI is currently unavailable",
+  "sh_better_ui.jei.no_results": "No matching items or fluids",
+  "sh_better_ui.jei.no_recipes": "No recipes to display",
+  "sh_better_ui.jei.preview_unavailable": "View this recipe in JEI",
+  "sh_better_ui.jei.obtaining": "Recipes",
+  "sh_better_ui.jei.uses": "Uses",
+  "sh_better_ui.jei.open": "Open in JEI",
+  "sh_better_ui.jei.choose": "Choose",
+  "sh_better_ui.jei.row_selected": "Selected: %s"
 }
