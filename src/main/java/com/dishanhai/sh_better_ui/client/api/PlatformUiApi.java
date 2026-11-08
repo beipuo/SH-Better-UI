@@ -1,0 +1,98 @@
+package com.dishanhai.sh_better_ui.client.api;
+
+import com.dishanhai.sh_better_ui.client.glass.GlassTooltip;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPullRefresh;
+import com.dishanhai.sh_better_ui.client.gui.selection.IngredientValues;
+import com.dishanhai.sh_better_ui.client.jei.JeiIntegration.Ingredient;
+import com.dishanhai.sh_better_ui.compat.ldlib.GlassPanelTexture;
+import com.dishanhai.sh_better_ui.compat.ldlib.LdLibOverlays;
+import com.dishanhai.sh_better_ui.compat.ldlib.LdLibPullRefreshWidget;
+import com.lowdragmc.lowdraglib.gui.modular.ModularUIGuiContainer;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraftforge.client.event.RenderTooltipEvent;
+import net.minecraftforge.fluids.FluidStack;
+
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+
+/** 山海：Forge 1.20.1 的原生类型与可选 LDLib 1.x 接入。 */
+public final class PlatformUiApi {
+    PlatformUiApi() {}
+
+    public Ingredient fluid(FluidStack stack) {
+        return IngredientValues.fluid(stack);
+    }
+
+    public void renderTooltip(RenderTooltipEvent.Pre event) {
+        GlassTooltip.render(event);
+    }
+
+    public void renderTooltip(RenderTooltipEvent.Pre event, boolean smoke) {
+        GlassTooltip.render(event, smoke);
+    }
+
+    public LdLib ldlib() {
+        return LdLib.INSTANCE;
+    }
+
+    /** 使用以下接口的客户端需安装 Forge LDLib 1.x。 */
+    public static final class LdLib {
+        private static final LdLib INSTANCE = new LdLib();
+
+        private LdLib() {}
+
+        public GlassPanelTexture root() {
+            return GlassPanelTexture.root();
+        }
+
+        public GlassPanelTexture panel() {
+            return GlassPanelTexture.panel();
+        }
+
+        public GlassPanelTexture display() {
+            return GlassPanelTexture.display();
+        }
+
+        public GlassPanelTexture page() {
+            return GlassPanelTexture.page();
+        }
+
+        public GlassPanelTexture button() {
+            return GlassPanelTexture.button();
+        }
+
+        public GlassPanelTexture clearPanel() {
+            return GlassPanelTexture.clearPanel();
+        }
+
+        public GlassPanelTexture clearButton() {
+            return GlassPanelTexture.clearButton();
+        }
+
+        public GlassPanelTexture clearButtonOverlay() {
+            return GlassPanelTexture.clearButtonOverlay();
+        }
+
+        public GlassPanelTexture smokePanel() {
+            return GlassPanelTexture.smokePanel();
+        }
+
+        public GlassPanelTexture smokeButtonOverlay() {
+            return GlassPanelTexture.smokeButtonOverlay();
+        }
+
+        public LdLibOverlays overlay(ModularUIGuiContainer owner, UiPreferences preferences) {
+            return new LdLibOverlays(owner, preferences);
+        }
+
+        /** 把手使用父 Widget 的局部布局坐标，放开范围使用绝对 GUI 坐标。 */
+        public LdLibPullRefreshWidget createPullRefreshHandle(Bounds bounds, UiPullRefresh refresh,
+                                                              UiPreferences preferences, BooleanSupplier atTop,
+                                                              Supplier<Rect2i> releaseBounds, boolean keyboardShortcut) {
+            return new LdLibPullRefreshWidget(bounds.x(), bounds.y(), bounds.width(), bounds.height(), refresh,
+                    preferences, atTop, releaseBounds, keyboardShortcut);
+        }
+    }
+}
