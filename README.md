@@ -150,12 +150,16 @@ cancelButton.setIcon(GraphicIcon.CLOSE);
 - `UiDisclosure` 提供有原生键盘操作与讲述人的展开按钮。界面重排时可重建按钮，保留 `UiDisclosure` 与草稿，回调只切换可见性与版面。
 - `ButtonFeedback.status()` 提供等待、成功、部分完成、失败、取消及超时等状态。可通过 `Component.translatable(status.translationKey())` 显示本地化文字，或在状态变更时通知讲述人。收到取消回执后再调用 `resolveCancelled()`。
 
+### 对话框、气泡提示、动作面板与下拉刷新
+
+`UiOverlayHost` 提供原画面的提示框、确认框、底部动作面板与控件锚点气泡。`UiPullRefresh` 提供列表顶部下拉、键盘刷新、请求去重及回执状态。Forge 与 NeoForge 原生 `Screen` 共用这些接口，另有可选的 Forge LDLib 1.x Widget 和 NeoForge LDLib2 `UIElement` 适配。示例见[画面交互 API](SCREEN_INTERACTIONS.md)。
+
 ### 搜索、预测与自动填充
 
 `client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的纯文字名称、任意数量的 ID 和别名建立快照。多词查询要求每个词都命中，词可落在不同字段。比对忽略大小写与多余空白。拼音全拼、首字母或业务同义词可以作为别名传入。
 
 - `search(query, scope)` 按来源顺序返回命中项目，空查询返回范围内全部项目。`suggest(query, scope, limit)` 依名称、ID 的精确／前缀／包含命中排序，最后列出别名或跨字段命中。自绘输入框可用 `Suggestion.suffixFor(query)` 取得可直接追加的灰字后缀。
-- `SearchField` 沿用原生 `EditBox`。输入变更会更新联想，光标在末端且没有选取文字时才显示灰字。上下键选择，`Tab` 或点击填充，`Esc` 收起联想并保留输入。`setOnSubmit` 接收 `Enter` 提交的当前查询，`Ctrl+Z`（Mac 为 `⌘Z`）或 `undoCompletion()` 恢复填充前的查询。
+- `SearchField` 沿用原生 `EditBox`。空间足够时在右侧显示 16×16 放大镜，较窄或较矮的输入框把空间留给文字。输入变更会更新联想，光标在末端且没有选取文字时才显示灰字。上下键选择，`Tab` 或点击填充，`Esc` 收起联想并保留输入。`setOnSubmit` 接收 `Enter` 提交的当前查询，`Ctrl+Z`（Mac 为 `⌘Z`）或 `undoCompletion()` 恢复填充前的查询。
 - `setResponder` 在查询实际变更时通知一次。分类切换时以 `setScope` 重新提供范围，数据或语言变更时以 `setIndex` 替换索引；两者都保留输入文字。
 
 原生 `Screen` 接入示例，`refreshResults` 和 `submitSearch` 为界面自己的方法。
@@ -305,9 +309,61 @@ GlassEffectRenderer.drawRipple(g, x, y, w, h, ripple, nowMs, reducedMotion, acce
 
 `reducedMotion=true` 时，涟漪改成均匀淡出，流光与呼吸改成静态亮度。这些接口只提交原生 GUI 矩形，不新增后处理、材质或依赖；局部涟漪与 `GaussBlur.requestWave` 的屏幕折射波可分别使用。完整组合与 LDLib 接入示例见[可选玻璃效果](docs/effects.md)。
 
+### 文字与布局对齐
+
+`client.gui.display` 提供 `UiText` 和 `UiLayout`，Forge 与 NeoForge 使用相同接口。坐标和间距均为 GUI 逻辑单位。
+
+```java
+var area = new GraphicDisplayLayout.Bounds(12, 20, 160, 24);
+UiText.drawCentered(graphics, font, Component.translatable("your_mod.title"), area, 0xFFFFFFFF, false);
+
+var buttons = UiLayout.row(area, List.of(new UiLayout.Size(28, 18), new UiLayout.Size(44, 20)),
+        4, UiLayout.Horizontal.RIGHT, UiLayout.Vertical.CENTER);
+```
+
+`drawLeft`、`drawCentered`、`drawRight` 将单行文字垂直居中，并按原生字体宽度水平对齐。可使用 `draw` 传入动态的水平对齐值。
+
+`UiLayout.align` 定位单个元件。`row` 水平对齐整组、垂直对齐各项，`column` 垂直对齐整组、水平对齐各项。两者都返回与输入顺序一致的不可变 `Bounds` 列表。空间不足时保留原尺寸。若界面启用裁切，绘制与命中均使用容器与对应 `Bounds` 的交集。
+
 ### 图形化显示
 
 Forge 与 NeoForge 的原生 `Screen` 可使用 `client.gui.display` 下的图标与状态面板。状态和翻页图标有 `INFO`、`SUCCESS`、`WARNING`、`ERROR`、`PREVIOUS`、`NEXT`。通用操作图标有 `ADD`、`REMOVE`、`SEARCH`、`SETTINGS`、`REFRESH`、`CLOSE`。可用 `new GraphicIcon(textureId)` 引用自己的 16×16 透明 PNG，白色图形可按 ARGB 着色。给 `UiButton` 设置图标时仍应传入本地化按钮名称，供悬停提示和旁白使用。
+
+内置图标的 64×64 透明副本位于 `sh_better_ui:textures/gui/display_64/<图标名>.png`，与 16×16 原图同名。副本按最近邻放大 4 倍，适用于按 64×64 读取完整纹理的调用方。内置 `GraphicIcon` 常数引用 16×16 原图。
+
+其他操作可用 `FILTER`、`SORT`、`EDIT`、`COPY`、`DELETE`、`FAVORITE`、`LOCK`、`UNLOCK`、`EXPAND`、`COLLAPSE`、`UPLOAD` 和 `DOWNLOAD`。例如用 `button.setLeadingIcon(GraphicIcon.FILTER)` 在筛选按钮的文字旁显示漏斗。
+
+导航用 `BACK`（返回）、`FORWARD`（前进），列表翻页用 `PREVIOUS` 和 `NEXT`。工作流按钮可用 `SWITCH`（切换）、`MERGE`（合并）、`NEW`（新建）、`SAVE`（保存）、`EXPORT`（导出）、`COMMENT`（评论）和 `DELETE`（删除）。`COMMENT` 与 `BUBBLE` 共用气泡图案。
+
+提示和取消可用 `WARNING`（警告）、`CRITICAL_WARNING`（严重警告）、`CANCEL`（普通取消，与 `CLOSE` 共用叉号）和 `CRITICAL_CANCEL`（严重取消）。严重状态使用八边形轮廓，在单色主题中也能区分。维护与显示操作可用 `REPAIR`（修复）、`RESET`（重置）、`DISABLE`（禁用）、`ENABLE`（启用）、`HIDE`（隐藏）、`SHOW`（显示）、`ORGANIZE`（整理）和 `SORT`（排序）。
+
+工具和分类图标包括 `CACHE`（缓存）、`LOG`（日志）、`MONITOR`（监控）、`TODO`（待办）、`DOCUMENT`（文档）、`CODE`（代码）、`TEST`（测试）、`DEVELOPMENT`（开发）、`COLLECTION`（集合）和 `SEPARATE`（分离）。`SEPARATE` 的箭头从一条路径分成两条，与 `MERGE` 配对使用。
+
+记录、账户和设备图标包括 `HISTORY`（历史记录）、`USER`（单个用户）、`SYSTEM`（系统）、`PHONE`（手机）和 `COMPUTER`（电脑）。成员列表仍可用 `MEMBERS`，监控面板可用 `MONITOR`。
+
+任务控制按钮可用 `RUN`（运行）、`PAUSE`（暂停）和 `RESUME`（继续）。继续图标在播放三角左侧保留一条暂停线，便于区分开始运行与恢复运行。
+
+游戏和设备图标包括 `MINECRAFT`（苦力怕脸）、`GAMEPAD`（手柄／游玩）、`MOUSE`（鼠标）、`KEYBOARD`（键盘）、`HEADPHONES`（耳机）和 `MICROPHONE`（麦克风／语音）。加载器可用 `FORGE`（铁砧）和 `NEOFORGE`（狐狸头）。游戏和加载器标识是适合主题着色的单色像素图案。
+
+模组图标包括 `AE2`（ME 控制器通电正面）、`MEKANISM`（齿轮与闪电）、`FTB_QUESTS`（束带任务书）、`KUBEJS`（拼图方块）和 `GREGTECH`（GTCEu 徽记）。图标由本库随包提供，可直接用于 `UiButton`。
+
+内容分类用 `BLOCK`（立体方块）和 `ITEM`（锭形物品）。详情入口用 `ATTRIBUTES`（属性）、`DESCRIPTION`（描述）、`TOOLTIP`（悬停提示）和 `INTERACTION`（交互）。
+
+归档和安全操作用 `COMPRESS`（压缩）、`DECOMPRESS`（解压）、`ENCRYPT`（加密）和 `DECRYPT`（解密）。插件与资料入口用 `PLUGIN`（插件）、`GITHUB`（GitHub）、`MCMOD`（MC 百科）和 `WIKI`（通用 Wiki）。
+
+管理入口可用 `SETTINGS`（设置）、`CONFIG`（配置）、`MANAGEMENT`（管理）、`PERMISSIONS`（权限）、`LIST`（列表）、`DETAILS`（详情）、`EDIT`（编辑）、`MOD`（模组）和 `TEMPLATE`（模板）。基础设施用 `DATA`（数据）、`NETWORK`（网络）、`SERVER`（服务器）和 `DATABASE`（数据库）。运维用 `BACKUP`（备份）、`MIGRATE`（迁移）、`UPGRADE`（升级）、`SECURITY`（安全）、`AUDIT`（审计）和 `REPORT`（报告）。
+
+执行与调度用 `QUEUE`（队列）、`POLLING`（轮询）、`ASYNC`（异步）、`CONCURRENCY`（并发）、`THREAD`（线程）、`PROCESS`（进程）、`PARALLEL`（并行）和 `SCHEDULER`（调度）。任务与奖励用 `TASK` 和 `REWARD`。
+
+GitHub 仓库入口可用 `GITHUB_REPO`（仓库）、`GITHUB_PULL_REQUEST`（Pull requests）、`GITHUB_ISSUE`（Issues）、`GITHUB_DISCUSSION`（Discussions）、`GITHUB_ACTIONS`（Actions）、`GITHUB_README`（README）、`GITHUB_RELEASE`（Releases）和 `GITHUB_COMMITS`（Commits）。两种尺寸取自 GitHub 的 Octicons，授权声明随 JAR 一起提供。[Octicons](https://github.com/primer/octicons)
+
+项目许可用 `LICENSE`（通用许可）、`LICENSE_OPEN_SOURCE`（开源许可）和 `LICENSE_CLOSED_SOURCE`（闭源许可）。项目信息入口可用 `AUTHORIZATION`（授权）、`CONTRIBUTORS`（贡献者）、`AFDIAN`（爱发电品牌）、`SUPPORT`（发电／支持创作者）和 `ACKNOWLEDGMENTS`（鸣谢）。
+
+AI 服务入口可用 `CHATGPT`、`CLAUDE`、`DEEPSEEK`、`GROK` 和 `GEMINI`。图标提供 16×16 与 64×64 两种透明尺寸，Gemini 使用白色像素绘制的内凹四角星。
+
+联络和获取支持的入口可用 `QQ`、`WECHAT`（微信）、`X`（原 Twitter）、`DISCORD`、`TELEGRAM`、`WHATSAPP` 和 `FACEBOOK`。邮件入口可用 `EMAIL`（通用信封）、`QQ_MAIL`、`ICLOUD_MAIL` 和 `GMAIL`。调用方可通过 `UiButton.setLeadingIcon` 将图标与本地化按钮文字配合使用。
+
+视频平台入口可用 `BILIBILI`（哔哩哔哩）、`DOUYIN`（抖音）、`KUAISHOU`（快手）和 `YOUTUBE`。
 
 ```java
 // 面板内框使用 Screen 的逻辑坐标。entries 是当前页的 List<GraphicDisplay.Entry>。
@@ -452,4 +508,4 @@ $env:TMP = 'C:\jtmp'
 
 两平台共用的 shader 将 `WaveOrigin` 声明为 GLSL `vec2`，匹配 Minecraft 的 `float/count=2` 上传。资源测试检查各平台的实际构建输出。
 
-NeoForge 版本提供原生 Screen 的公开 API；目前不包含 Forge 1.20.1 专用的 `compat.ldlib.GlassPanelTexture`，不声明 LDLib 依赖。LDLib 接入方应维持使用相应平台版本，不能跨平台混装。实际测试与待验项目见 `neoforge/VERIFICATION.md` 与 `TODO.md`。
+NeoForge 版本提供原生 `Screen` API 和可选的 `compat.ldlib2.LdLib2UiBridge`。使用桥接时安装 LDLib2 `2.2.44`，首次构建时联网解析编译依赖。Forge 1.20.1 的 `compat.ldlib` 套件随 Forge 产物发布。测试与待验项目见 `neoforge/VERIFICATION.md` 与 `TODO.md`。

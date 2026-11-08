@@ -265,6 +265,10 @@ GlassEffectRenderer.drawRipple(g, x, y, w, h, ripple, nowMs, reducedMotion, acce
 
 `reducedMotion=true` 時，漣漪改成均勻淡出，流光與呼吸改成靜態亮度。這些接口只提交原生 GUI 矩形，不新增後處理、材質或依賴；局部漣漪與 `GaussBlur.requestWave` 的屏幕折射波可分別使用。完整組合與 LDLib 接入示例見[可選玻璃效果](docs/effects.md)。
 
+### 文字與佈局對齊
+
+`UiText.drawLeft`、`drawCentered`、`drawRight` 使用原生字寬水平對齊單行 `Component`，並在指定區域垂直置中。`UiLayout.align` 定位單一元件，`row` 和 `column` 可設定整組與各項的對齊及間距。回傳的 `Bounds` 可共用於繪製與命中，空間不足時保留原尺寸。兩個平台共用介面。[Java 接入範例](README.md#文字与布局对齐)
+
 ### 中性玻璃渲染預覽
 
 左為調整前，右為調整後。玻璃使用實際 shader 離屏渲染與實際色板；背景、字體與排版為測試示意，並非 Minecraft 實機畫面。文字柔光的消費端接入範圍及驗證結果見[玻璃維護紀錄](docs/neutral-glass-maintenance.md)，遊戲驗收項目見 [TODO](TODO.md)。
@@ -288,4 +292,4 @@ $env:TMP = 'C:\jtmp'
 
 兩平台共用的 shader 將 `WaveOrigin` 宣告為 GLSL `vec2`，對齊 Minecraft 的 `float/count=2` 上傳。資源測試檢查各平台的實際構建輸出。
 
-NeoForge 版本提供原生 Screen 的公開 API；目前不包含 Forge 1.20.1 專用的 `compat.ldlib.GlassPanelTexture`，不宣告 LDLib 前置。LDLib 消費端應維持使用相應平台版本，不能跨平台混裝。實際測試與待驗項目見 `neoforge/VERIFICATION.md` 與 `TODO.md`。
+NeoForge 版本提供原生 `Screen` API 與可選的 `compat.ldlib2.LdLib2UiBridge`。使用橋接時安裝 LDLib2 `2.2.44`。Forge 1.20.1 的 `compat.ldlib` 套件隨 Forge 產物發布。對話框、氣泡提示、動作面板與下拉刷新的接入範例見 [畫面互動 API](SCREEN_INTERACTIONS.md)。測試與待驗項目見 `neoforge/VERIFICATION.md` 與 `TODO.md`。

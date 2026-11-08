@@ -13,7 +13,7 @@ SH-Better-UI is a Minecraft client UI library for Forge 1.20.1 and NeoForge 1.21
 | Minecraft 1.20.1 | Forge 47.4.16 or later | 21 | KotlinForForge 4.12.0, with Kotlin 2.2.21 |
 | Minecraft 1.21.1 | NeoForge 21.1.251 for development | 21 | KotlinForForge NeoForge 5.10.0 or a compatible 5.x release |
 
-Install KotlinForForge separately. JEI is optional. Forge integrations that use `compat.ldlib.GlassPanelTexture` also require `ldlib-forge-1.20.1-1.0.33.b.jar`. Native Minecraft screens do not require LDLib. The NeoForge build provides the native screen API.
+Install KotlinForForge separately. JEI is optional. Forge integrations under `compat.ldlib` use LDLib `1.0.33.b`. NeoForge integrations under `compat.ldlib2` use LDLib2 `2.2.44`. Both native Screen builds can use the shared dialog, anchored bubble, action sheet, and pull-to-refresh APIs. See the [integration examples](SCREEN_INTERACTIONS.md).
 
 ## Build and install
 
@@ -96,6 +96,10 @@ IngredientPicker.open(this, request, () -> rebuiltPickerButton, this::applySelec
 The tag ID in this example uses Forge naming. Supply IDs from the target platform's registry. `IngredientCatalog` supports JEI, the vanilla registry, and fixed caller-provided candidates. `automatic()` prefers JEI and falls back to the registry while JEI is unavailable. The picker supports single and multiple selection, a selected-only view, undo, cancel, and confirmation. Confirmation returns an immutable list. The draft and filters survive resizing and a visit to a JEI recipe.
 
 Use `IngredientValues.item(stack)` and `fluid(stack)` to create candidates from platform stacks. `Ingredient.copy(...)` returns a native stack copy with its amount and NBT or data components. Use `Ingredient.key()` for identity within the running session and persist the native stack data. Embedded panels can use `setCatalog`, `setFilter`, `setChosen`, and `refreshSelection()` to work with a host-managed draft.
+
+### Text and layout alignment
+
+`UiText.drawLeft`, `drawCentered`, and `drawRight` use the native font to align a single `Component` horizontally and center it vertically within the supplied area. `UiLayout.align` places one element. `row` and `column` arrange elements with a configurable gap, group alignment, and per-element cross-axis alignment. Use the returned `Bounds` for drawing and hit testing. Elements keep their requested size when they exceed the available space. Both loaders share the API. [Java example](README.md#文字与布局对齐)
 
 ## Preview and verification
 
