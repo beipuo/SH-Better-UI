@@ -11,6 +11,29 @@ class UiBottomSheetTest {
     private static final UiPreferences REDUCED_MOTION = new UiPreferences(false, true, false);
 
     @Test
+    void capsuleGeometryStaysCenteredAndFollowsTheDragInBothDirections() {
+        UiBottomSheet sheet = UiBottomSheet.capsule(1, 0f, 0.05f, 0.25f);
+        var small = sample(sheet, 0);
+        assertTrue(small.panel().width() > FluidMorph.SEED_WIDTH);
+        assertTrue(small.panel().width() < VIEWPORT.width());
+        assertEquals(VIEWPORT.x() + (VIEWPORT.width() - small.panel().width()) / 2, small.panel().x());
+        assertEquals(small.panel().width(), small.content().width());
+        assertFalse(sheet.begin(small, 0, small.handle().right(), small.handle().y(), 0));
+        assertTrue(sheet.begin(small, 0, small.handle().x(), small.handle().y(), 0));
+
+        sheet.drag(0, small.handle().x(), small.handle().y() - 18, 100);
+        var wider = sample(sheet, 100);
+        assertTrue(wider.panel().width() > small.panel().width());
+        sheet.drag(0, small.handle().x(), small.handle().y(), 200);
+        assertEquals(small.panel(), sample(sheet, 200).panel());
+
+        sheet.cancelGesture(200);
+        var reduced = sheet.sample(VIEWPORT, 200, REDUCED_MOTION);
+        assertEquals(VIEWPORT.width(), reduced.panel().width());
+        assertEquals(small.panel().height(), reduced.panel().height());
+    }
+
+    @Test
     void usesTheDrawnHandleAndCapturesUntilTheFinalReleaseCoordinate() {
         UiBottomSheet sheet = sheet(1);
         var frame = sample(sheet, 0);

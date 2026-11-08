@@ -16,6 +16,8 @@ public final class UiBottomSheet {
     private static final long VELOCITY_WINDOW_MS = 100L;
     private static final double MAX_POINTER_SPEED = 2400.0;
     private static final Spring.Preset SETTLE = new Spring.Preset(0.24, 0.74, 0.00025f, 0.004f);
+    private static final Spring.Preset CAPSULE_SETTLE = new Spring.Preset(0.36, 0.88,
+            SETTLE.settleEps(), SETTLE.settleVelocity());
 
     /**
      * 绘制和命中共用的绝对 GUI 坐标。抽屉上沿可暂时移出视口，正文区域已裁切。
@@ -25,6 +27,7 @@ public final class UiBottomSheet {
                         int targetAnchor, boolean dragging, boolean settling) {}
 
     private final float[] anchors;
+    private final boolean capsuleMorph;
     private final PointerDrag pointer = new PointerDrag();
     // 弹簧和手势共用未压缩的位置，重新抓住回弹中的把手时可沿同一轨迹接续。
     private final Spring height;
@@ -42,6 +45,15 @@ public final class UiBottomSheet {
      * {@code initialAnchor} 是从 0 开始的数组索引。至少提供一个档位。
      */
     public UiBottomSheet(int initialAnchor, float... anchorHeights) {
+        this(initialAnchor, false, anchorHeights);
+    }
+
+    /** 从底部小胶囊展开的抽屉。拖动、渲染和命中使用同一套几何。 */
+    public static UiBottomSheet capsule(int initialAnchor, float... anchorHeights) {
+        return new UiBottomSheet(initialAnchor, true, anchorHeights);
+    }
+
+    private UiBottomSheet(int initialAnchor, boolean capsuleMorph, float... anchorHeights) {
         this.anchors = anchorHeights.clone();
         if (anchors.length == 0 || initialAnchor < 0 || initialAnchor >= anchors.length) {
             throw new IllegalArgumentException("Invalid initial anchor index");
@@ -53,8 +65,9 @@ public final class UiBottomSheet {
             }
             previous = anchor;
         }
+        this.capsuleMorph = capsuleMorph;
         this.targetAnchor = initialAnchor;
-        this.height = new Spring(SETTLE, anchors[initialAnchor]);
+        this.height = new Spring(capsuleMorph ? CAPSULE_SETTLE : SETTLE, anchors[initialAnchor]);
     }
 
     public int anchorCount() { return anchors.length; }
@@ -150,7 +163,11 @@ public final class UiBottomSheet {
 
         double visibleHeight = visibleHeight(viewport.height());
         int pixels = Math.max(0, Math.round((float) visibleHeight));
-        Bounds panel = new Bounds(viewport.x(), viewport.bottom() - pixels, viewport.width(), pixels);
+        float spread = capsuleProgress(viewport, pixels);
+        int startWidth = Math.min(FluidMorph.SEED_WIDTH, viewport.width());
+        int panelWidth = Math.round(GuiMotion.lerp(startWidth, viewport.width(), spread));
+        Bounds panel = new Bounds(viewport.x() + (viewport.width() - panelWidth) / 2,
+                viewport.bottom() - pixels, panelWidth, pixels);
         int handleWidth = Math.min(HANDLE_WIDTH, panel.width());
         int handleHeight = Math.min(HANDLE_HEIGHT, pixels);
         int handleTop = panel.y() + Math.min(3, pixels - handleHeight);
@@ -175,8 +192,17 @@ public final class UiBottomSheet {
         graphics.enableScissor(viewport.x(), viewport.y(), viewport.right(), viewport.bottom());
         try {
             if (panel.height() > 0) {
-                DarkModeTheme.modalPanel(graphics, panel.x(), panel.y(), panel.width(), panel.height(),
-                        preferences.highContrast());
+                float spread = capsuleProgress(viewport, panel.height());
+                if (spread < 1f) {
+                    float radius = GuiMotion.lerp(Math.min(panel.width(), panel.height()) * 0.5f, 6f, spread);
+                    RoundedCorners.draw(graphics, panel.x(), panel.y(), panel.width(), panel.height(), radius, 1f,
+                            preferences.highContrast() ? DarkModeTheme.TEXT
+                                    : GuiMotion.lerpColor(LiquidGlassTheme.ACCENT, DarkModeTheme.BORDER, spread),
+                            preferences.highContrast() ? DarkModeTheme.BACKGROUND : 0xF21E293B);
+                } else {
+                    DarkModeTheme.modalPanel(graphics, panel.x(), panel.y(), panel.width(), panel.height(),
+                            preferences.highContrast());
+                }
                 float hover = handle.contains(mouseX, mouseY) && viewport.contains(mouseX, mouseY) ? 1f : 0f;
                 var state = new DarkModeTheme.State(hover, hover, frame.dragging() ? 1f : 0f, false, true,
                         preferences.reducedMotion(), preferences.highContrast());
@@ -202,6 +228,13 @@ public final class UiBottomSheet {
             graphics.disableScissor();
         }
         return frame;
+    }
+
+    private float capsuleProgress(Bounds viewport, int pixels) {
+        if (!capsuleMorph || reducedMotion) return 1f;
+        float unfoldHeight = Math.min(56f, Math.max(1f, viewport.height() * anchors[anchors.length - 1]));
+        float progress = GuiMotion.clamp01(pixels / unfoldHeight);
+        return progress * progress * (3f - 2f * progress);
     }
 
     private boolean canBegin(Frame frame, int button, double x, double y) {

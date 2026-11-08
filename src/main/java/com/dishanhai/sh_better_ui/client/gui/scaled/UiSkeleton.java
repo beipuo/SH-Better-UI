@@ -28,17 +28,23 @@ public final class UiSkeleton {
 
     /** 用真实卡片的区域绘制圆角底板、缩略图和两行占位。时间可用 {@link PageTransition#nowMs()}。 */
     public static void card(GuiGraphics graphics, Bounds area, long nowMs, UiPreferences preferences) {
-        render(graphics, area, cardBlocks(area), nowMs, preferences, true);
+        render(graphics, area, cardBlocks(area), nowMs, preferences, true, 1f);
     }
 
     /** 按宿主布局绘制自定义占位块。块和裁切区使用同一组原生 Screen 坐标。 */
     public static void draw(GuiGraphics graphics, Bounds viewport, List<Block> blocks, long nowMs,
                             UiPreferences preferences) {
-        render(graphics, viewport, blocks, nowMs, preferences, false);
+        draw(graphics, viewport, blocks, nowMs, preferences, 1f);
+    }
+
+    /** 在内容入场时用相同的布局淡出占位块。 */
+    public static void draw(GuiGraphics graphics, Bounds viewport, List<Block> blocks, long nowMs,
+                            UiPreferences preferences, float opacity) {
+        if (opacity > 0f) render(graphics, viewport, blocks, nowMs, preferences, false, opacity);
     }
 
     private static void render(GuiGraphics graphics, Bounds viewport, List<Block> blocks, long nowMs,
-                               UiPreferences preferences, boolean card) {
+                               UiPreferences preferences, boolean card, float opacity) {
         if (viewport.width() == 0 || viewport.height() == 0) return;
         boolean highContrast = preferences.highContrast();
         int base = highContrast ? DarkModeTheme.BORDER_HOVER : BASE;
@@ -57,6 +63,7 @@ public final class UiSkeleton {
                         || bounds.y() >= viewport.bottom()) continue;
                 float light = highlight(viewport, bounds, nowMs, preferences.reducedMotion());
                 int fill = GuiMotion.lerpColor(base, peak, light);
+                fill = GuiMotion.lerpColor(fill & 0xFFFFFF, fill, opacity);
                 RoundedCorners.draw(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
                         block.cornerRadius(), 0f, 0, fill);
             }

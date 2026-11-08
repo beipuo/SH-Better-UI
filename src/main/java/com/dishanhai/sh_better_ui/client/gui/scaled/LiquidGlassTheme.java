@@ -16,6 +16,7 @@ public final class LiquidGlassTheme {
     private static final int CONTRAST_EDGE = 0xFFF1F5F9;
     static final int POPOVER_RADIUS = 5;
     private static final float POPOVER_BLUR_RADIUS = 10f;
+    static final int POPOVER_FILL = 0xE6252B34;
     private static final int LAYERED_POPOVER_FILL = 0xA6252B34;
 
     private LiquidGlassTheme() {}
@@ -29,7 +30,14 @@ public final class LiquidGlassTheme {
     /** 独立浮层。较厚的底色用于保证正文与操作项的对比度。 */
     public static void popover(GuiGraphics g, int x, int y, int width, int height, UiPreferences preferences) {
         surface(g, x, y, width, height, POPOVER_RADIUS, preferences, true,
-                GlassStyle.LIQUID_REGULAR, 10f, 1f, 0xE6252B34, EDGE, false);
+                GlassStyle.LIQUID_REGULAR, 10f, 1f, POPOVER_FILL, EDGE, false);
+    }
+
+    static void popover(GuiGraphics g, FluidMorph frame, UiPreferences preferences, float progress) {
+        var rect = frame.rect();
+        int edge = GuiMotion.lerpColor(ACCENT, EDGE, progress);
+        surface(g, rect.getX(), rect.getY(), rect.getW(), rect.getH(), frame.radius(), preferences,
+                true, GlassStyle.LIQUID_REGULAR, POPOVER_BLUR_RADIUS, progress, POPOVER_FILL, edge, false);
     }
 
     /** 山海：在当前图层位置绘制带柔影的浮层底板。调用方随后在同一位置绘制前景。 */
@@ -162,7 +170,7 @@ public final class LiquidGlassTheme {
         return selected && state.enabled() ? ACCENT : EDGE;
     }
 
-    private static void surface(GuiGraphics g, int x, int y, int width, int height, float radius,
+    private static void surface(GuiGraphics g, float x, float y, float width, float height, float radius,
                                 UiPreferences preferences, boolean sampleBackground, GlassStyle style,
                                 float blurRadius, float blurStrength, int fill, int edge, boolean capsule) {
         if (width <= 0 || height <= 0) return;

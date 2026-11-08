@@ -100,7 +100,7 @@ public final class UiTextDetails {
         requireIconSize(width, height);
         var button = new UiButton(x, y, width, height, OPEN_PAGE, source -> {
             Supplier<? extends GuiEventListener> focus = returnFocus == null ? () -> source : returnFocus;
-            Minecraft.getInstance().setScreen(new UiTextDetailsScreen(parent, title, details, preferences, focus));
+            Minecraft.getInstance().setScreen(pageFrom(parent, preferences, (UiButton) source, focus));
         }, preferences, false, UiStyle.LIQUID_GLASS);
         showIcon(button, GraphicIcon.EXPAND);
         return Optional.of(button);
@@ -108,7 +108,20 @@ public final class UiTextDetails {
 
     /** 直接创建完整详情页，供已有自定义入口的画面使用。 */
     public Screen page(Screen parent, UiPreferences preferences) {
-        return new UiTextDetailsScreen(parent, title, details, preferences, () -> null);
+        return page(parent, preferences, () -> null);
+    }
+
+    /** 宿主重建控件时，由回调取得返回后的新入口控件。 */
+    public Screen page(Screen parent, UiPreferences preferences, Supplier<? extends GuiEventListener> returnFocus) {
+        return new UiTextDetailsScreen(parent, title, details, preferences, Objects.requireNonNull(returnFocus));
+    }
+
+    /** 使用已有胶囊按钮作为详情页的入场起点。 */
+    public Screen pageFrom(Screen parent, UiPreferences preferences, UiButton source,
+                           Supplier<? extends GuiEventListener> returnFocus) {
+        var screen = new UiTextDetailsScreen(parent, title, details, preferences, Objects.requireNonNull(returnFocus));
+        screen.revealFrom(source);
+        return screen;
     }
 
     static List<FormattedText> truncate(StringSplitter splitter, List<FormattedText> lines, int width, int limit) {

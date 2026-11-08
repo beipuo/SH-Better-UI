@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.gui.GuiGraphics;
@@ -34,6 +35,7 @@ final class UiTextDetailsScreen extends Screen {
     private final Screen parent;
     private final Component details;
     private final UiPreferences preferences;
+    private final UiCapsuleReveal entrance = new UiCapsuleReveal();
     private final Supplier<? extends GuiEventListener> returnFocus;
     private List<FormattedCharSequence> heading = List.of();
     private List<FormattedCharSequence> content = List.of();
@@ -60,6 +62,10 @@ final class UiTextDetailsScreen extends Screen {
         this.details = details;
         this.preferences = Objects.requireNonNull(preferences);
         this.returnFocus = returnFocus;
+    }
+
+    void revealFrom(UiButton source) {
+        entrance.startFrom(source);
     }
 
     @Override
@@ -125,7 +131,13 @@ final class UiTextDetailsScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         DarkModeTheme.background(graphics, 0, 0, width, height);
+        var panel = new Bounds(left, top, panelWidth, panelHeight);
+        if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
         LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
+        renderContent(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (viewHeight() > 0) {
             int headingY = viewTop - scroll;
             graphics.enableScissor(textLeft, viewTop, textRight, viewBottom);
@@ -161,6 +173,7 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
+        entrance.finish();
         int offset = switch (key) {
             case GLFW.GLFW_KEY_HOME -> 0;
             case GLFW.GLFW_KEY_END -> maxScroll();
@@ -174,7 +187,7 @@ final class UiTextDetailsScreen extends Screen {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return mouseX >= textLeft && mouseX < innerRight && mouseY >= viewTop && mouseY < viewBottom
+        return !entrance.active() && mouseX >= textLeft && mouseX < innerRight && mouseY >= viewTop && mouseY < viewBottom
                 && scrollTo(scroll - (int) Math.round(delta * lineStep() * 3));
     }
 
@@ -184,6 +197,7 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (entrance.active()) return false;
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !hasTrack()
                 || mouseX < textRight || mouseX >= innerRight || mouseY < viewTop || mouseY >= viewBottom) {
             return super.mouseClicked(mouseX, mouseY, button);

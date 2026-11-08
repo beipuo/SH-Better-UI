@@ -3,8 +3,16 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 
 /** 山海：胶囊到面板的浮点轮廓。位置、尺寸与圆角共用一个弹簧进度。 */
-record FluidMorph(GuiRect rect, float radius) {
-    static FluidMorph between(GuiRect capsule, GuiRect panel, float panelRadius, float progress) {
+public record FluidMorph(GuiRect rect, float radius) {
+    static final int SEED_WIDTH = 32;
+    static final int SEED_HEIGHT = 10;
+
+    /** 面板入场统一从小胶囊起步，坐标为胶囊中心。 */
+    public static GuiRect seed(float centerX, float centerY) {
+        return new GuiRect(centerX - SEED_WIDTH * 0.5f, centerY - SEED_HEIGHT * 0.5f, SEED_WIDTH, SEED_HEIGHT);
+    }
+
+    public static FluidMorph between(GuiRect capsule, GuiRect panel, float panelRadius, float progress) {
         float p = GuiMotion.clamp01(progress);
         float from = Math.min(capsule.getW(), capsule.getH()) * 0.5f;
         float to = RoundedCorners.fit(panel.getW(), panel.getH(), panelRadius);

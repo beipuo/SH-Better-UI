@@ -22,6 +22,8 @@ public final class Spring {
     public static final Preset PANEL = new Preset(0.20, 0.92, 0.0015f, 0.02f);
     /** 胶囊与面板共用的过阻尼进度，从静止出发时不越过目标。 */
     public static final Preset FLUID_MORPH = new Preset(0.16, 1.12, 0.00035f, 0.02f);
+    public static final Preset FLUID_PANEL = new Preset(0.42, FLUID_MORPH.damping(), 0.002f,
+            FLUID_MORPH.settleVelocity());
     /** 页签高亮块的 x、宽（像素量级）。 */
     public static final Preset INDICATOR = new Preset(0.18, 0.92, 0.05f, 1.0f);
     /** 网格、详情列滚动（像素量级）。 */
