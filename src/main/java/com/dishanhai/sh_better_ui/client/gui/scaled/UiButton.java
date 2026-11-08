@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
+import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -13,6 +14,8 @@ import java.util.Objects;
 
 /** 山海：保留原生输入、焦点、功能提示和旁白的共用按钮。 */
 public final class UiButton extends Button {
+    private static final int ICON_GAP = 4;
+    private static final int LABEL_PADDING = 6;
     private final UiPreferences preferences;
     private final boolean primary;
     private final UiStyle style;
@@ -22,6 +25,7 @@ public final class UiButton extends Button {
     private long selectedAt;
     private Component preview;
     private GraphicIcon icon;
+    private boolean iconWithLabel;
     private boolean sampleBackground = true;
     private float backgroundBlurRadius = LiquidGlassTheme.DEFAULT_BUTTON_BLUR_RADIUS;
 
@@ -66,6 +70,13 @@ public final class UiButton extends Button {
     /** 设置居中图标，原名称仍用于提示和旁白。传 null 恢复文字绘制。 */
     public void setIcon(GraphicIcon icon) {
         this.icon = icon;
+        iconWithLabel = false;
+    }
+
+    /** 在可见文字左侧显示 16×16 图标。空间不足时保留文字。 */
+    public void setLeadingIcon(GraphicIcon icon) {
+        this.icon = icon;
+        iconWithLabel = true;
     }
 
     @Override
@@ -127,18 +138,37 @@ public final class UiButton extends Button {
 
     private void drawContent(GuiGraphics graphics, int x, int y, int width, int height, int textColor) {
         int iconSize = GraphicIcon.PIXELS;
-        if (icon != null && width >= iconSize && height >= iconSize) {
-            icon.draw(graphics, x + (width - iconSize) / 2, y + (height - iconSize) / 2, 1, textColor);
+        if (!iconWithLabel && icon != null && width >= iconSize && height >= iconSize) {
+            icon.draw(graphics, x + (width - iconSize) / 2, y + (height - iconSize) / 2, 1, textColor, preferences);
             return;
         }
         var font = Minecraft.getInstance().font;
-        var lines = font.split(getMessage(), Math.max(1, width - 12));
+        int inset = leadingInset(width, height);
+        var lines = font.split(getMessage(), labelWidth(width, height));
         int count = Math.min(lines.size(), Math.max(1, (height - 4) / font.lineHeight));
+        int contentX = x;
+        if (inset > 0) {
+            int textWidth = 0;
+            for (int i = 0; i < count; i++) textWidth = Math.max(textWidth, font.width(lines.get(i)));
+            contentX += (width - inset - textWidth) / 2;
+            icon.draw(graphics, contentX, y + (height - iconSize) / 2, 1, textColor, preferences);
+        }
         int textY = y + (height - count * font.lineHeight) / 2;
         for (int i = 0; i < count; i++) {
             var line = lines.get(i);
-            graphics.drawString(font, line, x + (width - font.width(line)) / 2,
-                    textY + i * font.lineHeight, textColor, false);
+            int textX = inset > 0 ? contentX + inset : x + (width - font.width(line)) / 2;
+            UiFormattedText.draw(graphics, font, line, textX, textY + i * font.lineHeight,
+                    textColor, false, preferences);
         }
+    }
+
+    int labelWidth(int width, int height) {
+        return Math.max(1, width - 2 * LABEL_PADDING - leadingInset(width, height));
+    }
+
+    private int leadingInset(int width, int height) {
+        int inset = GraphicIcon.PIXELS + ICON_GAP;
+        return iconWithLabel && icon != null && width >= 2 * LABEL_PADDING + inset + 24
+                && height >= GraphicIcon.PIXELS + 2 ? inset : 0;
     }
 }
