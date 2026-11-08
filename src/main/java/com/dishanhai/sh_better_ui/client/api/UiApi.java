@@ -1,0 +1,28 @@
+package com.dishanhai.sh_better_ui.client.api;
+
+/** 山海：Java、脚本及独立上下文共用的类型化分组访问契约。 */
+public interface UiApi {
+    default SettingsApi settings() { return ShBetterUiApi.settings(); }
+
+    default ControlsApi controls() { return ShBetterUiApi.controls(); }
+
+    default InteractionApi interactions() { return ShBetterUiApi.interactions(); }
+
+    default SearchApi search() { return ShBetterUiApi.search(); }
+
+    default IngredientApi ingredients() { return ShBetterUiApi.ingredients(); }
+
+    default MaterialsApi materials() { return ShBetterUiApi.materials(); }
+
+    default BlurApi blur() { return ShBetterUiApi.blur(); }
+
+    default GraphicsApi graphics() { return ShBetterUiApi.graphics(); }
+
+    default MotionApi motion() { return ShBetterUiApi.motion(); }
+
+    default AudioApi audio() { return ShBetterUiApi.audio(); }
+
+    default PlatformUiApi platform() { return ShBetterUiApi.platform(); }
+
+    default UiExtensionRegistry extensions() { return ShBetterUiApi.extensions(); }
+}

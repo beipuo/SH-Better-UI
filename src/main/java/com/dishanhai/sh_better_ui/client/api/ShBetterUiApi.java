@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.api;
 
+import net.minecraft.network.chat.Component;
+
 /** 山海：Forge 与 NeoForge 共用的客户端 API 入口。分组可复用，组件状态归各自的宿主。 */
 public final class ShBetterUiApi {
     private static final SettingsApi SETTINGS = new SettingsApi();
@@ -11,11 +13,32 @@ public final class ShBetterUiApi {
     private static final BlurApi BLUR = new BlurApi();
     private static final GraphicsApi GRAPHICS = new GraphicsApi();
     private static final MotionApi MOTION = new MotionApi();
-    private static final PlatformUiApi PLATFORM = new PlatformUiApi();
-
     private static final AudioApi AUDIO = new AudioApi();
+    private static final PlatformUiApi PLATFORM = new PlatformUiApi();
+    private static final UiExtensionRegistry EXTENSIONS = new UiExtensionRegistry();
+    private static final UiClientApi CLIENT = new UiClientApi();
 
     private ShBetterUiApi() {}
+
+    public static UiClientApi client() {
+        return CLIENT;
+    }
+
+    public static UiExtensionRegistry extensions() {
+        return EXTENSIONS;
+    }
+
+    public static UiApiContext context() {
+        return CLIENT.context();
+    }
+
+    public static UiScreenBuilder screen(String titleKey) {
+        return CLIENT.screen(titleKey);
+    }
+
+    public static UiScreenBuilder screen(Component title) {
+        return CLIENT.screen(title);
+    }
 
     public static SettingsApi settings() {
         return SETTINGS;
@@ -53,11 +76,11 @@ public final class ShBetterUiApi {
         return MOTION;
     }
 
-    public static PlatformUiApi platform() {
-        return PLATFORM;
-    }
-
     public static AudioApi audio() {
         return AUDIO;
+    }
+
+    public static PlatformUiApi platform() {
+        return PLATFORM;
     }
 }

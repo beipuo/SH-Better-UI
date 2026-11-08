@@ -23,6 +23,7 @@ tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 repositories {
     mavenCentral()
     maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
+    maven { url = 'https://maven.latvian.dev/releases/'; content { includeGroup 'dev.latvian.mods' } }
 }
 
 dependencies {
@@ -31,6 +32,8 @@ dependencies {
     implementation files('libs/kotlinforforge-4.12.0-all.jar')
     compileOnly files('libs/ldlib-forge-1.20.1-1.0.33.b.jar')
     compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.49.0.200')
+    compileOnly('dev.latvian.mods:kubejs-forge:2001.6.5-build.26') { transitive = false }
+    compileOnly('dev.latvian.mods:rhino-forge:2001.2.3-build.10') { transitive = false }
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
@@ -98,7 +101,7 @@ tasks.register('verifyLibraryJar') {
         def artifact = layout.buildDirectory.file("libs/${mod_id}-${mod_version}.jar").get().asFile
         def zip = new java.util.zip.ZipFile(artifact)
         try {
-            def required = ['META-INF/mods.toml', 'pack.mcmeta',
+            def required = ['META-INF/mods.toml', 'pack.mcmeta', 'kubejs.plugins.txt',
                             'com/dishanhai/sh_better_ui/ShBetterUi.class',
                             'com/dishanhai/sh_better_ui/client/UiClient.class',
                             'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
@@ -116,7 +119,8 @@ tasks.register('verifyLibraryJar') {
             def forbidden = zip.entries().findAll {
                 it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
                 it.name.startsWith('kotlinx/') || it.name.startsWith('thedarkcolour/') ||
-                it.name.startsWith('com/dishanhai/gt_shanhai/') || it.name.startsWith('mezz/jei/')
+                it.name.startsWith('com/dishanhai/gt_shanhai/') || it.name.startsWith('mezz/jei/') ||
+                it.name.startsWith('dev/latvian/')
             }.collect { it.name }
             if (!forbidden.isEmpty()) throw new GradleException("UI library contains embedded dependency classes: ${forbidden.take(5)}")
         } finally { zip.close() }

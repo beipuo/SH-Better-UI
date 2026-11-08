@@ -1,0 +1,2 @@
+# Author: dishanhai
+com.dishanhai.sh_better_ui.compat.kubejs.ShBetterUiKubeJsPlugin client
