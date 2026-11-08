@@ -97,6 +97,73 @@ enum DeveloperSamples {
                 addRenderableWidget(slider);
             }
             """),
+    FRAME_TIMELINE("frame_timeline", """
+            import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiTimeline;
+
+            private final UiTimeline timeline = new UiTimeline(30, 120);
+            private final UiTimeline.Sequence caption = new UiTimeline.Sequence(30, 90);
+
+            private void play() { timeline.play(PageTransition.nowMs()); }
+            private void pause() { timeline.pause(PageTransition.nowMs()); }
+            private void seek(int frame) { timeline.seek(frame); }
+            private void reset() { timeline.reset(); }
+
+            private void drawFrame() {
+                var frame = timeline.sample(PageTransition.nowMs());
+                float x = frame.interpolate(0, 90, 0f, 100f);
+                float opacity = frame.interpolate(0, 20, 0f, 1f);
+                boolean showCaption = caption.contains(frame);
+                int localFrame = caption.localFrame(frame);
+                // Use x / opacity to draw; bind UiSlider to seek(frame).
+                // Pause when the screen is removed. Reduced motion: seek(119).
+            }
+            """),
+    ELECTRIC_LOGO("electric_logo", """
+            import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogo;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
+            import net.minecraft.client.gui.GuiGraphics;
+
+            private final ElectricLogo logo = new ElectricLogo();
+
+            private void drawLogo(GuiGraphics graphics, int x, int y, int width, int height,
+                                  int mouseX, int mouseY) {
+                logo.draw(graphics, x, y, width, height, mouseX, mouseY);
+            }
+
+            private void clickLogo(double mouseX, double mouseY) {
+                logo.pulse(mouseX, mouseY);
+            }
+
+            private void changeLogo() {
+                logo.setTexture(GraphicIcon.FAVORITE.texture());
+            }
+
+            @Override
+            public void removed() {
+                logo.close();
+                super.removed();
+            }
+            """),
+    SLIDE_CONFIRM("slide_confirm", """
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlideConfirm;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+            import net.minecraft.network.chat.Component;
+
+            private void addSlideConfirm(int x, int y, Runnable onConfirm) {
+                var prefs = UiPreferences.configured();
+                var slide = addRenderableWidget(new UiSlideConfirm(
+                        this, new Bounds(x, y, 164, 22), prefs, onConfirm));
+                var reset = new UiButton(x + 170, y, 60, 22, Component.translatable("controls.reset"),
+                        button -> slide.reset(), prefs, false, UiStyle.LIQUID_GLASS);
+                reset.setLeadingIcon(GraphicIcon.RESET);
+                addRenderableWidget(reset);
+            }
+            """),
     CAPSULE_TOGGLE("capsule_toggle", """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
@@ -321,6 +388,68 @@ enum DeveloperSamples {
             """),
     DIALOG("dialog", DeveloperPanelScreen.DIALOG_CODE),
     TOAST("toast", DeveloperPanelScreen.TOAST_CODE),
+    DOT_MATRIX("dot_matrix", """
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiDotMatrix;
+            import net.minecraft.client.gui.GuiGraphics;
+            import java.util.List;
+
+            private final UiDotMatrix dots = new UiDotMatrix();
+
+            private void drawDots(GuiGraphics graphics, Bounds area, int mouseX, int mouseY) {
+                dots.render(graphics, area, mouseX, mouseY);
+            }
+
+            private void pulseDots(Bounds area, double x, double y) {
+                dots.pulse(area, x, y);
+            }
+
+            private void updateDots(int backgroundArgb, int dotArgb, int highlightArgb,
+                                    DotMatrixProfile.Effect effect, int floatPercent, int maxFloatingDots,
+                                    int fadePercent, int gradientPeriodMs) {
+                var base = DotMatrixProfile.VIOLET;
+                var motion = base.motion();
+                var gradient = new DotMatrixProfile.Gradient(List.of(
+                        new DotMatrixProfile.ColorStop(0f, 0xFFFF71AA),
+                        new DotMatrixProfile.ColorStop(0.22f, 0xC079D5FF),
+                        new DotMatrixProfile.ColorStop(0.66f, 0xFFB2FFB5)),
+                        gradientPeriodMs, (x, y, phase) -> phase - x * x - 0.35f * y);
+                dots.setProfile(base
+                        .withPalette(new DotMatrixProfile.Palette(backgroundArgb, dotArgb, highlightArgb,
+                                base.palette().glow()))
+                        .withMotion(new DotMatrixProfile.Motion(effect, motion.periodMs(), floatPercent / 100f,
+                                maxFloatingDots, motion.floatDistance()))
+                        .withFade(new DotMatrixProfile.Fade(fadePercent / 100f, 2200))
+                        .withGradient(gradient));
+            }
+            """),
+    PATTERN_WAVES("pattern_waves", """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.PatternWaves;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.PatternWavesProfile;
+            import net.minecraft.client.gui.GuiGraphics;
+
+            private final PatternWaves waves = ShBetterUiApi.motion().patternWaves();
+
+            private void drawWaves(GuiGraphics graphics, Bounds area) {
+                var mouse = ShBetterUiApi.interactions().mouseState();
+                waves.draw(graphics, area, mouse, ShBetterUiApi.settings().preferences());
+            }
+
+            @Override
+            public boolean mouseClicked(double x, double y, int button) {
+                waves.mousePressed(x, y, button);
+                return super.mouseClicked(x, y, button);
+            }
+
+            private void selectPreset(PatternWavesProfile.Preset preset) {
+                waves.setProfile(preset.profile());
+            }
+
+            private void togglePause() { waves.setPaused(!waves.isPaused()); }
+            """),
     LIQUID_BUTTON("liquid_button", UiStyle.LIQUID_GLASS),
     DARK_BUTTON("dark_button", UiStyle.DEFAULT),
     GRADIENT_CARD("gradient_card", """

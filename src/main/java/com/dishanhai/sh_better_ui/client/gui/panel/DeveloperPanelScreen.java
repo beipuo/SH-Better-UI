@@ -1,10 +1,13 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiConfirmation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -16,9 +19,12 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.function.Supplier;
 
 /** 山海：在同一画面试用公共控件、检查渲染状态并复制接入示例。 */
-public final class DeveloperPanelScreen extends Screen {
+public final class DeveloperPanelScreen extends Screen implements UiScreenReturn.Target {
     private static final int PANEL_HEIGHT = 218;
     private static final int PADDING = 12;
     private static final int GAP = 6;
@@ -61,33 +67,50 @@ public final class DeveloperPanelScreen extends Screen {
 
     private final Screen parent;
     private final UiPreferences preferences;
+    private final UiCapsuleReveal entrance = new UiCapsuleReveal();
+    private final UiScreenReturn returning = new UiScreenReturn(this);
+    private boolean entered;
     private UiOverlayHost overlays;
-    private DeveloperGalleryScreen.Section returnFocus;
+    private Supplier<UiButton> galleryEntry;
     private UiButton controls;
     private UiButton materials;
+    private UiButton bottomSheet;
+    private UiButton dialogExample;
+    private UiButton toastExample;
     private int panelWidth;
     private int left;
     private int top;
     private boolean compact;
-    private boolean copied;
 
     public DeveloperPanelScreen(Screen parent) {
         this(parent, UiPreferences.configured());
     }
 
     public DeveloperPanelScreen(Screen parent, UiPreferences preferences) {
+        this(parent, preferences, null);
+    }
+
+    DeveloperPanelScreen(Screen parent, UiPreferences preferences, UiButton source) {
         super(label("title"));
         this.parent = parent;
         this.preferences = preferences;
         this.overlays = new UiOverlayHost(this, preferences);
+        if (source != null) {
+            entrance.startFrom(source);
+            entered = true;
+        }
     }
 
     @Override
     protected void init() {
         controls = null;
         materials = null;
+        bottomSheet = null;
+        dialogExample = null;
+        toastExample = null;
         compact = width < 248 || height < PANEL_HEIGHT + 8;
         if (compact) {
+            entrance.finish();
             if (width >= 36 && height >= BUTTON_HEIGHT + 8) {
                 int backWidth = Math.min(100, width - 8);
                 addButton((width - backWidth) / 2, height - BUTTON_HEIGHT - 4,
@@ -98,27 +121,35 @@ public final class DeveloperPanelScreen extends Screen {
         panelWidth = Math.min(width - 16, 440);
         left = (width - panelWidth) / 2;
         top = (height - PANEL_HEIGHT) / 2;
+        if (!entered) {
+            entered = true;
+            entrance.startAt(width * 0.5f, top + 5f);
+        }
 
         int contentX = left + PADDING;
         int contentWidth = panelWidth - 2 * PADDING;
-        int demoWidth = (contentWidth - GAP) / 2;
-        controls = addButton(contentX, top + 25, demoWidth, label("gallery.controls"), GraphicIcon.INTERACTION,
-                () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS));
-        materials = addButton(contentX + demoWidth + GAP, top + 25, contentWidth - demoWidth - GAP,
+        int columnWidth = (contentWidth - GAP) / 2;
+        controls = addButton(contentX, top + 25, columnWidth, label("gallery.controls"), GraphicIcon.INTERACTION,
+                () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, null, () -> controls));
+        materials = addButton(contentX + columnWidth + GAP, top + 25, contentWidth - columnWidth - GAP,
                 label("gallery.materials"), GraphicIcon.TEMPLATE,
-                () -> openGallery(DeveloperGalleryScreen.Section.MATERIALS));
-        addRenderableWidget(button(contentX, top + DEMOS_Y + 13, demoWidth, BUTTON_HEIGHT,
+                () -> openGallery(DeveloperGalleryScreen.Section.MATERIALS, null, () -> materials));
+        int demoY = top + DEMOS_Y + 13;
+        int demoWidth = (contentWidth - 2 * GAP) / 3;
+        int sheetX = contentX + 2 * (demoWidth + GAP);
+        addRenderableWidget(button(contentX, demoY, demoWidth, BUTTON_HEIGHT,
                 label("demo.dialog"), GraphicIcon.WARNING, preferences,
                 pressed -> showDialog(overlays, (UiButton) pressed, this::showToast)));
-        addButton(contentX + demoWidth + GAP, top + DEMOS_Y + 13, contentWidth - demoWidth - GAP,
-                label("demo.toast"), GraphicIcon.INFO, this::showToast);
+        addButton(contentX + demoWidth + GAP, demoY, demoWidth, label("demo.toast"), GraphicIcon.INFO, this::showToast);
+        bottomSheet = addButton(sheetX, demoY, contentX + contentWidth - sheetX, label("demo.bottom_sheet"),
+                null, () -> minecraft.setScreen(new DeveloperBottomSheetScreen(this, preferences, bottomSheet)));
 
         int copyX = contentX + contentWidth - COPY_WIDTH;
-        addButton(contentX, top + EXAMPLES_Y + 13, demoWidth, label("example.copy_dialog"),
-                null, () -> copy(DIALOG_CODE));
-        addButton(contentX + demoWidth + GAP, top + EXAMPLES_Y + 13, contentWidth - demoWidth - GAP,
-                label("example.copy_toast"),
-                null, () -> copy(TOAST_CODE));
+        dialogExample = addButton(contentX, top + EXAMPLES_Y + 13, columnWidth, label("example.open_dialog"),
+                null, () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, DeveloperSamples.DIALOG, () -> dialogExample));
+        toastExample = addButton(contentX + columnWidth + GAP, top + EXAMPLES_Y + 13, contentWidth - columnWidth - GAP,
+                label("example.open_toast"),
+                null, () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, DeveloperSamples.TOAST, () -> toastExample));
         addButton(copyX, top + FOOTER_Y, COPY_WIDTH, BACK, GraphicIcon.BACK, this::onClose);
     }
 
@@ -139,16 +170,23 @@ public final class DeveloperPanelScreen extends Screen {
         return button;
     }
 
-    private void openGallery(DeveloperGalleryScreen.Section section) {
-        returnFocus = section;
-        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section));
+    private void openGallery(DeveloperGalleryScreen.Section section, DeveloperSamples example, Supplier<UiButton> entry) {
+        galleryEntry = entry;
+        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section, example, entry.get()));
     }
 
     void restoreGalleryFocus() {
+        UiButton target = galleryEntry == null ? null : galleryEntry.get();
+        galleryEntry = null;
+        restoreFocus(target);
+    }
+
+    void restoreBottomSheetFocus() {
+        restoreFocus(bottomSheet);
+    }
+
+    private void restoreFocus(UiButton target) {
         overlays = new UiOverlayHost(this, preferences);
-        if (returnFocus == null) return;
-        UiButton target = returnFocus == DeveloperGalleryScreen.Section.CONTROLS ? controls : materials;
-        returnFocus = null;
         if (target != null) setInitialFocus(target);
     }
 
@@ -167,18 +205,14 @@ public final class DeveloperPanelScreen extends Screen {
                 UiToast.Effect.SLIDE_FROM_RIGHT, 2_500L, preferences);
     }
 
-    private void copy(String code) {
-        minecraft.keyboardHandler.setClipboard(code);
-        copied = true;
-        minecraft.getNarrator().say(label("copied"));
-    }
-
     // NeoForge 由 Screen.render 调用，Forge 1.20.1 使用不同签名。
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (minecraft.level == null) {
+        if (entrance.closing()) {
+            returning.render(graphics, width, height, partialTick, preferences);
+        } else if (minecraft.level == null) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
         } else {
             graphics.fill(0, 0, width, height, 0x6020252E);
@@ -191,22 +225,35 @@ public final class DeveloperPanelScreen extends Screen {
                 y += font.lineHeight + 2;
             }
         } else {
-            renderPanel(graphics);
+            var panel = new Bounds(left, top, panelWidth, PANEL_HEIGHT);
+            if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
+            LiquidGlassTheme.popover(graphics, left, top, panelWidth, PANEL_HEIGHT, preferences);
+            renderContent(graphics, mouseX, mouseY, partialTick);
+            return;
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void renderPanel(GuiGraphics graphics) {
-        LiquidGlassTheme.popover(graphics, left, top, panelWidth, PANEL_HEIGHT, preferences);
+    private void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int x = left + PADDING;
         graphics.drawString(font, getTitle(), x, top + 11, LiquidGlassTheme.TEXT, false);
         graphics.drawString(font, label("demos"), x, top + DEMOS_Y, LiquidGlassTheme.ACCENT, false);
         graphics.drawString(font, label("diagnostics"), x, top + DIAGNOSTICS_Y, LiquidGlassTheme.ACCENT, false);
         renderDiagnostics(graphics, x, top + DIAGNOSTICS_Y + 13);
         graphics.drawString(font, label("examples"), x, top + EXAMPLES_Y, LiquidGlassTheme.ACCENT, false);
-        if (copied) {
-            graphics.drawString(font, label("copied"), x, top + FOOTER_Y + 7, LiquidGlassTheme.ACCENT, false);
-        }
+        super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return !entrance.active() && super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scanCode, int modifiers) {
+        if (entrance.closing()) return true;
+        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
+        return super.keyPressed(key, scanCode, modifiers);
     }
 
     private void renderDiagnostics(GuiGraphics graphics, int x, int y) {
@@ -226,7 +273,14 @@ public final class DeveloperPanelScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        if (!compact && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        entrance.close(preferences, () -> minecraft.setScreen(parent));
+        if (compact) entrance.finish();
+    }
+
+    @Override
+    public void prepareReturnLayer() {
+        if (!compact) entrance.startAt(width * 0.5f, top + 5f);
     }
 
     @Override

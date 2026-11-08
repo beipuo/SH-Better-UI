@@ -12,7 +12,10 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.NetworkToggle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiBottomSheet;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiDisclosure;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiDynamicStatus;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading;
@@ -22,6 +25,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiRecipePageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlideConfirm;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTextDetails;
@@ -29,9 +33,9 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchIndex;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -39,10 +43,10 @@ import java.util.List;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
-/** 山海：可交互预览公共控件与材质，并逐页查看对应的 Java 代码。 */
+/** 山海：可交互预览公共控件与材质，从底部抽屉查看并复制对应的 Java 代码。 */
 final class DeveloperGalleryScreen extends Screen {
     private static final int MIN_PANEL_HEIGHT = 218;
-    private static final int MAX_PANEL_HEIGHT = 328;
+    private static final int MAX_PANEL_HEIGHT = 272;
     private static final int MAX_PANEL_WIDTH = 600;
     private static final int PADDING = 12;
     private static final int BUTTON_HEIGHT = 22;
@@ -52,11 +56,10 @@ final class DeveloperGalleryScreen extends Screen {
     private static final int PREVIEW_HEIGHT = 46;
     private static final int DETAILS_PREVIEW_EXTRA = 26;
     private static final int SLIDE_PREVIEW_EXTRA = 20;
-    private static final int CODE_NAV_Y = 111;
-    private static final int CODE_Y = 137;
-    private static final int MIN_CODE_HEIGHT = 48;
     private static final int FOOTER_GAP = 5;
     private static final int CODE_PADDING = 4;
+    private static final int MIN_DRAWER_HEIGHT = 58;
+    private static final int DRAWER_HEADER_ALLOWANCE = 18;
     private static final int STATUS_BUTTON_WIDTH = 86;
     private static final Status[] DEMO_STATUSES = Status.values();
     private static final Component BACK = Component.translatable("gui.back");
@@ -65,12 +68,15 @@ final class DeveloperGalleryScreen extends Screen {
 
     enum Section {
         CONTROLS("gallery.controls", List.of(DeveloperSamples.BUTTON, DeveloperSamples.TOGGLE, DeveloperSamples.SECTIONS,
-                DeveloperSamples.DISCLOSURE, DeveloperSamples.TEXT_DETAILS, DeveloperSamples.SLIDER,
-                DeveloperSamples.CAPSULE_TOGGLE, DeveloperSamples.MODE_INDICATORS, DeveloperSamples.PAGE_SLIDE,
+                DeveloperSamples.DISCLOSURE, DeveloperSamples.TEXT_DETAILS, DeveloperSamples.SLIDER, DeveloperSamples.FRAME_TIMELINE,
+                DeveloperSamples.ELECTRIC_LOGO, DeveloperSamples.PATTERN_WAVES,
+                DeveloperSamples.SLIDE_CONFIRM, DeveloperSamples.CAPSULE_TOGGLE, DeveloperSamples.MODE_INDICATORS,
+                DeveloperSamples.PAGE_SLIDE,
                 DeveloperSamples.RECIPE_TRANSITION, DeveloperSamples.DYNAMIC_STATUS, DeveloperSamples.LOADING_SPINNER,
                 DeveloperSamples.LOADING_PROGRESS, DeveloperSamples.LOADING_SKELETON, DeveloperSamples.SEARCH,
                 DeveloperSamples.DIALOG, DeveloperSamples.TOAST)),
-        MATERIALS("gallery.materials", List.of(DeveloperSamples.LIQUID_BUTTON, DeveloperSamples.DARK_BUTTON,
+        MATERIALS("gallery.materials", List.of(DeveloperSamples.DOT_MATRIX,
+                DeveloperSamples.LIQUID_BUTTON, DeveloperSamples.DARK_BUTTON,
                 DeveloperSamples.GRADIENT_CARD, DeveloperSamples.NETWORK_TAB, DeveloperSamples.CLEAR_GLASS,
                 DeveloperSamples.FROSTED_GLASS, DeveloperSamples.RESET_ICON, DeveloperSamples.SETTINGS_ICON,
                 DeveloperSamples.COPY_ICON, DeveloperSamples.STATUS_ICON));
@@ -92,30 +98,37 @@ final class DeveloperGalleryScreen extends Screen {
     private final UiPreferences preferences;
     private final List<DeveloperSamples> samples;
     private final UiOverlayHost overlays;
+    private final UiBottomSheet codeDrawer;
+    private final UiCapsuleReveal entrance = new UiCapsuleReveal();
+    private final UiScreenReturn returning = new UiScreenReturn(this);
+    private final UiCapsuleReveal sampleReveal = new UiCapsuleReveal();
+    private final List<AbstractWidget> previewWidgets = new ArrayList<>();
+    private boolean openCodeOnEntry;
     private final DarkModeTheme.Interaction cardMotion = DarkModeTheme.Interaction.card();
     private final UiDisclosure disclosure = new UiDisclosure(false);
     private final UiTextDetails textDetails = new UiTextDetails(label("gallery.sample.text_details"),
             label("gallery.long_text"), 1);
     private final UiPageSlide pageSlide = new UiPageSlide();
     private final UiDynamicStatus liveStatus = new UiDynamicStatus(this::demoStatus);
+    private final DotMatrixGalleryPreview dotMatrix = new DotMatrixGalleryPreview();
+    private final PatternWavesGalleryPreview patternWaves = new PatternWavesGalleryPreview();
+    private final FrameTimelineGalleryPreview frameTimeline = new FrameTimelineGalleryPreview();
+    private final ElectricLogoGalleryPreview electricLogo = new ElectricLogoGalleryPreview();
     private UiRecipePageTransition recipeTransition;
     private Bounds preview;
-    private Bounds codeArea;
+    private Bounds codeViewport;
+    private UiBottomSheet.Frame codeFrame;
+    private UiTextDetails codeDetails;
+    private UiTextDetails.Layout codeLayout;
     private int panelWidth;
-    private int panelHeight;
     private int left;
     private int top;
     private int sampleIndex;
     private int pendingStep;
-    private int codePage;
-    private int codeLinesPerPage;
-    private int codePageCount;
-    private int codeNavY;
-    private List<FormattedCharSequence> codeLines = List.of();
     private UiButton previousSample;
     private UiButton nextSample;
-    private UiButton previousCode;
-    private UiButton nextCode;
+    private UiButton codeToggle;
+    private UiButton codeDetailsButton;
     private UiButton copyButton;
     private SearchField<String> search;
     private NetworkToggle toggle;
@@ -136,25 +149,36 @@ final class DeveloperGalleryScreen extends Screen {
     private boolean compact;
     private boolean copied;
 
-    DeveloperGalleryScreen(DeveloperPanelScreen parent, UiPreferences preferences, Section section) {
+    DeveloperGalleryScreen(DeveloperPanelScreen parent, UiPreferences preferences, Section section,
+                           DeveloperSamples example, UiButton source) {
         super(label(section.titleKey));
         this.parent = parent;
         this.preferences = preferences;
         this.samples = section.samples;
         this.overlays = new UiOverlayHost(this, preferences);
+        sampleIndex = example == null ? 0 : samples.indexOf(example);
+        codeDrawer = UiBottomSheet.capsule(0, 0f, 1f);
+        openCodeOnEntry = example != null;
+        entrance.startFrom(source);
     }
 
     @Override
     protected void init() {
+        previewWidgets.clear();
         search = null;
         toggle = null;
         detailsLayout = null;
         detailsPage = null;
+        codeFrame = null;
         capsule = null;
         slideMode = null;
         recipeTransition = new UiRecipePageTransition();
         compact = width < 240 || height < MIN_PANEL_HEIGHT + 8;
+        if (compact || sample() != DeveloperSamples.ELECTRIC_LOGO) electricLogo.release();
         if (compact) {
+            frameTimeline.pause();
+            entrance.finish();
+            sampleReveal.finish();
             if (width >= 36 && height >= BUTTON_HEIGHT + 8) {
                 int buttonWidth = Math.min(100, width - 8);
                 addButton((width - buttonWidth) / 2, height - BUTTON_HEIGHT - 4,
@@ -165,38 +189,74 @@ final class DeveloperGalleryScreen extends Screen {
 
         panelWidth = Math.min(width - 16, MAX_PANEL_WIDTH);
         int previewExtra = switch (sample()) {
+            case DOT_MATRIX -> DotMatrixGalleryPreview.PREVIEW_EXTRA;
+            case PATTERN_WAVES -> PatternWavesGalleryPreview.PREVIEW_EXTRA;
+            case FRAME_TIMELINE -> FrameTimelineGalleryPreview.PREVIEW_EXTRA;
+            case ELECTRIC_LOGO -> ElectricLogoGalleryPreview.PREVIEW_EXTRA;
             case TEXT_DETAILS -> DETAILS_PREVIEW_EXTRA;
             case PAGE_SLIDE, RECIPE_TRANSITION, LOADING_SPINNER, LOADING_PROGRESS, LOADING_SKELETON -> SLIDE_PREVIEW_EXTRA;
             default -> 0;
         };
-        panelHeight = Math.clamp(height - (previewExtra > 0 ? 8 : 22), MIN_PANEL_HEIGHT, MAX_PANEL_HEIGHT);
+        int frameHeight = Math.min(height - 8, MAX_PANEL_HEIGHT);
+        int fixedHeight = PREVIEW_Y + PREVIEW_HEIGHT + 2 * FOOTER_GAP + PADDING + BUTTON_HEIGHT;
+        previewExtra = Math.min(previewExtra, frameHeight - fixedHeight - MIN_DRAWER_HEIGHT);
         left = (width - panelWidth) / 2;
-        top = (height - panelHeight) / 2;
+        top = (height - frameHeight) / 2;
         int contentX = left + PADDING;
         int contentRight = left + panelWidth - PADDING;
         int contentWidth = contentRight - contentX;
         preview = new Bounds(contentX, top + PREVIEW_Y, contentWidth, PREVIEW_HEIGHT + previewExtra);
-        int codeHeight = MIN_CODE_HEIGHT + panelHeight - MIN_PANEL_HEIGHT - previewExtra;
-        codeNavY = top + CODE_NAV_Y + previewExtra;
-        codeArea = new Bounds(contentX, top + CODE_Y + previewExtra, contentWidth, codeHeight);
-        wrapCode();
+        int footerY = preview.bottom() + FOOTER_GAP;
+        int drawerY = footerY + BUTTON_HEIGHT + PADDING + FOOTER_GAP;
+        codeViewport = new Bounds(contentX, drawerY, contentWidth, top + frameHeight - drawerY);
 
         previousSample = addArrow(contentX, top + SAMPLE_Y, false, "gallery.previous_sample", () -> pendingStep = -1);
         nextSample = addArrow(contentRight - NAV_WIDTH, top + SAMPLE_Y, true, "gallery.next_sample", () -> pendingStep = 1);
         previousSample.active = sampleIndex > 0;
         nextSample.active = sampleIndex + 1 < samples.size();
         addPreviewWidgets();
-        previousCode = addArrow(contentRight - NAV_WIDTH * 2 - 5, codeNavY,
-                false, "gallery.previous_code", () -> changeCodePage(-1));
-        nextCode = addArrow(contentRight - NAV_WIDTH, codeNavY,
-                true, "gallery.next_code", () -> changeCodePage(1));
-        updateCodeButtons();
+        addCodeDrawer(contentX, contentRight, footerY);
+    }
+
+    private void addCodeDrawer(int x, int right, int footerY) {
+        int actionY = codeViewport.bottom() - BUTTON_HEIGHT - CODE_PADDING;
+        int actionWidth = (codeViewport.width() - 3 * CODE_PADDING) / 2;
+        int excerptHeight = actionY - codeViewport.y() - DRAWER_HEADER_ALLOWANCE - 2 * CODE_PADDING;
+        codeDetails = new UiTextDetails(label("gallery.code_title"), Component.literal(sample().code),
+                Math.max(1, excerptHeight / font.lineHeight));
+        codeLayout = codeDetails.layout(font, codeViewport.width() - 2 * CODE_PADDING);
+        codeToggle = addButton(x, footerY, right - x - 74, label("gallery.code_open"),
+                GraphicIcon.EXPAND, () -> setCodeDrawerOpen(codeDrawer.targetAnchor() == 0));
+        codeDetailsButton = addButton(x + CODE_PADDING, actionY, actionWidth, label("gallery.code_details"),
+                GraphicIcon.NEXT, () -> minecraft.setScreen(codeDetails.pageFrom(
+                        this, preferences, codeDetailsButton, () -> codeDetailsButton)));
         Component copyLabel = label("gallery.copy");
-        int footerY = codeArea.bottom() + FOOTER_GAP;
-        copyButton = addButton(contentX, footerY, 110, copied ? label("gallery.copied") : copyLabel,
-                GraphicIcon.COPY, this::copyCode);
+        copyButton = addButton(right - CODE_PADDING - actionWidth, actionY, actionWidth,
+                copied ? label("gallery.copied") : copyLabel, GraphicIcon.COPY, this::copyCode);
         copyButton.setPreview(copyLabel);
-        addButton(contentRight - 68, footerY, 68, BACK, GraphicIcon.BACK, this::onClose);
+        addButton(right - 68, footerY, 68, BACK, GraphicIcon.BACK, this::onClose);
+        updateCodeDrawerControls(codeDrawer.sample(codeViewport, PageTransition.nowMs(), preferences));
+    }
+
+    private void setCodeDrawerOpen(boolean open) {
+        openCodeOnEntry = false;
+        codeDrawer.animateTo(open ? 1 : 0, PageTransition.nowMs());
+        updateCodeDrawerControls(codeDrawer.sample(codeViewport, PageTransition.nowMs(), preferences));
+        codeFrame = null;
+    }
+
+    private void updateCodeDrawerControls(UiBottomSheet.Frame frame) {
+        boolean open = codeDrawer.targetAnchor() != 0;
+        if (open != codeToggle.isSelected()) {
+            codeToggle.setSelected(open);
+            codeToggle.setMessage(label(open ? "gallery.code_close" : "gallery.code_open"));
+            codeToggle.setLeadingIcon(open ? GraphicIcon.COLLAPSE : GraphicIcon.EXPAND);
+        }
+        boolean showActions = open && frame.panel().width() == frame.viewport().width()
+                && frame.content().y() <= codeDetailsButton.getY();
+        codeDetailsButton.visible = showActions;
+        copyButton.visible = showActions;
+        if (!showActions && (getFocused() == codeDetailsButton || getFocused() == copyButton)) setFocused(codeToggle);
     }
 
     private UiButton addButton(int x, int y, int buttonWidth, Component text, GraphicIcon icon, Runnable action) {
@@ -208,6 +268,15 @@ final class DeveloperGalleryScreen extends Screen {
         var button = addButton(x, y, NAV_WIDTH, label(key), null, action);
         button.setIcon(forward ? GraphicIcon.NEXT : GraphicIcon.PREVIOUS);
         return button;
+    }
+
+    private <T extends AbstractWidget> T addPreviewWidget(T widget) {
+        previewWidgets.add(widget);
+        return addWidget(widget);
+    }
+
+    private UiButton addPreviewButton(int x, int y, int width, Component text, GraphicIcon icon, Runnable action) {
+        return addPreviewWidget(DeveloperPanelScreen.button(x, y, width, BUTTON_HEIGHT, text, icon, preferences, action));
     }
 
     private void addPreviewWidgets() {
@@ -222,41 +291,52 @@ final class DeveloperGalleryScreen extends Screen {
                         control.setSelected(!control.isSelected());
                     }, preferences, false, sample.buttonStyle);
             button.setLeadingIcon(GraphicIcon.RESET);
-            addRenderableWidget(button);
+            addPreviewWidget(button);
             return;
         }
         switch (sample) {
+            case FRAME_TIMELINE -> frameTimeline.widgets(preview, preferences).forEach(this::addPreviewWidget);
+            case ELECTRIC_LOGO -> electricLogo.widgets(preview, preferences).forEach(this::addPreviewWidget);
+            case PATTERN_WAVES -> patternWaves.widgets(preview, preferences,
+                            () -> !entrance.active() && !sampleReveal.active() && !overlays.isModalOpen())
+                    .forEach(this::addPreviewWidget);
+            case DOT_MATRIX -> {
+                int settingsWidth = DotMatrixGalleryPreview.SETTINGS_WIDTH;
+                var settings = new Bounds(preview.right() - settingsWidth, top + 5, settingsWidth, BUTTON_HEIGHT);
+                dotMatrix.widgets(preview, settings, preferences).forEach(this::addPreviewWidget);
+            }
             case TOGGLE -> {
                 toggle = new NetworkToggle(new Bounds(x, y, w, BUTTON_HEIGHT), label("gallery.try_toggle"),
                         false, preferences, value -> toggle.setValue(value));
-                addRenderableWidget(toggle);
+                addPreviewWidget(toggle);
             }
             case SECTIONS -> {
                 var sections = new UiSectionBar(x, y, w, BUTTON_HEIGHT, preferences, List.of(
                         new UiSectionBar.Section(Component.translatable("options.title"), GraphicIcon.SETTINGS),
                         new UiSectionBar.Section(Component.translatable("gui.stats"), GraphicIcon.MONITOR)),
                         0, ignored -> {});
-                sections.buttons().forEach(this::addRenderableWidget);
+                sections.buttons().forEach(this::addPreviewWidget);
             }
-            case DISCLOSURE -> addRenderableWidget(disclosure.button(x, preview.y() + 4, w, BUTTON_HEIGHT,
+            case DISCLOSURE -> addPreviewWidget(disclosure.button(x, preview.y() + 4, w, BUTTON_HEIGHT,
                     label("gallery.expand"), label("gallery.collapse"), preferences, expanded -> {}));
             case TEXT_DETAILS -> addTextDetails();
-            case SLIDER -> addRenderableWidget(new UiSlider(new Bounds(x, y, w, BUTTON_HEIGHT), 0, 100, 5,
+            case SLIDER -> addPreviewWidget(new UiSlider(new Bounds(x, y, w, BUTTON_HEIGHT), 0, 100, 5,
                     sliderValue, preferences, value -> label("gallery.slider_value", value), value -> sliderValue = value));
+            case SLIDE_CONFIRM -> addSlideConfirm();
             case CAPSULE_TOGGLE -> addCapsuleToggle(new Bounds(x, y, w, BUTTON_HEIGHT));
             case MODE_INDICATORS -> addModeDemo(x, y, w);
             case PAGE_SLIDE, RECIPE_TRANSITION -> addSlideControls();
-            case DYNAMIC_STATUS -> addButton(preview.right() - STATUS_BUTTON_WIDTH - 6, y,
+            case DYNAMIC_STATUS -> addPreviewButton(preview.right() - STATUS_BUTTON_WIDTH - 6, y,
                     STATUS_BUTTON_WIDTH, label("gallery.status_next"), null, this::advanceStatus);
             case LOADING_SPINNER, LOADING_PROGRESS -> addLoadingSlider(sample);
-            case LOADING_SKELETON -> addButton(x, preview.bottom() - BUTTON_HEIGHT - 5, w,
+            case LOADING_SKELETON -> addPreviewButton(x, preview.bottom() - BUTTON_HEIGHT - 5, w,
                     label("gallery.loading_toggle_card"), null, () -> cardLoading = !cardLoading);
             case SEARCH -> addSearch(x, y, w);
-            case DIALOG -> addRenderableWidget(DeveloperPanelScreen.button(x, y, w, BUTTON_HEIGHT,
+            case DIALOG -> addPreviewWidget(DeveloperPanelScreen.button(x, y, w, BUTTON_HEIGHT,
                     label("demo.dialog"), GraphicIcon.WARNING, preferences,
                     pressed -> DeveloperPanelScreen.showDialog(overlays, (UiButton) pressed,
                             () -> DeveloperPanelScreen.showToast(preferences))));
-            case TOAST -> addButton(x, y, w, label("demo.toast"), GraphicIcon.INFO,
+            case TOAST -> addPreviewButton(x, y, w, label("demo.toast"), GraphicIcon.INFO,
                     () -> DeveloperPanelScreen.showToast(preferences));
             default -> { }
         }
@@ -270,10 +350,22 @@ final class DeveloperGalleryScreen extends Screen {
         detailsLayout = textDetails.layout(font, contentWidth);
         textDetails.inlineButton(detailsLayout, x, y, buttonWidth, BUTTON_HEIGHT,
                 preferences, expanded -> detailsLayout = textDetails.layout(font, contentWidth))
-                .ifPresent(this::addRenderableWidget);
+                .ifPresent(this::addPreviewWidget);
         textDetails.pageButton(detailsLayout, this, x + buttonWidth + 6, y,
                 contentWidth - buttonWidth - 6, BUTTON_HEIGHT, preferences, () -> detailsPage)
-                .ifPresent(button -> detailsPage = addRenderableWidget(button));
+                .ifPresent(button -> detailsPage = addPreviewWidget(button));
+    }
+
+    private void addSlideConfirm() {
+        int resetWidth = 60;
+        int gap = 6;
+        int slideWidth = Math.min(164, preview.width() - 16 - resetWidth - gap);
+        int x = preview.x() + (preview.width() - slideWidth - gap - resetWidth) / 2;
+        int y = preview.bottom() - BUTTON_HEIGHT - 5;
+        var slide = addPreviewWidget(new UiSlideConfirm(this, new Bounds(x, y, slideWidth, BUTTON_HEIGHT),
+                preferences, () -> {}));
+        addPreviewButton(x + slideWidth + gap, y, resetWidth, Component.translatable("controls.reset"),
+                GraphicIcon.RESET, slide::reset);
     }
 
     private void addCapsuleToggle(Bounds bounds) {
@@ -285,7 +377,7 @@ final class DeveloperGalleryScreen extends Screen {
                 });
         capsule.setIcons(GraphicIcon.ENABLE, GraphicIcon.DISABLE);
         capsule.setModeIndicatorsVisible(true);
-        addRenderableWidget(capsule.button());
+        addPreviewWidget(capsule.button());
     }
 
     private void addModeDemo(int x, int y, int width) {
@@ -298,7 +390,7 @@ final class DeveloperGalleryScreen extends Screen {
         }, preferences, false, UiStyle.LIQUID_GLASS);
         button.setModeIndicators(modeCount, demoMode);
         button.setPreview(label("gallery.mode_tip"));
-        addRenderableWidget(button);
+        addPreviewWidget(button);
     }
 
     private void addSlideControls() {
@@ -318,11 +410,11 @@ final class DeveloperGalleryScreen extends Screen {
                     slideMode.setValue(depth);
                 });
         slideMode.button().setPreview(label("gallery.slide_mode_tip"));
-        addRenderableWidget(slideMode.button());
+        addPreviewWidget(slideMode.button());
     }
 
     private void addSlideArrow(int x, int y, UiPageSlide.Direction direction, GraphicIcon icon, String key) {
-        var button = addButton(x, y, NAV_WIDTH, label(key), null, () -> {
+        var button = addPreviewButton(x, y, NAV_WIDTH, label(key), null, () -> {
             alternateSlidePage = !alternateSlidePage;
             if (sample() == DeveloperSamples.RECIPE_TRANSITION) {
                 recipeTransition.start(direction, recipeSlideViewport(), PageTransition.nowMs(), preferences);
@@ -365,7 +457,7 @@ final class DeveloperGalleryScreen extends Screen {
 
     private void addLoadingSlider(DeveloperSamples sample) {
         var area = new Bounds(preview.x() + 6, preview.bottom() - BUTTON_HEIGHT - 5, preview.width() - 12, BUTTON_HEIGHT);
-        addRenderableWidget(new UiSlider(area, 0, 100, 5, loadingPercent, preferences,
+        addPreviewWidget(new UiSlider(area, 0, 100, 5, loadingPercent, preferences,
                 value -> sample == DeveloperSamples.LOADING_SPINNER ? label("gallery.loading_organizing")
                         : label("gallery.slider_value", value), value -> loadingPercent = value));
     }
@@ -376,42 +468,13 @@ final class DeveloperGalleryScreen extends Screen {
                         List.of("minecraft:apple"), List.of()),
                 new SearchIndex.Entry<>("minecraft:carrot", Component.translatable("item.minecraft.carrot").getString(),
                         List.of("minecraft:carrot"), List.of())));
-        search = addRenderableWidget(new SearchField<>(font, x, y, w, BUTTON_HEIGHT,
+        search = addPreviewWidget(new SearchField<>(font, x, y, w, BUTTON_HEIGHT,
                 index, UiStyle.LIQUID_GLASS, preferences));
         search.setHint(label("gallery.search_hint"));
     }
 
     private DeveloperSamples sample() {
         return samples.get(sampleIndex);
-    }
-
-    private void wrapCode() {
-        var wrapped = new ArrayList<FormattedCharSequence>();
-        for (String line : sample().code.lines().toList()) {
-            if (line.isBlank()) {
-                wrapped.add(FormattedCharSequence.EMPTY);
-            } else {
-                wrapped.addAll(font.split(Component.literal(line), codeArea.width() - 2 * CODE_PADDING));
-            }
-        }
-        codeLines = wrapped;
-        codeLinesPerPage = Math.max(1, (codeArea.height() - 2 * CODE_PADDING) / font.lineHeight);
-        codePageCount = Math.max(1, Math.ceilDiv(codeLines.size(), codeLinesPerPage));
-        codePage = Math.min(codePage, codePageCount - 1);
-    }
-
-    private boolean changeCodePage(int step) {
-        int nextPage = Math.clamp(codePage + step, 0, codePageCount - 1);
-        if (nextPage == codePage) return false;
-        codePage = nextPage;
-        updateCodeButtons();
-        minecraft.getNarrator().say(codeTitle());
-        return true;
-    }
-
-    private void updateCodeButtons() {
-        previousCode.active = codePage > 0;
-        nextCode.active = codePage + 1 < codePageCount;
     }
 
     private void copyCode() {
@@ -425,12 +488,14 @@ final class DeveloperGalleryScreen extends Screen {
         if (pendingStep == 0) return;
         int step = pendingStep;
         pendingStep = 0;
+        frameTimeline.pause();
         sampleIndex = Math.clamp(sampleIndex + step, 0, samples.size() - 1);
-        codePage = 0;
         copied = false;
+        codeDrawer.cancelGesture(PageTransition.nowMs());
         rebuildWidgets();
         if (!compact) {
             UiButton direction = step < 0 ? previousSample : nextSample;
+            sampleReveal.startAt(direction.getX() + direction.getWidth() * 0.5f, preview.y() + 5f);
             setInitialFocus(direction.active ? direction : step < 0 ? nextSample : previousSample);
             minecraft.getNarrator().say(sampleTitle());
         }
@@ -440,17 +505,15 @@ final class DeveloperGalleryScreen extends Screen {
         return label("gallery.sample_page", label("gallery.sample." + sample().key), sampleIndex + 1, samples.size());
     }
 
-    private Component codeTitle() {
-        return label("gallery.code_page", codePage + 1, codePageCount);
-    }
-
     // NeoForge 由 Screen.render 调用，Forge 1.20.1 使用不同签名。
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         applyPendingStep();
-        if (minecraft.level == null) {
+        if (entrance.closing()) {
+            returning.render(graphics, width, height, partialTick, preferences);
+        } else if (minecraft.level == null) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
         } else {
             graphics.fill(0, 0, width, height, 0x6020252E);
@@ -463,34 +526,59 @@ final class DeveloperGalleryScreen extends Screen {
                 y += font.lineHeight + 2;
             }
         } else {
-            renderPanel(graphics);
+            var panel = new Bounds(left, top, panelWidth, codeViewport.y() - top - FOOTER_GAP);
+            if (entrance.render(graphics, panel, preferences, () -> {
+                renderPanelContent(graphics, -1, -1, partialTick);
+                super.render(graphics, -1, -1, partialTick);
+            })) return;
+            LiquidGlassTheme.popover(graphics, panel.x(), panel.y(), panel.width(), panel.height(), preferences);
+            renderPanelContent(graphics, mouseX, mouseY, partialTick);
+            if (openCodeOnEntry) setCodeDrawerOpen(true);
+            codeFrame = codeDrawer.render(graphics, codeViewport, mouseX, mouseY, PageTransition.nowMs(),
+                    preferences, this::renderCodeExcerpt);
+            updateCodeDrawerControls(codeFrame);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
-        if (search != null) search.renderSuggestions(graphics, mouseX, mouseY, height);
+        if (search != null && !sampleReveal.active()) search.renderSuggestions(graphics, mouseX, mouseY, height);
     }
 
-    private void renderPanel(GuiGraphics graphics) {
-        LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
+    private void renderPanelContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.drawString(font, getTitle(), preview.x(), top + 11, LiquidGlassTheme.TEXT, false);
         drawCentered(graphics, sampleTitle(), preview.x() + NAV_WIDTH + 4, top + SAMPLE_Y,
                 preview.width() - (NAV_WIDTH + 4) * 2);
+        if (!sampleReveal.render(graphics, preview, preferences,
+                () -> renderPreviewContent(graphics, -1, -1, partialTick))) {
+            RoundedCorners.draw(graphics, preview.x(), preview.y(), preview.width(), preview.height(), 5, 1,
+                    preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.BORDER, DarkModeTheme.BACKGROUND);
+            renderPreviewContent(graphics, mouseX, mouseY, partialTick);
+        }
+    }
+
+    private void renderPreviewContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderPreview(graphics);
-        graphics.drawString(font, codeTitle(), codeArea.x(), codeNavY + 7, LiquidGlassTheme.ACCENT, false);
-        RoundedCorners.draw(graphics, codeArea.x(), codeArea.y(), codeArea.width(), codeArea.height(), 4, 1,
-                preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.BORDER, DarkModeTheme.BACKGROUND);
-        int firstLine = codePage * codeLinesPerPage;
-        int lastLine = Math.min(firstLine + codeLinesPerPage, codeLines.size());
-        for (int i = firstLine; i < lastLine; i++) {
-            graphics.drawString(font, codeLines.get(i), codeArea.x() + CODE_PADDING,
-                    codeArea.y() + CODE_PADDING + (i - firstLine) * font.lineHeight, LiquidGlassTheme.TEXT, false);
+        for (AbstractWidget widget : previewWidgets) {
+            widget.render(graphics, mouseX, mouseY, partialTick);
+        }
+    }
+
+    private void renderCodeExcerpt(GuiGraphics graphics, Bounds content) {
+        int textY = content.y() + CODE_PADDING;
+        int bottom = codeDetailsButton.getY() - CODE_PADDING;
+        if (bottom <= textY) return;
+        graphics.enableScissor(content.x(), textY, content.right(), bottom);
+        try {
+            codeLayout.render(graphics, font, content.x() + CODE_PADDING, textY,
+                    LiquidGlassTheme.TEXT, false, preferences);
+        } finally {
+            graphics.disableScissor();
         }
     }
 
     private void renderPreview(GuiGraphics graphics) {
         DeveloperSamples sample = sample();
-        RoundedCorners.draw(graphics, preview.x(), preview.y(), preview.width(), preview.height(), 5, 1,
-                preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.BORDER, DarkModeTheme.BACKGROUND);
-        if (sample.glassStyle != null) {
+        if (sample == DeveloperSamples.FRAME_TIMELINE) {
+            frameTimeline.render(graphics, preferences);
+        } else if (sample.glassStyle != null) {
             renderGlass(graphics, sample);
         } else if (sample == DeveloperSamples.GRADIENT_CARD) {
             int w = Math.min(164, preview.width() - 32);
@@ -514,6 +602,8 @@ final class DeveloperGalleryScreen extends Screen {
             int contentWidth = Math.min(264, preview.width() - 16);
             int x = preview.x() + (preview.width() - contentWidth) / 2;
             detailsLayout.render(graphics, font, x, preview.y() + 5, LiquidGlassTheme.TEXT, false, preferences);
+        } else if (sample == DeveloperSamples.SLIDE_CONFIRM) {
+            drawCentered(graphics, label("gallery.slide_confirm_hint"), preview.x() + 8, preview.y(), preview.width() - 16);
         } else if (sample == DeveloperSamples.PAGE_SLIDE) {
             renderSlide(graphics);
         } else if (sample == DeveloperSamples.RECIPE_TRANSITION) {
@@ -657,19 +747,33 @@ final class DeveloperGalleryScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (entrance.active() || (sampleReveal.active() && previewWidgets.stream()
+                .anyMatch(widget -> widget.isMouseOver(mouseX, mouseY)))) return false;
         return (search != null && search.mouseClickedSuggestion(mouseX, mouseY, button, height))
+                || codeDrawer.beginCaptured(this, codeFrame, button, mouseX, mouseY)
                 || super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int key, int scan, int modifiers) {
-        return (key == GLFW.GLFW_KEY_ESCAPE && search != null && search.dismissSuggestions())
-                || super.keyPressed(key, scan, modifiers);
+        if (entrance.closing()) return true;
+        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
+        if (key == GLFW.GLFW_KEY_TAB || (getFocused() != previousSample && getFocused() != nextSample)) {
+            sampleReveal.finish();
+        }
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (search != null && search.dismissSuggestions()) return true;
+            if (!compact && (openCodeOnEntry || codeDrawer.targetAnchor() != 0)) {
+                setCodeDrawerOpen(false);
+                return true;
+            }
+        }
+        return super.keyPressed(key, scan, modifiers);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (search != null && search.mouseScrolledSuggestions(mouseX, mouseY, delta, height)) return true;
-        return !compact && delta != 0 && codeArea.contains(mouseX, mouseY) && changeCodePage(delta > 0 ? -1 : 1);
+        return !entrance.active() && !sampleReveal.active() && search != null
+                && search.mouseScrolledSuggestions(mouseX, mouseY, delta, height);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
@@ -677,9 +781,22 @@ final class DeveloperGalleryScreen extends Screen {
     }
 
     @Override
+    public void removed() {
+        frameTimeline.pause();
+        electricLogo.release();
+        super.removed();
+    }
+
+    @Override
     public void onClose() {
-        minecraft.setScreen(parent);
-        if (minecraft.screen == parent) parent.restoreGalleryFocus();
+        frameTimeline.pause();
+        pendingStep = 0;
+        if (!compact && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        entrance.close(preferences, () -> {
+            minecraft.setScreen(parent);
+            if (minecraft.screen == parent) parent.restoreGalleryFocus();
+        });
+        if (compact) entrance.finish();
     }
 
     @Override

@@ -14,6 +14,20 @@ import static org.junit.jupiter.api.Assertions.*;
 /** 山海：主控面板切页时移除前一页的输入控件，并保留草稿。 */
 class ControlPanelScreenTest {
     @Test
+    void hiddenParentInitializationDoesNotConsumeThePendingReturnFocus() throws ReflectiveOperationException {
+        var mapping = new KeyMapping("key.sh_better_ui.control_panel.test", InputConstants.Type.MOUSE,
+                GLFW.GLFW_MOUSE_BUTTON_4, "key.categories.sh_better_ui");
+        var screen = new ControlPanelScreen(null, mapping, settings -> true);
+        screen.width = 420;
+        screen.height = 240;
+        screen.prepareReturnLayer();
+        screen.init();
+        var pendingFocus = ControlPanelScreen.class.getDeclaredField("restoreDeveloperFocus");
+        pendingFocus.setAccessible(true);
+        assertTrue(pendingFocus.getBoolean(screen), "hidden pre-render layout must retain focus for activation");
+    }
+
+    @Test
     void changingTabsRemovesInactiveControlsAndKeepsTheirDraftValues() {
         var mapping = new KeyMapping("key.sh_better_ui.control_panel.test", InputConstants.Type.MOUSE,
                 GLFW.GLFW_MOUSE_BUTTON_4, "key.categories.sh_better_ui");

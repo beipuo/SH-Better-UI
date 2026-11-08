@@ -6,16 +6,23 @@ import com.dishanhai.sh_better_ui.client.glass.GlassBlur;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
+import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
+import com.dishanhai.sh_better_ui.client.gui.scaled.FluidMorph;
+import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion;
+import com.dishanhai.sh_better_ui.client.gui.scaled.GuiRenderUtil;
+import com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners;
+import com.dishanhai.sh_better_ui.client.gui.scaled.Spring;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiConfirmation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
-import com.dishanhai.sh_better_ui.client.gui.scaled.UiPageSlide.Direction;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
-import com.dishanhai.sh_better_ui.client.gui.scaled.UiRecipePageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
@@ -32,6 +39,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,7 +49,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /** 山海：在同一画面编辑 SHBUI 客户端配置和快捷键。 */
-public final class ControlPanelScreen extends Screen {
+public final class ControlPanelScreen extends Screen implements UiScreenReturn.Target {
     private static final int MAX_WIDTH = 624;
     private static final int PADDING = 14;
     private static final int GAP = 8;
@@ -51,6 +59,7 @@ public final class ControlPanelScreen extends Screen {
     private static final int GLASS_STACK_HEIGHT = 190;
     private static final int GLASS_SIDE_HEIGHT = 146;
     private static final int SCROLLBAR_WIDTH = 5;
+    private static final float BODY_RADIUS = 5f;
     private static final List<Section> SECTIONS = List.of(Section.values());
     private static final List<UiSectionBar.Section> TABS = SECTIONS.stream().map(section -> section.tab).toList();
 
@@ -64,13 +73,16 @@ public final class ControlPanelScreen extends Screen {
     private final Map<AbstractWidget, Integer> rows = new LinkedHashMap<>();
     private final EnumMap<Scale, UiSlider> sliders = new EnumMap<>(Scale.class);
     private final int[] sectionScroll = new int[SECTIONS.size()];
+    private final UiCapsuleReveal entrance = new UiCapsuleReveal();
+    private final UiScreenReturn returning = new UiScreenReturn(this);
+    private final InterruptibleAnimation pageMorph = new InterruptibleAnimation(Spring.FLUID_PANEL, 1f);
+    private final InterruptibleAnimation pageOrigin = new InterruptibleAnimation(Spring.INDICATOR);
     private final Draft defaults;
     private Draft saved;
     private Draft draft;
     private Draft beforeReset;
     private UiPreferences preferences;
     private UiOverlayHost overlays;
-    private UiRecipePageTransition pageTransition;
     private UiSectionBar sections;
     private UiToggleButton enabled;
     private UiToggleButton sampling;
@@ -79,10 +91,13 @@ public final class ControlPanelScreen extends Screen {
     private UiToggleButton widgetBlur;
     private UiButton shortcut;
     private UiButton clearShortcut;
+    private UiButton back;
+    private UiButton developer;
     private UiButton reset;
     private UiButton apply;
     private Component status;
     private boolean restoreDeveloperFocus;
+    private boolean entered;
     private boolean capturingShortcut;
     private InputConstants.Key modifierKey;
     private Section selectedSection = Section.GLASS;
@@ -98,9 +113,7 @@ public final class ControlPanelScreen extends Screen {
     private int contentWidth;
     private int contentHeight;
     private int glassWidth;
-    private float pageOffsetX;
-    private float pageOffsetY;
-    private boolean pageRendered;
+    private Bounds visiblePage;
     private boolean sidePreview;
     private boolean fits;
 
@@ -118,12 +131,12 @@ public final class ControlPanelScreen extends Screen {
 
     @Override
     protected void init() {
-        pageTransition = new UiRecipePageTransition();
-        pageOffsetX = 0;
-        pageOffsetY = 0;
+        pageMorph.snapTo(1f);
+        back = null;
         clearPage();
         fits = width >= 240 && height >= 156;
         if (!fits) {
+            entrance.finish();
             if (width >= 32 && height >= 34) {
                 int backWidth = Math.min(width - 8, 96);
                 addRenderableWidget(button((width - backWidth) / 2, height - 26, backWidth,
@@ -137,22 +150,26 @@ public final class ControlPanelScreen extends Screen {
         panelHeight = Math.min(height - 12, HEADER_HEIGHT + GLASS_STACK_HEIGHT + FOOTER_HEIGHT);
         left = (width - panelWidth) / 2;
         top = (height - panelHeight) / 2;
+        if (!entered) {
+            entered = true;
+            entrance.startAt(width * 0.5f, top + 5f);
+        }
         bodyTop = top + HEADER_HEIGHT;
         bodyBottom = top + panelHeight - FOOTER_HEIGHT;
         int x = left + PADDING;
         int innerWidth = panelWidth - 2 * PADDING;
         int developerWidth = Math.min(120, innerWidth / 2);
-        UiButton developer = addRenderableWidget(button(x + innerWidth - developerWidth, top + 8, developerWidth,
+        developer = addRenderableWidget(button(x + innerWidth - developerWidth, top + 8, developerWidth,
                 Component.translatable("sh_better_ui.panel.developer.title"), GraphicIcon.CODE, false, () -> {
                     restoreDeveloperFocus = true;
-                    minecraft.setScreen(new DeveloperPanelScreen(this, preferences));
+                    minecraft.setScreen(new DeveloperPanelScreen(this, preferences, developer));
                 }));
         sections = new UiSectionBar(x, top + 35, innerWidth, BUTTON_HEIGHT, preferences, TABS,
                 selectedSection.ordinal(), index -> requestedSection = SECTIONS.get(index));
         sections.buttons().forEach(this::addRenderableWidget);
         addFooter(x, innerWidth);
         buildPage();
-        if (restoreDeveloperFocus) {
+        if (restoreDeveloperFocus && minecraft != null && minecraft.screen == this) {
             setFocused(developer);
             restoreDeveloperFocus = false;
         }
@@ -172,7 +189,7 @@ public final class ControlPanelScreen extends Screen {
         capturingShortcut = false;
         modifierKey = null;
         scrollGrab = -1;
-        pageRendered = false;
+        visiblePage = null;
     }
 
     private void buildPage() {
@@ -251,7 +268,7 @@ public final class ControlPanelScreen extends Screen {
     private void addFooter(int x, int width) {
         int y = bodyBottom + 16;
         int column = (width - 2 * GAP) / 3;
-        var back = addRenderableWidget(button(x, y, column, Component.translatable("gui.back"), GraphicIcon.BACK,
+        back = addRenderableWidget(button(x, y, column, Component.translatable("gui.back"), GraphicIcon.BACK,
                 false, this::onClose));
         reset = addRenderableWidget(button(x + column + GAP, y, column, label("reset"), GraphicIcon.RESET,
                 false, this::resetDraft));
@@ -392,6 +409,8 @@ public final class ControlPanelScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
+        if (entrance.closing()) return true;
+        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
         if (capturingShortcut) {
             if (key == GLFW.GLFW_KEY_ESCAPE) {
                 finishShortcut(draft.shortcut());
@@ -439,19 +458,34 @@ public final class ControlPanelScreen extends Screen {
         Section next = requestedSection;
         requestedSection = null;
         if (next == null || next == selectedSection) return;
-        var direction = next.ordinal() > selectedSection.ordinal() ? Direction.LEFT : Direction.RIGHT;
         selectedSection = next;
         setDragging(false);
         clearPage();
         buildPage();
-        pageTransition.enter(direction, Math.min(24f, contentWidth / 8f), PageTransition.nowMs(), preferences);
-        setFocused(sections.buttons().get(next.ordinal()));
+        var tab = sections.buttons().get(next.ordinal());
+        startPageMorph(tab, PageTransition.nowMs());
+        setFocused(tab);
+    }
+
+    private void startPageMorph(UiButton tab, long now) {
+        float center = tab.getX() + tab.getWidth() * 0.5f;
+        pageMorph.sample(now, preferences);
+        if (preferences.reducedMotion()) {
+            pageOrigin.snapTo(center);
+        } else if (!pageMorph.running()) {
+            pageOrigin.snapTo(center);
+            pageMorph.snapTo(0f);
+            pageMorph.setOpen(true, now);
+        } else {
+            pageOrigin.animateTo(center, now);
+        }
     }
 
     @Override
     public void setFocused(GuiEventListener listener) {
         super.setFocused(listener);
         revealFocus(listener);
+        if (rows.containsKey(listener)) pageMorph.finish();
     }
 
     private void revealFocus(GuiEventListener listener) {
@@ -469,19 +503,16 @@ public final class ControlPanelScreen extends Screen {
                 && y >= bodyTop && y < bodyBottom;
     }
 
-    private boolean inPageViewport(double x, double y) {
-        return inBody(x, y) && x < left + PADDING + contentWidth + 3;
-    }
-
     @Override
     public boolean mouseClicked(double x, double y, int button) {
+        if (fits && entrance.active()) return false;
         if (capturingShortcut) {
             finishShortcut(new Shortcut(InputConstants.Type.MOUSE.getOrCreate(button),
                     modifierName(hasControlDown(), hasShiftDown(), hasAltDown())));
             return true;
         }
         boolean inBody = inBody(x, y);
-        if (button == 0 && inBody && maxScroll() > 0 && x >= scrollbarX() - 3) {
+        if (button == 0 && inBody && visiblePage != null && maxScroll() > 0 && x >= scrollbarX() - 3) {
             int thumbTop = thumbTop();
             scrollGrab = y >= thumbTop && y < thumbTop + thumbHeight() ? (int) y - thumbTop : thumbHeight() / 2;
             dragScrollbar(y);
@@ -489,11 +520,8 @@ public final class ControlPanelScreen extends Screen {
         }
         GuiEventListener clicked = null;
         for (GuiEventListener child : children()) {
-            boolean pageWidget = rows.containsKey(child);
-            if (pageWidget && (!inPageViewport(x, y) || !pageRendered)) continue;
-            double clickX = pageWidget ? x - pageOffsetX : x;
-            double clickY = pageWidget ? y - pageOffsetY : y;
-            if (child.mouseClicked(clickX, clickY, button)) {
+            if (rows.containsKey(child) && (visiblePage == null || !visiblePage.contains(x, y))) continue;
+            if (child.mouseClicked(x, y, button)) {
                 clicked = child;
                 break;
             }
@@ -511,9 +539,6 @@ public final class ControlPanelScreen extends Screen {
             dragScrollbar(y);
             return true;
         }
-        if (rows.containsKey(getFocused())) {
-            return super.mouseDragged(x - pageOffsetX, y - pageOffsetY, button, dx, dy);
-        }
         return super.mouseDragged(x, y, button, dx, dy);
     }
 
@@ -525,14 +550,16 @@ public final class ControlPanelScreen extends Screen {
         }
         if (button == 0 && isDragging() && getFocused() instanceof UiSlider slider) {
             setDragging(false);
-            return slider.mouseReleased(x - pageOffsetX, y - pageOffsetY, button);
+            return slider.mouseReleased(x, y, button);
         }
         return super.mouseReleased(x, y, button);
     }
 
     // Forge 与 NeoForge 分别使用单轴和双轴滚轮签名。
     public boolean mouseScrolled(double x, double y, double delta) {
-        if (!inBody(x, y) || maxScroll() <= 0 || delta == 0 || isDragging() || scrollGrab >= 0) return false;
+        if (entrance.active() || !inBody(x, y) || maxScroll() <= 0 || delta == 0 || isDragging() || scrollGrab >= 0) {
+            return false;
+        }
         scrollTo(scroll - (int) Math.round(delta * 26));
         return true;
     }
@@ -564,14 +591,25 @@ public final class ControlPanelScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (entrance.closing()) return;
         if (draft.equals(saved)) {
-            minecraft.setScreen(parent);
+            closeToParent();
             return;
         }
         if (overlays != null && overlays.isModalOpen()) return;
         overlays = new UiOverlayHost(this, preferences);
-        overlays.showDialog(new UiConfirmation.Prompt(label("discard.title"), label("discard.details"),
-                label("discard.action"), CommonComponents.GUI_CANCEL), () -> minecraft.setScreen(parent));
+        var prompt = new UiConfirmation.Prompt(label("discard.title"), label("discard.details"),
+                label("discard.action"), CommonComponents.GUI_CANCEL);
+        if (back == null) overlays.showDialog(prompt, this::closeToParent);
+        else overlays.showDialogFrom(back, prompt, this::closeToParent);
+    }
+
+    private void closeToParent() {
+        setDragging(false);
+        scrollGrab = -1;
+        if (fits && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        entrance.close(preferences, () -> minecraft.setScreen(parent));
+        if (!fits) entrance.finish();
     }
 
     @Override
@@ -579,12 +617,19 @@ public final class ControlPanelScreen extends Screen {
         return false;
     }
 
+    @Override
+    public void prepareReturnLayer() {
+        restoreDeveloperFocus = true;
+        if (fits) entrance.startAt(width * 0.5f, top + 5f);
+    }
+
     // NeoForge 由 Screen.render 调用，Forge 1.20.1 使用不同签名。
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, width, height, 0xBA101827, 0xE20B101B);
+        if (entrance.closing()) returning.render(graphics, width, height, partialTick, preferences);
+        else graphics.fillGradient(0, 0, width, height, 0xBA101827, 0xE20B101B);
         if (!fits) {
             var lines = font.split(Component.translatable("sh_better_ui.picker.too_small"), Math.max(1, width - 8));
             int y = 6;
@@ -594,25 +639,52 @@ public final class ControlPanelScreen extends Screen {
                 y += font.lineHeight;
             }
         } else {
-            int x = left + PADDING;
+            var panel = new Bounds(left, top, panelWidth, panelHeight);
+            if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
             LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
-            graphics.drawString(font, title, x, top + 15, LiquidGlassTheme.TEXT, false);
-            renderBody(graphics, x, mouseX, mouseY, partialTick);
-            Component message = status != null ? status : !draft.equals(saved) ? label("unsaved") : null;
-            if (message != null) graphics.drawString(font, message, x, bodyBottom + 3, LiquidGlassTheme.TEXT_MUTED, false);
+            renderContent(graphics, mouseX, mouseY, partialTick);
+            return;
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
+    private void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        int x = left + PADDING;
+        graphics.drawString(font, title, x, top + 15, LiquidGlassTheme.TEXT, false);
+        renderBody(graphics, x, mouseX, mouseY, partialTick);
+        Component message = status != null ? status : !draft.equals(saved) ? label("unsaved") : null;
+        if (message != null) graphics.drawString(font, message, x, bodyBottom + 3, LiquidGlassTheme.TEXT_MUTED, false);
+        super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
     private void renderBody(GuiGraphics graphics, int x, int mouseX, int mouseY, float partialTick) {
-        var frame = pageTransition.sample(PageTransition.nowMs(), preferences);
-        pageOffsetX = frame.incomingX();
-        pageOffsetY = frame.incomingY();
-        var viewport = new Bounds(x - 3, bodyTop, contentWidth + 6, bodyBottom - bodyTop);
-        UiRecipePageTransition.draw(graphics, viewport, frame, preferences,
-                () -> renderPage(graphics, x, mouseX, mouseY, partialTick));
-        pageRendered = true;
-        if (maxScroll() > 0) {
+        long now = PageTransition.nowMs();
+        float progress = GuiMotion.clamp01(pageMorph.sample(now, preferences));
+        var viewport = new Bounds(x - 3, bodyTop, panelWidth - 2 * PADDING + 6, bodyBottom - bodyTop);
+        int surface = preferences.highContrast() ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE;
+        var panel = new GuiRect(viewport.x(), viewport.y(), viewport.width(), viewport.height());
+        float center = pageOrigin.sample(now, preferences);
+        var capsule = FluidMorph.seed(center, bodyTop + 5f);
+        var frame = FluidMorph.between(capsule, panel, BODY_RADIUS, progress);
+        var rect = frame.rect();
+        int edge = preferences.highContrast() ? LiquidGlassTheme.TEXT
+                : GuiMotion.lerpColor(0xA0000000 | (LiquidGlassTheme.ACCENT & 0xFFFFFF), DarkModeTheme.BORDER, progress);
+
+        graphics.enableScissor(viewport.x(), viewport.y(), viewport.right(), viewport.bottom());
+        try {
+            if (progress < 1f) {
+                RoundedCorners.draw(graphics, viewport.x(), viewport.y(), viewport.width(), viewport.height(),
+                        BODY_RADIUS, 0f, 0, GuiMotion.lerpColor(surface, DarkModeTheme.BACKGROUND, 0.24f));
+                float opacity = GuiRenderUtil.easeOut((progress - 0.54f) / 0.44f);
+                renderSkeleton(graphics, viewport, x, now, (1f - opacity) * 0.42f);
+            }
+            RoundedCorners.draw(graphics, rect.getX(), rect.getY(), rect.getW(), rect.getH(),
+                    frame.radius(), 1f, edge, surface);
+            renderMorphContents(graphics, viewport, frame, x, mouseX, mouseY, partialTick, now, progress, surface);
+        } finally {
+            graphics.disableScissor();
+        }
+        if (visiblePage != null && maxScroll() > 0) {
             int trackX = scrollbarX();
             int thumbY = thumbTop();
             graphics.fill(trackX + 1, bodyTop, trackX + SCROLLBAR_WIDTH - 1, bodyBottom, 0x544A5565);
@@ -620,16 +692,52 @@ public final class ControlPanelScreen extends Screen {
         }
     }
 
+    private void renderMorphContents(GuiGraphics graphics, Bounds viewport, FluidMorph frame, int x, int mouseX,
+                                     int mouseY, float partialTick, long now, float progress, int surface) {
+        var rect = frame.rect();
+        float inset = frame.radius() * 0.4f * (1f - progress);
+        int left = Math.max(viewport.x(), (int) Math.ceil(rect.getX() + inset));
+        int top = Math.max(viewport.y(), (int) Math.ceil(rect.getY() + inset));
+        int right = Math.min(viewport.right(), (int) Math.floor(rect.getX() + rect.getW() - inset));
+        int bottom = Math.min(viewport.bottom(), (int) Math.floor(rect.getY() + rect.getH() - inset));
+        var clip = new Bounds(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
+        float opacity = GuiRenderUtil.easeOut((progress - 0.54f) / 0.44f);
+        visiblePage = opacity >= 0.9f ? clip : null;
+        if (clip.width() == 0 || clip.height() == 0) return;
+        graphics.enableScissor(clip.x(), clip.y(), clip.right(), clip.bottom());
+        try {
+            if (opacity > 0f) {
+                boolean hover = visiblePage != null && visiblePage.contains(mouseX, mouseY);
+                renderPage(graphics, x, hover ? mouseX : -1, hover ? mouseY : -1, partialTick);
+                if (opacity < 1f) {
+                    graphics.fill(clip.x(), clip.y(), clip.right(), clip.bottom(),
+                            GuiMotion.lerpColor(surface, surface & 0xFFFFFF, opacity));
+                }
+            }
+            if (opacity < 1f) renderSkeleton(graphics, clip, x, now, 1f - opacity);
+        } finally {
+            graphics.disableScissor();
+        }
+    }
+
+    private void renderSkeleton(GuiGraphics graphics, Bounds viewport, int x, long now, float opacity) {
+        var blocks = new ArrayList<UiSkeleton.Block>();
+        blocks.add(new UiSkeleton.Block(new Bounds(x, bodyTop - scroll + 5, 48, 5)));
+        for (AbstractWidget widget : rows.keySet()) {
+            blocks.add(new UiSkeleton.Block(new Bounds(widget.getX() + 2, widget.getY() + 3,
+                    widget.getWidth() - 4, widget.getHeight() - 6), 8f));
+        }
+        UiSkeleton.draw(graphics, viewport, blocks, now, preferences, opacity);
+    }
+
     private void renderPage(GuiGraphics graphics, int x, int mouseX, int mouseY, float partialTick) {
         int origin = bodyTop - scroll;
-        boolean hover = inPageViewport(mouseX, mouseY);
         graphics.drawString(font, selectedSection.tab.label(), x, origin + 4, LiquidGlassTheme.ACCENT, false);
         if (selectedSection == Section.GLASS) renderPreview(graphics, x, origin);
         for (AbstractWidget widget : rows.keySet()) {
-            float y = widget.getY() + pageOffsetY;
+            int y = widget.getY();
             if (y + widget.getHeight() > bodyTop && y < bodyBottom) {
-                widget.render(graphics, hover ? (int) Math.floor(mouseX - pageOffsetX) : -1,
-                        hover ? (int) Math.floor(mouseY - pageOffsetY) : -1, partialTick);
+                widget.render(graphics, mouseX, mouseY, partialTick);
             }
         }
     }
