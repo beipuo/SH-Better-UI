@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.glass.GlassBlur;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -37,6 +38,12 @@ public final class UiConfirmation {
     public static boolean open(Screen parent, Prompt prompt, UiPreferences preferences,
                                Consumer<GuiGraphics> context, Supplier<? extends GuiEventListener> restoreFocus,
                                Runnable onConfirm) {
+        return open(parent, prompt, preferences, context, restoreFocus, onConfirm, GraphicIcon.WARNING);
+    }
+
+    public static boolean open(Screen parent, Prompt prompt, UiPreferences preferences,
+                               Consumer<GuiGraphics> context, Supplier<? extends GuiEventListener> restoreFocus,
+                               Runnable onConfirm, GraphicIcon icon) {
         Minecraft client = Minecraft.getInstance();
         if (parent == null || client.screen != parent) return false;
         Objects.requireNonNull(prompt);
@@ -44,7 +51,7 @@ public final class UiConfirmation {
         Objects.requireNonNull(restoreFocus);
         Objects.requireNonNull(onConfirm);
         var choice = new Choice(client, parent, restoreFocus, onConfirm);
-        var screen = new ConfirmationScreen(prompt, preferences, context, choice);
+        var screen = new ConfirmationScreen(prompt, preferences, context, choice, icon);
         choice.screen = screen;
         client.setScreen(screen);
         return client.screen == screen;
@@ -86,32 +93,42 @@ public final class UiConfirmation {
         private final Consumer<GuiGraphics> context;
         private final Choice choice;
         private final Prompt prompt;
+        private final GraphicIcon icon;
         private Button confirmButton, cancelButton;
         private List<FormattedCharSequence> titleLines, detailLines;
+        private int headingInset;
+        private int headingX;
         private int buttonY;
         private int scrollLine;
 
         private ConfirmationScreen(Prompt prompt, UiPreferences preferences, Consumer<GuiGraphics> context,
-                                   Choice choice) {
+                                   Choice choice, GraphicIcon icon) {
             super(choice::finish, prompt.title(), prompt.details(), prompt.confirm(), prompt.cancel());
             this.preferences = preferences;
             this.context = context;
             this.choice = choice;
             this.prompt = prompt;
+            this.icon = icon;
         }
 
         @Override
         protected void addButtons(int y) {
             buttonY = Math.max(0, Math.min(y, height - 34));
             int buttonWidth = Math.max(1, Math.min(150, (width - 36) / 2));
-            confirmButton = new UiButton(width / 2 - buttonWidth - 6, buttonY, buttonWidth, 26, prompt.confirm(),
+            var confirm = new UiButton(width / 2 - buttonWidth - 6, buttonY, buttonWidth, 26, prompt.confirm(),
                     button -> choice.finish(true), preferences, true);
-            cancelButton = new UiButton(width / 2 + 6, buttonY, buttonWidth, 26, prompt.cancel(),
+            var cancel = new UiButton(width / 2 + 6, buttonY, buttonWidth, 26, prompt.cancel(),
                     button -> choice.finish(false), preferences, false);
+            confirm.setLeadingIcon(GraphicIcon.SUCCESS);
+            cancel.setLeadingIcon(GraphicIcon.CLOSE);
+            confirmButton = confirm;
+            cancelButton = cancel;
             addExitButton(confirmButton);
             addExitButton(cancelButton);
             setInitialFocus();
-            titleLines = font.split(prompt.title(), Math.max(1, width - 40));
+            headingInset = UiOverlayHost.iconInset(icon, width - 40, buttonY - 8 - textTop());
+            titleLines = font.split(prompt.title(), Math.max(1, width - 40 - headingInset));
+            headingX = (width - headingInset - titleLines.stream().mapToInt(font::width).max().orElse(0)) / 2;
             detailLines = font.split(prompt.details(), Math.max(1, width - 40));
             scrollLine = Math.min(scrollLine, maxScrollLine());
         }
@@ -128,13 +145,18 @@ public final class UiConfirmation {
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             drawLayer(graphics);
             if (titleLines == null) return;
+            if (headingInset > 0 && scrollLine == 0) {
+                icon.draw(graphics, headingX, textTop(), 1,
+                        preferences.highContrast() ? DarkModeTheme.TEXT : LiquidGlassTheme.ACCENT, preferences);
+            }
             int rows = Math.min(visibleLines(), titleLines.size() + 1 + detailLines.size() - scrollLine);
             for (int row = 0; row < rows; row++) {
                 int index = scrollLine + row;
                 if (index == titleLines.size()) continue;
                 boolean heading = index < titleLines.size();
                 var line = heading ? titleLines.get(index) : detailLines.get(index - titleLines.size() - 1);
-                graphics.drawString(font, line, (width - font.width(line)) / 2,
+                int x = heading && headingInset > 0 ? headingX + headingInset : (width - font.width(line)) / 2;
+                graphics.drawString(font, line, x,
                         textTop() + row * lineHeight(), heading ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_SECONDARY,
                         false);
             }
