@@ -4,9 +4,11 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.ButtonFeedback;
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiRenderUtil;
+import com.dishanhai.sh_better_ui.client.gui.scaled.PausableCountdown;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PointerDrag;
 import com.dishanhai.sh_better_ui.client.gui.scaled.ScrollPageTurn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.SpringTable;
+import com.dishanhai.sh_better_ui.client.gui.scaled.SwipeGesture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiBottomSheet;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiConfirmation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiFullscreenPreview;
@@ -14,9 +16,11 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiHistory;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiMouseState;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerTracker;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPullRefresh;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlideConfirm;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.ViewportTransform;
 import net.minecraft.client.gui.GuiGraphics;
@@ -95,8 +99,19 @@ public final class InteractionApi {
         return new UiSlideConfirm(owner, area, label, preferences, onConfirm);
     }
 
+    /** 将共享鼠标快照转换为区域局部坐标和按压／释放／取消状态。 */
+    public UiPointerTracker pointerTracker() { return new UiPointerTracker(); }
+
     public PointerDrag pointerDrag() {
         return new PointerDrag();
+    }
+
+    public SwipeGesture swipeGesture() {
+        return new SwipeGesture();
+    }
+
+    public PausableCountdown countdown(long durationMs, long nowMs) {
+        return new PausableCountdown(durationMs, nowMs);
     }
 
     /** 在客户端线程采样，可在同一帧传给多个控件。 */
@@ -118,6 +133,11 @@ public final class InteractionApi {
 
     public ScrollPageTurn scrollPageTurn() {
         return new ScrollPageTurn();
+    }
+
+    /** 山海：独立的水平标签视口，可用于宿主自己的绘制和输入。 */
+    public com.dishanhai.sh_better_ui.client.gui.scaled.TabScrollState tabScrollState() {
+        return new com.dishanhai.sh_better_ui.client.gui.scaled.TabScrollState();
     }
 
     public double dragScrollOffset(double scrollOffset, double pointerDeltaY, double maxScroll) {
@@ -146,6 +166,13 @@ public final class InteractionApi {
 
     public void toast(UiToast.Kind kind, Component title, Component details) {
         UiToast.show(kind, title, details);
+    }
+
+    /** 创建可交互通知；由调用方注册到 owner。 */
+    public UiSwipeToast swipeToast(Screen owner, UiSwipeToast.Placement placement, UiSwipeToast.Content content,
+                                   UiSwipeToast.Options options, UiSwipeToast.Style style, UiPreferences preferences,
+                                   Consumer<UiSwipeToast.CloseReason> onClose) {
+        return new UiSwipeToast(owner, placement, content, options, style, preferences, onClose);
     }
 
     public void toast(UiToast.Kind kind, Component title, Component details, UiToast.Effect effect) {

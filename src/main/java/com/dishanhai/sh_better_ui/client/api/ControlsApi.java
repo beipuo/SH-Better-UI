@@ -7,6 +7,8 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiDynamicStatus;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiScrollableSectionBar;
+import com.dishanhai.sh_better_ui.config.TabScrollSettings;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
@@ -50,6 +52,18 @@ public final class ControlsApi {
     public UiSectionBar sectionBar(Bounds area, UiPreferences preferences, List<UiSectionBar.Section> sections,
                                    int selectedIndex, IntConsumer onSelect) {
         return new UiSectionBar(area.x(), area.y(), area.width(), area.height(), preferences, sections, selectedIndex, onSelect);
+    }
+
+    /** 横向滚动标签组，作为单个原生控件注册；默认读取客户端标签栏设置。 */
+    public UiScrollableSectionBar scrollableSectionBar(Bounds area, UiPreferences preferences,
+            List<UiSectionBar.Section> sections, int selectedIndex, IntConsumer onSelect) {
+        return new UiScrollableSectionBar(area, preferences, sections, selectedIndex, onSelect);
+    }
+
+    public UiScrollableSectionBar scrollableSectionBar(Bounds area, UiPreferences preferences,
+            List<UiSectionBar.Section> sections, int selectedIndex, IntConsumer onSelect,
+            TabScrollSettings settings, int tabWidth) {
+        return new UiScrollableSectionBar(area, preferences, sections, selectedIndex, onSelect, settings, tabWidth);
     }
 
     public UiDisclosure disclosure(boolean expanded) {

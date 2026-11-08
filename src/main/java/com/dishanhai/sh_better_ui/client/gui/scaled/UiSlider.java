@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+import com.dishanhai.sh_better_ui.client.api.PlatformUiApi;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -45,6 +46,7 @@ public final class UiSlider extends AbstractSliderButton {
         this.step = step;
         this.range = (long) max - min;
         this.preferences = Objects.requireNonNull(preferences);
+        PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
         this.label = Objects.requireNonNull(label);
         this.onChange = Objects.requireNonNull(onChange);
         setValue(value);
@@ -61,6 +63,7 @@ public final class UiSlider extends AbstractSliderButton {
 
     public void setPreferences(UiPreferences preferences) {
         this.preferences = Objects.requireNonNull(preferences);
+        PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
     }
 
     @Override

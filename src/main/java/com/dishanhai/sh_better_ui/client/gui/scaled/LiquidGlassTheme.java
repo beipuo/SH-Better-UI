@@ -18,6 +18,7 @@ public final class LiquidGlassTheme {
     private static final float POPOVER_BLUR_RADIUS = 10f;
     static final int POPOVER_FILL = 0xE6252B34;
     private static final int LAYERED_POPOVER_FILL = 0xA6252B34;
+    private static final float REVEAL_FADE_END = 0.28f;
 
     private LiquidGlassTheme() {}
 
@@ -29,15 +30,32 @@ public final class LiquidGlassTheme {
 
     /** 独立浮层。较厚的底色用于保证正文与操作项的对比度。 */
     public static void popover(GuiGraphics g, int x, int y, int width, int height, UiPreferences preferences) {
-        surface(g, x, y, width, height, POPOVER_RADIUS, preferences, true,
-                GlassStyle.LIQUID_REGULAR, 10f, 1f, POPOVER_FILL, EDGE, false);
+        popover(g, x, y, width, height, POPOVER_RADIUS, preferences, 1f);
     }
 
     static void popover(GuiGraphics g, FluidMorph frame, UiPreferences preferences, float progress) {
         var rect = frame.rect();
+        popover(g, rect.getX(), rect.getY(), rect.getW(), rect.getH(), frame.radius(), preferences, progress);
+    }
+
+    private static void popover(GuiGraphics g, float x, float y, float width, float height, float radius,
+                                UiPreferences preferences, float progress) {
+        float opacity = revealCoverage(progress);
         int edge = GuiMotion.lerpColor(ACCENT, EDGE, progress);
-        surface(g, rect.getX(), rect.getY(), rect.getW(), rect.getH(), frame.radius(), preferences,
-                true, GlassStyle.LIQUID_REGULAR, POPOVER_BLUR_RADIUS, progress, POPOVER_FILL, edge, false);
+        surface(g, x, y, width, height, radius, preferences, true, GlassStyle.LIQUID_REGULAR,
+                POPOVER_BLUR_RADIUS, opacity, revealFill(progress), edge, false, opacity);
+    }
+
+    static int revealFill(float progress) {
+        // 取样稳定且正文开始显现后再透出背景，避免底色在切入正文时跳变。
+        float fadeStart = UiCapsuleReveal.CONTENT_FADE_START;
+        float tint = GuiMotion.clamp01((progress - fadeStart) / (1f - fadeStart));
+        return GuiMotion.lerpColor(POPOVER_FILL | 0xFF000000, POPOVER_FILL, tint);
+    }
+
+    static float revealCoverage(float progress) {
+        float t = GuiMotion.clamp01(progress / REVEAL_FADE_END);
+        return t * t * (3f - 2f * t);
     }
 
     /** 山海：在当前图层位置绘制带柔影的浮层底板。调用方随后在同一位置绘制前景。 */
@@ -173,7 +191,15 @@ public final class LiquidGlassTheme {
     private static void surface(GuiGraphics g, float x, float y, float width, float height, float radius,
                                 UiPreferences preferences, boolean sampleBackground, GlassStyle style,
                                 float blurRadius, float blurStrength, int fill, int edge, boolean capsule) {
-        if (width <= 0 || height <= 0) return;
+        surface(g, x, y, width, height, radius, preferences, sampleBackground, style, blurRadius, blurStrength,
+                fill, edge, capsule, 1f);
+    }
+
+    private static void surface(GuiGraphics g, float x, float y, float width, float height, float radius,
+                                UiPreferences preferences, boolean sampleBackground, GlassStyle style,
+                                float blurRadius, float blurStrength, int fill, int edge, boolean capsule,
+                                float opacity) {
+        if (width <= 0 || height <= 0 || opacity <= 0f) return;
         float corner = RoundedCorners.fit(width, height, radius);
         if (preferences.useBackdropBlur() && sampleBackground && blurRadius > 0f) {
             boolean sampled = GlassBlur.tryBackdrop(g, new GuiRect(x, y, width, height), blurStrength,
@@ -185,9 +211,13 @@ public final class LiquidGlassTheme {
         if (preferences.highContrast()) {
             edge = CONTRAST_EDGE;
         }
+        if (opacity < 1f) {
+            fill = GuiMotion.lerpColor(fill & 0xFFFFFF, fill, opacity);
+            edge = GuiMotion.lerpColor(edge & 0xFFFFFF, edge, opacity);
+        }
         float stroke = capsule && !preferences.highContrast() ? 0.65f : 1f;
         RoundedCorners.draw(g, x, y, width, height, corner, stroke, edge, fill, !capsule);
-        if (!capsule) popoverHighlight(g, x, y, width, height, corner, preferences, 1f);
+        if (!capsule) popoverHighlight(g, x, y, width, height, corner, preferences, opacity);
     }
 
     private static void popoverHighlight(GuiGraphics g, float x, float y, float width, float height, float corner,

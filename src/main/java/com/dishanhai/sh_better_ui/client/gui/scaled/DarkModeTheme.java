@@ -208,8 +208,15 @@ public final class DarkModeTheme {
 
         public State sample(boolean hovered, boolean pressed, boolean focused, boolean enabled,
                             UiPreferences preferences, long nowMs) {
-            return sample(hovered, pressed, focused, enabled,
-                    preferences.reducedMotion(), preferences.highContrast(), nowMs);
+            var feedback = preferences.feedback();
+            boolean immediate = preferences.reducedMotion() || !enabled;
+            boolean hoverTarget = enabled && hovered;
+            boolean pressTarget = enabled && pressed;
+            return new State(hover.update(hoverTarget, immediate || !feedback.hoverAnimation(), nowMs, hoverMs),
+                    textHover.update(hoverTarget, immediate || !feedback.hoverAnimation(), nowMs, CONTROL_MS),
+                    press.update(pressTarget, immediate || pressTarget || !feedback.pressAnimation(), nowMs, CONTROL_MS),
+                    enabled && focused, enabled, preferences.reducedMotion(), preferences.highContrast(),
+                    feedback.hoverAnimation(), feedback.pressAnimation());
         }
 
         private State sample(boolean hovered, boolean pressed, boolean focused, boolean enabled,
@@ -230,7 +237,11 @@ public final class DarkModeTheme {
     }
 
     public record State(float hover, float textHover, float press, boolean focused, boolean enabled,
-                        boolean reducedMotion, boolean highContrast) {
+                        boolean reducedMotion, boolean highContrast, boolean hoverAnimation, boolean pressAnimation) {
+        public State(float hover, float textHover, float press, boolean focused, boolean enabled,
+                     boolean reducedMotion, boolean highContrast) {
+            this(hover, textHover, press, focused, enabled, reducedMotion, highContrast, true, true);
+        }
         public State(float hover, float textHover, float press, boolean focused, boolean enabled,
                      boolean reducedMotion) {
             this(hover, textHover, press, focused, enabled, reducedMotion, false);
@@ -244,9 +255,9 @@ public final class DarkModeTheme {
         int focusColor() { return highContrast ? CONTRAST_FOCUS : ACCENT; }
 
         /** 卡片当前的绘制 Y 偏移，子控件命中应使用同一偏移。 */
-        public float cardOffset() { return reducedMotion ? 0f : -2f * hover; }
+        public float cardOffset() { return reducedMotion || !hoverAnimation ? 0f : -2f * hover; }
 
-        float buttonScale() { return reducedMotion ? 1f : GuiMotion.lerp(1f, 0.98f, press); }
+        float buttonScale() { return reducedMotion || !pressAnimation ? 1f : GuiMotion.lerp(1f, 0.98f, press); }
 
         int buttonFill(boolean primary) {
             return primary && enabled ? GuiMotion.lerpColor(PRIMARY, PRIMARY_HOVER, hover)

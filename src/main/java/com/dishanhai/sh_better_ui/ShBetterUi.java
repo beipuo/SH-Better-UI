@@ -1,7 +1,9 @@
 package com.dishanhai.sh_better_ui;
 
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
+import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
+import com.dishanhai.sh_better_ui.config.TabScrollSettings;
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.io.WritingException;
 import com.mojang.logging.LogUtils;
@@ -41,6 +43,18 @@ public final class ShBetterUi {
         var highContrast = builder.define("highContrast", defaults.highContrast());
         var reducedMotion = builder.define("reducedMotion", defaults.reducedMotion());
         var widgetBackdropBlur = builder.define("widgetBackdropBlur", defaults.widgetBackdropBlur());
+        var feedback = defaults.feedback();
+        var hoverAnimation = builder.define("hoverAnimation", feedback.hoverAnimation());
+        var pressAnimation = builder.define("pressAnimation", feedback.pressAnimation());
+        var selectionPulse = builder.define("selectionPulse", feedback.selectionPulse());
+        var tooltipDelay = builder.defineInRange("tooltipDelayMs", feedback.tooltipDelayMs(), 0,
+                ControlFeedbackSettings.MAX_TOOLTIP_DELAY_MS);
+        var tabs = defaults.tabs();
+        var tabWheel = builder.define("tabWheelEnabled", tabs.wheelEnabled());
+        var tabDrag = builder.define("tabDragEnabled", tabs.dragEnabled());
+        var tabAutoReveal = builder.define("tabAutoReveal", tabs.autoReveal());
+        var tabStep = builder.defineInRange("tabScrollStep", tabs.scrollStep(), TabScrollSettings.MIN_SCROLL_STEP,
+                TabScrollSettings.MAX_SCROLL_STEP);
         var spec = builder.pop().build();
         context.getModEventBus().addListener((ModConfigEvent event) -> {
             if (event.getConfig().getSpec() != spec) return;
@@ -52,7 +66,10 @@ public final class ShBetterUi {
                                 strength.get().floatValue(), tint.get().floatValue(), grain.get().floatValue(),
                                 saturation.get().floatValue(), lift.get().floatValue(), rim.get().floatValue(),
                                 refraction.get().floatValue(), denseSampling.get()),
-                                highContrast.get(), reducedMotion.get(), widgetBackdropBlur.get())
+                                highContrast.get(), reducedMotion.get(), widgetBackdropBlur.get(),
+                                new ControlFeedbackSettings(hoverAnimation.get(), pressAnimation.get(),
+                                        selectionPulse.get(), tooltipDelay.get()),
+                                new TabScrollSettings(tabWheel.get(), tabDrag.get(), tabAutoReveal.get(), tabStep.get()))
                         : defaults);
             }
         });
@@ -88,6 +105,16 @@ public final class ShBetterUi {
         updatedUi.set("highContrast", settings.highContrast());
         updatedUi.set("reducedMotion", settings.reducedMotion());
         updatedUi.set("widgetBackdropBlur", settings.widgetBackdropBlur());
+        var feedback = settings.feedback();
+        updatedUi.set("hoverAnimation", feedback.hoverAnimation());
+        updatedUi.set("pressAnimation", feedback.pressAnimation());
+        updatedUi.set("selectionPulse", feedback.selectionPulse());
+        updatedUi.set("tooltipDelayMs", feedback.tooltipDelayMs());
+        var tabs = settings.tabs();
+        updatedUi.set("tabWheelEnabled", tabs.wheelEnabled());
+        updatedUi.set("tabDragEnabled", tabs.dragEnabled());
+        updatedUi.set("tabAutoReveal", tabs.autoReveal());
+        updatedUi.set("tabScrollStep", tabs.scrollStep());
 
         // Forge 的根配置会自动保存。一次 putAll 同时替换两段并只触发一次保存。
         try {

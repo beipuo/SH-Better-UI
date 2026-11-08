@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
+import com.dishanhai.sh_better_ui.client.api.PlatformUiApi;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.Minecraft;
@@ -25,6 +26,7 @@ public final class UiButton extends Button {
     private final UiStyle style;
     private final DarkModeTheme.Interaction motion = DarkModeTheme.Interaction.control();
     private boolean justPressed;
+    private boolean held;
     private boolean selected;
     private long selectedAt;
     private int modeIndicatorCount;
@@ -50,12 +52,14 @@ public final class UiButton extends Button {
         this.preferences = preferences;
         this.primary = primary;
         this.style = Objects.requireNonNull(style);
+        PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
         setPreview(null);
     }
 
     /** 更新正在显示的控件，不重建按钮或移动焦点。 */
     public void setPreferences(UiPreferences preferences) {
         this.preferences = Objects.requireNonNull(preferences);
+        PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
     }
 
     /** 位于已有玻璃工具列内时可跳过液态玻璃的重复背景取样。 */
@@ -219,13 +223,18 @@ public final class UiButton extends Button {
     }
 
     private DarkModeTheme.State sampleMotion(long now) {
-        var state = motion.sample(isHovered(), justPressed, isFocused(), active, preferences, now);
+        var state = motion.sample(isHovered(), justPressed || held, isFocused(), active, preferences, now);
         justPressed = false;
         return state;
     }
 
+    /** 山海：聚合控件在提交点击前同步按住状态，不触发操作回调。 */
+    void setHeld(boolean held) {
+        this.held = held;
+    }
+
     private float selectionEmphasis(long now) {
-        return selected && !preferences.reducedMotion()
+        return selected && !preferences.reducedMotion() && preferences.feedback().selectionPulse()
                 ? 1f - GuiMotion.clamp01((now - selectedAt) / 360f) : 0f;
     }
 

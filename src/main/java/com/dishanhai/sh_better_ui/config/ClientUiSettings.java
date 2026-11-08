@@ -1,12 +1,26 @@
 package com.dishanhai.sh_better_ui.config;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** 山海：两个加载器共用的客户端界面设置快照。 */
 public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion,
-                               boolean widgetBackdropBlur) {
-    public static final ClientUiSettings DEFAULT = new ClientUiSettings(GlassBackdropSettings.DEFAULT, false, false, true);
+                               boolean widgetBackdropBlur, ControlFeedbackSettings feedback, TabScrollSettings tabs) {
+    public static final ClientUiSettings DEFAULT = new ClientUiSettings(GlassBackdropSettings.DEFAULT, false, false, true,
+            ControlFeedbackSettings.DEFAULT, TabScrollSettings.DEFAULT);
     private static final AtomicReference<ClientUiSettings> CURRENT = new AtomicReference<>(DEFAULT);
+
+    public ClientUiSettings {
+        Objects.requireNonNull(backdrop);
+        Objects.requireNonNull(feedback);
+        Objects.requireNonNull(tabs);
+    }
+
+    public ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion,
+                            boolean widgetBackdropBlur) {
+        this(backdrop, highContrast, reducedMotion, widgetBackdropBlur, ControlFeedbackSettings.DEFAULT,
+                TabScrollSettings.DEFAULT);
+    }
 
     public ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion) {
         this(backdrop, highContrast, reducedMotion, DEFAULT.widgetBackdropBlur());
@@ -17,7 +31,7 @@ public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContr
     }
 
     public static void update(ClientUiSettings settings) {
-        CURRENT.set(settings);
+        CURRENT.set(Objects.requireNonNull(settings));
     }
 
     static void updateBackdrop(GlassBackdropSettings backdrop) {
@@ -25,6 +39,18 @@ public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContr
     }
 
     public ClientUiSettings withBackdrop(GlassBackdropSettings settings) {
-        return new ClientUiSettings(settings, highContrast, reducedMotion, widgetBackdropBlur);
+        return new ClientUiSettings(settings, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs);
+    }
+
+    public ClientUiSettings withDisplay(boolean highContrast, boolean reducedMotion, boolean widgetBackdropBlur) {
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs);
+    }
+
+    public ClientUiSettings withFeedback(ControlFeedbackSettings settings) {
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, settings, tabs);
+    }
+
+    public ClientUiSettings withTabs(TabScrollSettings settings) {
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, settings);
     }
 }

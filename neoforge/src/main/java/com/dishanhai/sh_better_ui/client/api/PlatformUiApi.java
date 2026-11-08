@@ -10,16 +10,41 @@ import com.dishanhai.sh_better_ui.compat.ldlib2.LdLib2UiBridge;
 import com.dishanhai.sh_better_ui.compat.ldlib2.LdLib2UiBridge.PullRefreshHandle;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.fml.ModList;
 
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import java.time.Duration;
 
 /** 山海：NeoForge 1.21.1 的原生类型与可选 LDLib2 接入。 */
 public final class PlatformUiApi {
     PlatformUiApi() {}
+
+    /** 山海：统一两平台原生控件的提示延迟，单位为毫秒。 */
+    public static void setTooltipDelay(AbstractWidget widget, int delayMs) {
+        widget.setTooltipDelay(Duration.ofMillis(delayMs));
+    }
+
+    /** 山海：仅包含加载器元数据，不触发可选模组的类加载。 */
+    public record ModInfo(String name, String version) {}
+
+    public static String loaderId() {
+        return "neoforge";
+    }
+
+    public static int loadedModCount() {
+        return ModList.get().getMods().size();
+    }
+
+    public static Optional<ModInfo> modInfo(String modId) {
+        return ModList.get().getMods().stream().filter(info -> info.getModId().equals(modId)).findFirst()
+                .map(info -> new ModInfo(info.getDisplayName(), info.getVersion().toString()));
+    }
 
     public Ingredient fluid(FluidStack stack) {
         return IngredientValues.fluid(stack);
