@@ -4,6 +4,7 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Result;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -29,6 +30,12 @@ public final class GraphicDisplay {
     /** 使用 Screen 坐标绘制当前页并裁切超出的内容。设 rowColor 为 0 可省略行底色。 */
     public static void drawRows(GuiGraphics graphics, Font font, Result layout, List<Entry> entries,
                                 int iconScale, int textColor, int rowColor) {
+        drawRows(graphics, font, layout, entries, iconScale, textColor, rowColor, UiPreferences.DEFAULT);
+    }
+
+    /** 使用宿主画面的动效偏好绘制图标。 */
+    public static void drawRows(GuiGraphics graphics, Font font, Result layout, List<Entry> entries,
+                                int iconScale, int textColor, int rowColor, UiPreferences preferences) {
         int iconSize = GraphicIcon.size(iconScale);
         int visible = Math.min(layout.cells().size(), entries.size());
         if (visible == 0) return;
@@ -41,7 +48,7 @@ public final class GraphicDisplay {
                 if ((rowColor >>> 24) != 0) {
                     graphics.fill(cell.x(), cell.y(), cell.right(), cell.bottom(), rowColor);
                 }
-                drawEntry(graphics, font, cell, entry, iconScale, iconSize, textColor);
+                drawEntry(graphics, font, cell, entry, iconScale, iconSize, textColor, preferences);
             }
         } finally {
             graphics.disableScissor();
@@ -49,10 +56,11 @@ public final class GraphicDisplay {
     }
 
     private static void drawEntry(GuiGraphics graphics, Font font, Bounds cell, Entry entry,
-                                  int iconScale, int iconSize, int textColor) {
+                                  int iconScale, int iconSize, int textColor, UiPreferences preferences) {
         int textX = cell.x() + PADDING;
         if (iconSize <= cell.width() - 2 * PADDING && iconSize <= cell.height() - 2 * PADDING) {
-            entry.icon().draw(graphics, textX, cell.y() + (cell.height() - iconSize) / 2, iconScale, entry.iconColor());
+            entry.icon().draw(graphics, textX, cell.y() + (cell.height() - iconSize) / 2,
+                    iconScale, entry.iconColor(), preferences);
             textX += iconSize + ICON_GAP;
         }
         int textWidth = cell.right() - PADDING - textX;
@@ -65,7 +73,8 @@ public final class GraphicDisplay {
         for (int i = 0; i < count; i++) {
             var line = lines.get(i);
             if (font.width(line) <= textWidth) {
-                graphics.drawString(font, line, textX, y + i * font.lineHeight, textColor, false);
+                UiFormattedText.draw(graphics, font, line, textX, y + i * font.lineHeight,
+                        textColor, false, preferences);
             }
         }
     }
