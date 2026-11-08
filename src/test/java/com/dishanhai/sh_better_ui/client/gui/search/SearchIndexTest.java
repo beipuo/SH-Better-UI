@@ -7,9 +7,135 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 山海：覆盖搜索范围、排序与可填充文本。 */
 class SearchIndexTest {
+    @Test
+    void derivesModSuggestionsFromExistingIdEntries() {
+        var iron = entry(1, "Iron Ingot", "minecraft:iron_ingot");
+        var copper = entry(2, "Copper Ingot", "minecraft:copper_ingot");
+        var modded = entry(3, "Iron Plate", "example:iron_plate");
+        var index = new SearchIndex<>(List.of(iron, copper, modded));
+
+        assertEquals(List.of(iron, copper), index.search("@MINECRAFT"));
+        assertEquals(List.of("@minecraft"), completions(index.suggest("@mine", 8)));
+        assertEquals("craft", index.suggest("@mine", 1).getFirst().suffixFor("@mine"));
+        assertEquals(List.of("@minecraft", "@example"), completions(index.suggest("@", 8)));
+    }
+
+    @Test
+    void matchesModNamesPinyinAndTagsAlongsideOrdinaryTerms() {
+        var iron = metadataEntry(1, "铁锭", "demo:iron_ingot", "测试模组", "forge:ingots/iron");
+        var plate = metadataEntry(2, "铁板", "demo:iron_plate", "测试模组", "forge:plates/iron");
+        var other = metadataEntry(3, "Iron Ingot", "other:iron_ingot", "Other Mods", "forge:ingots/iron");
+        var index = new SearchIndex<>(List.of(iron, plate, other));
+
+        assertEquals(List.of(iron, plate), index.search("@测试"));
+        assertEquals(List.of(iron, plate), index.search("@CSMZ"));
+        assertEquals(List.of(other), index.search("@\"Other Mods\""));
+        assertEquals(List.of(iron), index.search("td @demo #forge:ingots/iron"));
+        assertEquals(List.of(iron, other), index.search("#INGOTS/IRON"));
+        assertEquals(List.of(), index.search("@demo #plates 铜"));
+        assertEquals(List.of(), index.search("#missing"));
+        assertEquals(List.of(), index.search("@missing"));
+        assertEquals(List.of(), index.search("forge:ingots"));
+    }
+
+    @Test
+    void completesOnlyTheActiveFacetAndPreservesTheExistingQuery() {
+        var iron = metadataEntry(1, "铁锭", "demo:iron_ingot", "测试模组", "forge:ingots/iron");
+        var plate = metadataEntry(2, "铁板", "demo:iron_plate", "测试模组", "forge:plates/iron");
+        var other = metadataEntry(3, "铁锭", "other:iron_ingot", "Other Mods", "forge:ingots/iron");
+        var index = new SearchIndex<>(List.of(iron, plate, other));
+
+        assertEquals(List.of("  铁锭\t@demo"), completions(index.suggest("  铁锭\t@de", 8)));
+        assertEquals(List.of("@demo\u3000#forge:ingots/iron", "@demo\u3000#forge:plates/iron"),
+                completions(index.suggest("@demo\u3000#", 8)));
+        assertEquals(List.of("@demo"), completions(index.suggest("@csmz", 8)));
+        assertEquals(List.of("@other"), completions(index.suggest("@\"Other M", 8)));
+        assertEquals(List.of("@demo #forge:ingots/iron"),
+                completions(index.suggest("@demo #forge:ing", 8)));
+        assertEquals(List.of("@demo 铁锭"), completions(index.suggest("@demo tieding", 8)));
+        assertEquals(List.of("#forge:ingots/iron @other"),
+                completions(index.suggest("#forge:ingots/iron @ot", 8)));
+        assertEquals(List.of(), index.suggest("铜 @", 8));
+    }
+
+    @Test
+    void facetSuggestionsDeduplicateWithinScopeBeforeApplyingLimitAndFillability() {
+        var first = metadataEntry(1, "Iron Ingot", "minecraft:iron_ingot", "Minecraft", "forge:ingots/iron");
+        var second = metadataEntry(2, "Copper Ingot", "minecraft:copper_ingot", "Minecraft", "forge:ingots/copper");
+        var other = metadataEntry(3, "Iron Plate", "other:iron_plate", "Other Mods", "forge:ingots/iron");
+        var index = new SearchIndex<>(List.of(first, second, other));
+
+        assertEquals(List.of("#forge:ingots/iron", "#forge:ingots/copper"),
+                completions(index.suggest("#", 8)));
+        assertEquals(List.of(3), values(index.suggest("#iron", value -> value == 3, 8)));
+        assertEquals(List.of("@minecraft"), completions(index.suggest("@", 1)));
+        assertEquals(List.of("@other"), completions(index.suggest("@", value -> value != 1 && value != 2, 8)));
+        assertEquals(List.of("@other"),
+                completions(index.suggest("@", value -> true, 1, text -> text.length() <= 6)));
+        assertEquals(List.of("#forge:ingots/copper"),
+                completions(index.suggest("#", value -> true, 1, text -> !text.endsWith("iron"))));
+        assertEquals(List.of(), index.suggest("#", 0));
+    }
+
+    @Test
+    void literalModMatchesRankBeforePinyinWithStableTies() {
+        var pinyin = metadataEntry(1, "铁锭", "demo:iron_ingot", "测试模组");
+        var contains = metadataEntry(2, "Plate", "mod_csmz:plate", "Other");
+        var prefix = metadataEntry(3, "Dust", "csmz_tools:dust", "Tools");
+        var exact = metadataEntry(4, "Gem", "csmz:gem", "Gems");
+        var index = new SearchIndex<>(List.of(pinyin, contains, prefix, exact));
+
+        assertEquals(List.of("@csmz", "@csmz_tools", "@mod_csmz", "@demo"),
+                completions(index.suggest("@csmz", 8)));
+    }
+
+    @Test
+    void completedNamesWithReservedWordsQuotesAndBackslashesStillMatchTheirEntry() {
+        var names = List.of("Block #1", "Block @home", "Block \"quoted\"", "Block \\path",
+                "Block \"quoted\" #1", "Block \\path @home", "Block \"\\path\" #1");
+        for (String name : names) {
+            var item = metadataEntry(1, name, "demo:block", "Demo");
+            var index = new SearchIndex<>(List.of(item));
+            for (String query : List.of("Blo", "@demo Blo")) {
+                var suggestions = index.suggest(query, 8);
+                assertEquals(1, suggestions.size(), name + " queried by " + query);
+                String completion = suggestions.getFirst().completion();
+                assertTrue(index.search(completion).contains(item), name + " completed to " + completion);
+            }
+        }
+    }
+
+    @Test
+    void bareModSuggestionsKeepSourceOrderAcrossNamedAndLegacyEntries() {
+        var named = metadataEntry(1, "Block", "demo:block", "Demo");
+        var legacy = entry(2, "Iron Ingot", "minecraft:iron_ingot");
+        var nextNamed = metadataEntry(3, "Plate", "other:plate", "Other Mods");
+        var index = new SearchIndex<>(List.of(named, legacy, nextNamed));
+
+        assertEquals(List.of("@demo", "@minecraft", "@other"), completions(index.suggest("@", 8)));
+        assertEquals(List.of("@demo"), completions(index.suggest("@", 1)));
+        assertEquals(List.of("@minecraft", "@other"),
+                completions(index.suggest("@", value -> value != 1, 8)));
+    }
+
+    @Test
+    void snapshotsTagMetadataAndKeepsEntriesWithoutNamespacesUsable() {
+        var tags = new ArrayList<>(List.of("forge:ingots/iron"));
+        var iron = new SearchIndex.Entry<>(1, "Iron", List.of("demo:iron"), List.of(), "Demo", tags);
+        var noNamespace = entry(2, "Iridium", "iridium");
+        var index = new SearchIndex<>(List.of(iron, noNamespace));
+        tags.clear();
+
+        assertEquals(List.of(iron), index.search("#forge:ingots/iron"));
+        assertEquals(List.of("@demo"), completions(index.suggest("@", 8)));
+        assertEquals(List.of(noNamespace), index.search("iridium"));
+        assertThrows(UnsupportedOperationException.class, () -> iron.tags().clear());
+    }
+
     @Test
     void matchesTokensAcrossFieldsAndKeepsScopeAndSourceOrder() {
         var copper = entry(1, "铜锭", "minecraft:copper_ingot", "tongding");
@@ -109,7 +235,16 @@ class SearchIndexTest {
         return new SearchIndex.Entry<>(value, name, List.of(id), List.of(aliases));
     }
 
+    private static SearchIndex.Entry<Integer> metadataEntry(int value, String name, String id,
+                                                            String modName, String... tags) {
+        return new SearchIndex.Entry<>(value, name, List.of(id), List.of(), modName, List.of(tags));
+    }
+
     private static List<Integer> values(List<SearchIndex.Suggestion<Integer>> suggestions) {
         return suggestions.stream().map(suggestion -> suggestion.entry().value()).toList();
+    }
+
+    private static List<String> completions(List<SearchIndex.Suggestion<Integer>> suggestions) {
+        return suggestions.stream().map(SearchIndex.Suggestion::completion).toList();
     }
 }

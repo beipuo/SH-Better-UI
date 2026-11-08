@@ -42,6 +42,7 @@
   "sh_better_ui.jei.obtaining.preview": "查看所选物品或流体的获取配方",
   "sh_better_ui.jei.uses.preview": "查看所选物品或流体可用于哪些配方",
   "sh_better_ui.jei.open.preview": "在 JEI 中打开当前配方，查看完整内容",
+  "sh_better_ui.jei.search": "搜索名称、ID、@模组、#tag",
   "sh_better_ui.jei.choose.preview": "将当前选中的物品或流体交给调用界面",
   "sh_better_ui.jei.row_selected": "已选中：%s",
   "sh_better_ui.jei.unchoose": "移除选取",

@@ -427,8 +427,9 @@ public final class SearchField<T> extends EditBox {
     }
 
     private static Component label(SearchIndex.Suggestion<?> suggestion) {
-        String name = suggestion.entry().name();
+        String name = suggestion.label();
         String completion = suggestion.completion();
+        if (!name.equals(suggestion.entry().name())) return Component.literal(name);
         return completion.equals(name) ? Component.literal(name)
                 : Component.translatable("sh_better_ui.search.suggestion.id", completion, name);
     }

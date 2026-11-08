@@ -102,6 +102,8 @@ public final class JeiSearchPanel {
         int filterWidth = Math.clamp(innerWidth / 3, 54, 112);
         int searchWidth = innerWidth - filterWidth - GAP;
         search = new SearchField<>(font, innerX, controlsY, searchWidth, CONTROL_HEIGHT, index);
+        search.setMessage(text("search"));
+        search.setHint(text("search"));
         modSearch = new SearchField<>(font, innerX + searchWidth + GAP, controlsY,
                 filterWidth, CONTROL_HEIGHT, modIndex);
         modSearch.setMessage(MOD_FILTER);
@@ -332,7 +334,8 @@ public final class JeiSearchPanel {
             for (Ingredient ingredient : catalog.ingredients()) {
                 if (!ingredient.visible() || ingredient.name().isBlank()) continue;
                 var id = ingredient.id();
-                entries.add(new SearchIndex.Entry<>(ingredient, ingredient.name(), List.of(id.toString()), ingredient.aliases()));
+                entries.add(new SearchIndex.Entry<>(ingredient, ingredient.name(), List.of(id.toString()),
+                        ingredient.aliases(), ingredient.modName(), ingredient.tags().stream().map(Object::toString).toList()));
                 mods.computeIfAbsent(id.getNamespace(), namespace -> {
                     String name = ingredient.modName();
                     return new SearchIndex.Entry<>(namespace, name.isBlank() ? namespace : name, List.of(namespace), List.of());

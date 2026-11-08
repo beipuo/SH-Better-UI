@@ -130,6 +130,36 @@ class JeiSearchPanelTest {
     }
 
     @Test
+    void mainSearchCompletesModAndTagFiltersFromTheCurrentCatalog() {
+        var iron = new TestIngredient("iron", "Iron Ingot", ResourceLocation.tryParse("minecraft:iron_ingot"),
+                "Minecraft", List.of(), JeiIntegration.Kind.ITEM, true,
+                List.of(ResourceLocation.tryParse("forge:ingots/iron")));
+        var other = new TestIngredient("other", "Iron Ingot", ResourceLocation.tryParse("other:iron_ingot"),
+                "Other Mods", List.of(), JeiIntegration.Kind.ITEM, true,
+                List.of(ResourceLocation.tryParse("forge:ingots/iron")));
+        var panel = newPanel();
+        panel.setCatalog(IngredientCatalog.of(List.of(other, iron)));
+        var search = (EditBox) panel.widgets().getFirst();
+        search.setFocused(true);
+        search.setValue("iron @mine");
+
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+        assertEquals("iron @minecraft", search.getValue());
+        search.setValue("iron @minecraft #forge:ing");
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+        assertEquals("iron @minecraft #forge:ingots/iron", search.getValue());
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+        assertEquals(iron.key(), panel.snapshot().selectedKey());
+
+        panel.setFilter(IngredientFilter.all().withMods(Set.of("other")));
+        search.setValue("@mine");
+        assertFalse(panel.hasOpenSuggestions(400));
+        search.setValue("@other #forge:ingots/iron");
+        assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+        assertEquals(other.key(), panel.snapshot().selectedKey());
+    }
+
+    @Test
     void disconnectStopsOldPreviewAndReconnectDoesNotReuseSelectionAcrossRuntimes() {
         var oldIngredient = item("world1:iron", "minecraft:iron_ingot", "Minecraft", "old", true);
         var newIngredient = item("world2:iron", "minecraft:iron_ingot", "Minecraft", "new", true);

@@ -19,6 +19,56 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** 山海：覆盖两版原生 EditBox 上的回调和搜索交互。 */
 class SearchFieldTest {
     @Test
+    void modCompletionKeepsTheQueryPrefixAndCanBeUndone() {
+        var field = metadataField();
+        var changes = new ArrayList<String>();
+        field.setResponder(changes::add);
+        field.setValue("Iron  @mine");
+
+        assertTrue(field.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+        assertEquals("Iron  @minecraft", field.getValue());
+        assertEquals(field.getValue().length(), field.getCursorPosition());
+        assertTrue(field.undoCompletion());
+        assertEquals("Iron  @mine", field.getValue());
+        assertEquals(List.of("Iron  @mine", "Iron  @minecraft", "Iron  @mine"), changes);
+        assertTrue(field.dismissSuggestions());
+        assertEquals("Iron  @mine", field.getValue());
+    }
+
+    @Test
+    void tagCompletionUsesTheSameClickableDropdownAndUndo() {
+        var field = metadataField();
+        field.setValue("@minecraft #forge:ing");
+        var area = field.suggestionArea(120).orElseThrow();
+
+        assertTrue(field.mouseClickedSuggestion(area.getX() + 1, area.getY() + 1,
+                GLFW.GLFW_MOUSE_BUTTON_LEFT, 120));
+        assertEquals("@minecraft #forge:ingots/iron", field.getValue());
+        assertTrue(field.undoCompletion());
+        assertEquals("@minecraft #forge:ing", field.getValue());
+        assertTrue(field.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0));
+        assertEquals("@minecraft #forge:ing", field.getValue());
+    }
+
+    @Test
+    void facetCompletionHonorsScopeAndChecksTheWholeReplacementAgainstInputLimits() {
+        var field = metadataField();
+        field.setScope(value -> value == 1);
+        field.setValue("@ot");
+        assertFalse(field.dismissSuggestions());
+
+        field.setValue("Iron @mi");
+        field.setMaxLength(12);
+        assertFalse(field.dismissSuggestions());
+        field.setMaxLength(64);
+        field.setFilter(text -> !text.equals("Iron @minecraft"));
+        assertFalse(field.dismissSuggestions());
+        field.setFilter(text -> true);
+        assertTrue(field.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+        assertEquals("Iron @minecraft", field.getValue());
+    }
+
+    @Test
     void liquidGlassKeepsNativeInputPaddingAndCompletionUndo() {
         var field = fieldAt(20, UiStyle.LIQUID_GLASS);
         assertEquals(68, field.getInnerWidth());
@@ -179,6 +229,16 @@ class SearchFieldTest {
 
     private static SearchField<Integer> fieldAt(int y) {
         return fieldAt(y, UiStyle.DEFAULT);
+    }
+
+    private static SearchField<Integer> metadataField() {
+        var field = fieldAt(20);
+        field.setIndex(new SearchIndex<>(List.of(
+                new SearchIndex.Entry<>(1, "Iron Ingot", List.of("minecraft:iron_ingot"), List.of(),
+                        "Minecraft", List.of("forge:ingots/iron")),
+                new SearchIndex.Entry<>(2, "Iron Plate", List.of("other:iron_plate"), List.of(),
+                        "Other Mods", List.of("forge:plates/iron")))));
+        return field;
     }
 
     private static SearchField<Integer> fieldAt(int y, UiStyle style) {

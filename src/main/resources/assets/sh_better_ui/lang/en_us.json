@@ -42,6 +42,7 @@
   "sh_better_ui.jei.obtaining.preview": "Preview recipes that produce the selected item or fluid",
   "sh_better_ui.jei.uses.preview": "Preview recipes that use the selected item or fluid",
   "sh_better_ui.jei.open.preview": "Open the current recipe in JEI to view its full details",
+  "sh_better_ui.jei.search": "Search names, IDs, @mods, #tags",
   "sh_better_ui.jei.choose.preview": "Send the selected item or fluid to the calling screen",
   "sh_better_ui.jei.row_selected": "Selected: %s",
   "sh_better_ui.jei.unchoose": "Remove selection",
