@@ -7,6 +7,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 
@@ -21,6 +22,18 @@ class UiTextDetailsTest {
             return SPLITTER;
         }
     };
+
+    @Test
+    void capsuleDetailsCanReverseBackToTheSameScreen() {
+        var screen = new UiTextDetailsScreen(null, Component.empty(), Component.empty(), UiPreferences.DEFAULT,
+                () -> null);
+        screen.revealFrom(new UiButton(20, 20, 80, 20, Component.empty(), ignored -> {}));
+
+        assertTrue(screen.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0));
+        assertTrue(screen.mouseClicked(0, 0, GLFW.GLFW_MOUSE_BUTTON_LEFT));
+        assertTrue(screen.mouseClicked(40, 30, GLFW.GLFW_MOUSE_BUTTON_LEFT));
+        assertFalse(screen.mouseClicked(0, 0, GLFW.GLFW_MOUSE_BUTTON_LEFT));
+    }
 
     @Test
     void truncatesStyledUnicodeAtWidthAndPreservesEarlierLines() {

@@ -33,6 +33,7 @@ public final class UiOverlayHost {
     private static final int GAP = 4;
     private static final int ICON_INSET = GraphicIcon.PIXELS + GAP;
     private static final int MIN_ICON_TEXT_WIDTH = 24;
+    private static final int PANEL_PRIORITY = 30;
     private static WeakReference<UiOverlayHost> active = new WeakReference<>(null);
 
     public record Action(Component label, Runnable onChoose, UiConfirmation.Prompt confirmation, GraphicIcon icon) {
@@ -88,6 +89,13 @@ public final class UiOverlayHost {
 
     public boolean isModalOpen() {
         return modal != null;
+    }
+
+    /** 供宿主的显式打开意图调用，保留正在收起的模态框和当前轮廓。 */
+    public boolean reopenModal() {
+        if (modal == null || !modal.closing() || Minecraft.getInstance().screen != owner) return false;
+        show(modal);
+        return true;
     }
 
     public void showNotice(Component title, Component details) {
@@ -157,6 +165,7 @@ public final class UiOverlayHost {
         if (ownerClosing) return;
         ownerClosing = true;
         boolean wasModal = modal != null;
+        if (wasModal) modal.enter.close();
         modal = null;
         bubble = null;
         pressed = null;
@@ -212,7 +221,10 @@ public final class UiOverlayHost {
         }
         modal = layer;
         layer.buttons.get(layer.focused).setFocused(true);
-        layer.enter.setOpen(true, PageTransition.nowMs());
+        var policy = layer.enter.target() == 0f && layer.enter.running()
+                ? InterruptibleAnimation.Policy.REVERSE : InterruptibleAnimation.Policy.RETARGET;
+        layer.enter.transitionTo(1f, PageTransition.nowMs(), policy, PANEL_PRIORITY);
+        layer.closeRevision = 0L;
         pressed = null;
         if (opening) {
             UiPointerCapture.cancel(owner);
@@ -240,7 +252,8 @@ public final class UiOverlayHost {
         if (modal == null) return;
         if (Minecraft.getInstance().screen == owner && !preferences.reducedMotion() && sourceAvailable(modal.source)) {
             if (!modal.closing()) {
-                modal.enter.setOpen(false, PageTransition.nowMs());
+                modal.closeRevision = modal.enter.transitionTo(0f, PageTransition.nowMs(),
+                        InterruptibleAnimation.Policy.REVERSE, PANEL_PRIORITY);
                 modal.buttons.get(modal.focused).setFocused(false);
                 modal.rendered = false;
                 pressed = null;
@@ -254,6 +267,7 @@ public final class UiOverlayHost {
         boolean restore = Minecraft.getInstance().screen == owner;
         if (restore) settleFocus();
         GuiEventListener target = restore && sourceAvailable(modal.source) ? modal.source : previousFocus;
+        modal.enter.close();
         modal = null;
         pressed = null;
         previousFocus = null;
@@ -300,6 +314,7 @@ public final class UiOverlayHost {
                 long now = PageTransition.nowMs();
                 if (layer.source != null && !morph) layer.enter.finish();
                 float progress = layer.progress(now);
+                if (layer.closing() && progress == 0f) layer.enter.finish();
                 int scrim = morph ? GuiMotion.lerpColor(SCRIM & 0x00FFFFFF, SCRIM, progress) : SCRIM;
                 if ((scrim >>> 24) != 0) graphics.fill(0, 0, owner.width, owner.height, scrim);
                 Layer underlay = layer.underlay;
@@ -316,7 +331,7 @@ public final class UiOverlayHost {
         } finally {
             graphics.pose().popPose();
         }
-        if (layer != null && layer == modal && layer.closing() && !layer.enter.running()) completeDismissal();
+        if (layer != null && layer == modal && layer.enter.takeCompletion(layer.closeRevision)) completeDismissal();
     }
 
     private void renderBubble(GuiGraphics graphics, Bubble bubble) {
@@ -497,6 +512,7 @@ public final class UiOverlayHost {
         private final List<Integer> rowTops = new ArrayList<>();
         private final UiButton source;
         private InterruptibleAnimation enter;
+        private long closeRevision;
         private Layer underlay;
         private List<FormattedCharSequence> titleLines;
         private List<FormattedCharSequence> detailLines;
@@ -652,7 +668,7 @@ public final class UiOverlayHost {
         }
 
         private boolean closing() {
-            return source != null && enter.target() == 0f;
+            return closeRevision != 0L;
         }
 
         private float progress(long now) {

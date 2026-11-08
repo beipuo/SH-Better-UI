@@ -5,6 +5,7 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -36,6 +37,7 @@ final class UiTextDetailsScreen extends Screen {
     private final Component details;
     private final UiPreferences preferences;
     private final UiCapsuleReveal entrance = new UiCapsuleReveal();
+    private final UiScreenReturn returning = new UiScreenReturn(this);
     private final Supplier<? extends GuiEventListener> returnFocus;
     private List<FormattedCharSequence> heading = List.of();
     private List<FormattedCharSequence> content = List.of();
@@ -54,6 +56,7 @@ final class UiTextDetailsScreen extends Screen {
     private int contentHeight;
     private int scroll;
     private int dragOffset = -1;
+    private boolean fromCapsule;
 
     UiTextDetailsScreen(Screen parent, Component title, Component details, UiPreferences preferences,
                         Supplier<? extends GuiEventListener> returnFocus) {
@@ -65,7 +68,13 @@ final class UiTextDetailsScreen extends Screen {
     }
 
     void revealFrom(UiButton source) {
-        entrance.startFrom(source);
+        fromCapsule = true;
+        entrance.startFrom(() -> {
+            if (parent == null || parent.children().contains(source)) return source;
+            var current = returnFocus.get();
+            return current instanceof AbstractWidget widget && parent.children().contains(widget) ? widget : source;
+        });
+        returning.beginHandoff(parent, preferences);
     }
 
     @Override
@@ -119,6 +128,20 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (!fromCapsule) {
+            returnToParent();
+            return;
+        }
+        if (entrance.closing()) return;
+        dragOffset = -1;
+        if (!preferences.reducedMotion()) {
+            returning.beginHandoff(this, preferences);
+            returning.prepare(parent, width, height);
+        }
+        entrance.close(preferences, this::returnToParent);
+    }
+
+    private void returnToParent() {
         minecraft.setScreen(parent);
         if (parent == null || minecraft.screen != parent) return;
         var target = returnFocus.get();
@@ -130,11 +153,15 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        DarkModeTheme.background(graphics, 0, 0, width, height);
+        if (entrance.closing()) returning.renderBackdrop(graphics, width, height, partialTick);
+        else DarkModeTheme.background(graphics, 0, 0, width, height);
         var panel = new Bounds(left, top, panelWidth, panelHeight);
-        if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
-        LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
-        renderContent(graphics, mouseX, mouseY, partialTick);
+        if (!returning.renderTransition(entrance, graphics, panel, preferences,
+                () -> renderContent(graphics, -1, -1, partialTick))) {
+            LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
+            renderContent(graphics, mouseX, mouseY, partialTick);
+        }
+        returning.renderHandoff(graphics, preferences);
     }
 
     private void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -173,7 +200,11 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
-        entrance.finish();
+        if (entrance.closing()) {
+            if (entrance.reopenFromKey(key)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        if (!entrance.allowsActivation(key, getFocused())) return true;
         int offset = switch (key) {
             case GLFW.GLFW_KEY_HOME -> 0;
             case GLFW.GLFW_KEY_END -> maxScroll();
@@ -187,7 +218,8 @@ final class UiTextDetailsScreen extends Screen {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return !entrance.active() && mouseX >= textLeft && mouseX < innerRight && mouseY >= viewTop && mouseY < viewBottom
+        return entrance.allowsPointer(mouseX, mouseY)
+                && mouseX >= textLeft && mouseX < innerRight && mouseY >= viewTop && mouseY < viewBottom
                 && scrollTo(scroll - (int) Math.round(delta * lineStep() * 3));
     }
 
@@ -197,7 +229,11 @@ final class UiTextDetailsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (entrance.active()) return false;
+        if (entrance.closing()) {
+            if (entrance.reopenFromSource(mouseX, mouseY, button)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        if (!entrance.allowsPointer(mouseX, mouseY)) return false;
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !hasTrack()
                 || mouseX < textRight || mouseX >= innerRight || mouseY < viewTop || mouseY >= viewBottom) {
             return super.mouseClicked(mouseX, mouseY, button);
@@ -225,6 +261,12 @@ final class UiTextDetailsScreen extends Screen {
         }
         dragOffset = -1;
         return true;
+    }
+
+    @Override
+    public void removed() {
+        returning.clearHandoff();
+        super.removed();
     }
 
     private int lineStep() { return font.lineHeight + 2; }

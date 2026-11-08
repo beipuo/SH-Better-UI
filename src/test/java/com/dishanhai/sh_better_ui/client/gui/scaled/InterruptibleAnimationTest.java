@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import org.junit.jupiter.api.Test;
 
+import static com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation.Policy.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** 山海：可打断动画的消费端行为，不依赖 Minecraft、渲染线程或第三方库。 */
@@ -180,5 +181,158 @@ class InterruptibleAnimationTest {
         animation.animateToAfter(-1f, 1_032L, 0L);
         settle(animation, 1_048L);
         assertEquals(-1f, animation.value());
+    }
+
+    @Test
+    void aLongFrameCatchesUpWithoutReplayingTheOpening() {
+        var animation = new InterruptibleAnimation(Spring.PANEL);
+        animation.setOpen(true, 1_000L);
+        assertEquals(1f, animation.sample(2_000L), 0.01f);
+    }
+
+    @Test
+    void reversalCanInterruptInBothDirectionsWithoutJumping() {
+        var animation = opening();
+        float openValue = animation.value();
+        float openSpeed = animation.velocity();
+        long close = animation.transitionTo(0f, 1_032L, REVERSE, 30);
+        assertEquals(openValue, animation.value());
+        assertEquals(-openSpeed, animation.velocity());
+        float closingValue = animation.sample(1_042L);
+        assertTrue(closingValue < openValue);
+
+        long reopen = animation.transitionTo(1f, 1_042L, REVERSE, 30);
+        assertEquals(closingValue, animation.value());
+        assertTrue(animation.velocity() > 0f);
+        settle(animation, 1_050L);
+        assertFalse(animation.takeCompletion(close));
+        assertTrue(animation.takeCompletion(reopen));
+        assertFalse(animation.takeCompletion(reopen));
+    }
+
+    @Test
+    void aRetargetAtCompletionInvalidatesAnUnclaimedEvent() {
+        var animation = opening();
+        long closing = animation.transitionTo(0f, 1_032L, REVERSE, 30);
+        settle(animation, 1_064L);
+        long reopen = animation.transitionTo(1f, 2_064L, IMMEDIATE, 30);
+        assertFalse(animation.takeCompletion(closing));
+        assertTrue(animation.takeCompletion(reopen));
+    }
+
+    @Test
+    void prioritiesOnlyConflictWithinTheSameProperty() {
+        var opacity = new InterruptibleAnimation(Spring.HOVER);
+        var offset = new InterruptibleAnimation(Spring.SCROLL);
+        long open = opacity.transitionTo(1f, 100L, RETARGET, 50);
+        assertEquals(0L, opacity.transitionTo(0f, 110L, RETARGET, 10));
+        assertEquals(0L, opacity.transitionTo(0f, 110L, IGNORE, 50));
+        assertNotEquals(0L, offset.transitionTo(80f, 110L, RETARGET, 10));
+        long close = opacity.transitionTo(0f, 112L, IGNORE, 51);
+        settle(opacity, 112L);
+        settle(offset, 112L);
+        assertFalse(opacity.takeCompletion(open));
+        assertTrue(opacity.takeCompletion(close));
+        assertEquals(80f, offset.value());
+        assertNotEquals(0L, opacity.transitionTo(1f, 1_200L, IGNORE, 10));
+    }
+
+    @Test
+    void rapidHoverUpdatesKeepOnlyTheNewestTarget() {
+        var hover = new InterruptibleAnimation(Spring.HOVER);
+        long command = 0L;
+        for (int event = 0; event < 500; event++) {
+            command = hover.transitionTo(event % 2, event, RETARGET, 10);
+        }
+        assertEquals(1f, hover.target());
+        settle(hover, 500L);
+        assertTrue(hover.takeCompletion(command));
+    }
+
+    @Test
+    void blendingStartsFromTheLiveValueAndCanBeRetargeted() {
+        var animation = opening();
+        float before = animation.value();
+        long blend = animation.blendTo(0f, 1_032L, 20, 100L, InterruptibleAnimation.BlendCurve.LINEAR);
+        assertEquals(before, animation.sample(1_032L));
+        assertEquals(before / 2f, animation.sample(1_082L), 0.00001f);
+        float velocity = animation.velocity();
+        animation.transitionTo(1f, 1_082L, RETARGET, 20);
+        assertEquals(before / 2f, animation.value(), 0.00001f);
+        assertEquals(velocity, animation.velocity());
+        settle(animation, 1_100L);
+        assertFalse(animation.takeCompletion(blend));
+    }
+
+    @Test
+    void repeatingAnIdenticalBlendKeepsItsOriginalDeadline() {
+        var animation = new InterruptibleAnimation(Spring.PANEL);
+        long first = animation.transitionTo(1f, 100L, BLEND, 30);
+        float before = animation.sample(200L);
+        long latest = animation.transitionTo(1f, 200L, BLEND, 30);
+        assertEquals(before, animation.value());
+        assertEquals(1f, animation.sample(280L));
+        assertFalse(animation.takeCompletion(first));
+        assertTrue(animation.takeCompletion(latest));
+    }
+
+    @Test
+    void queueIsBoundedAndPlaysInSubmissionOrder() {
+        var animation = new InterruptibleAnimation(Spring.HOVER);
+        animation.animateTo(1f, 1_000L);
+        long last = 0L;
+        for (int phase = 2; phase <= 9; phase++) {
+            last = animation.transitionTo(phase, 1_032L, QUEUE, 20);
+            assertNotEquals(0L, last);
+        }
+        assertEquals(0L, animation.transitionTo(10f, 1_032L, QUEUE, 20));
+        assertEquals(9f, animation.target());
+        long now = 1_032L;
+        for (int phase = 1; phase <= 9; phase++) {
+            now += 250L;
+            assertEquals((float) phase, animation.sample(now));
+        }
+        assertTrue(animation.takeCompletion(last));
+    }
+
+    @Test
+    void finishThenSwitchCoalescesAndReducedMotionSkipsTheRemainingStages() {
+        var animation = opening();
+        long intermediate = animation.transitionTo(2f, 1_032L, FINISH_THEN_SWITCH, 30);
+        long last = animation.transitionTo(3f, 1_032L, FINISH_THEN_SWITCH, 30);
+        assertEquals(1f, animation.sample(1_282L));
+        assertTrue(animation.running());
+        assertEquals(3f, animation.sample(1_283L, true));
+        assertFalse(animation.takeCompletion(intermediate));
+        assertTrue(animation.takeCompletion(last));
+    }
+
+    @Test
+    void closingATrackCancelsQueuedMotionAndCompletion() {
+        var animation = opening();
+        long command = animation.transitionTo(2f, 1_032L, QUEUE, 30);
+        float before = animation.value();
+        animation.close();
+        assertFalse(animation.running());
+        assertEquals(0L, animation.transitionTo(1f, 2_000L, IMMEDIATE, 100));
+        assertEquals(before, animation.sample(2_000L, true));
+        assertFalse(animation.takeCompletion(command));
+    }
+
+    @Test
+    void twentyAnd144FpsAdvanceInComparableWallTime() {
+        var slow = new InterruptibleAnimation(Spring.PANEL);
+        var fast = new InterruptibleAnimation(Spring.PANEL);
+        slow.setOpen(true, 1_000L);
+        fast.setOpen(true, 1_000L);
+        long fastFrame = 1L;
+        for (long elapsed = 50L; elapsed <= 500L; elapsed += 50L) {
+            while (Math.round(fastFrame * 1000d / 144d) < elapsed) {
+                fast.sample(1_000L + Math.round(fastFrame++ * 1000d / 144d));
+            }
+            assertEquals(fast.sample(1_000L + elapsed), slow.sample(1_000L + elapsed), 0.02f);
+        }
+        assertFalse(slow.running());
+        assertFalse(fast.running());
     }
 }

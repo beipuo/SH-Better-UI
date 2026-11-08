@@ -3,8 +3,8 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 /**
  * 山海：可中途改目标的单弹簧。先推进到命令时间，再保留 value 与 velocity 改目标，不会跳也不会重播。
  *
- * <p>积分与 {@link GuiRenderUtil.FluidSpring} 相同：显式积分，单步超过 50ms 截断，再拆成 4ms 子步。
- * 时间用毫秒，调用方传 {@code System.currentTimeMillis()}（或任何单调毫秒）。</p>
+ * <p>显式积分，限制单次追赶的时间并拆成不超过 4ms 的子步。
+ * 时间用毫秒，调用方应始终使用同一时钟。</p>
  */
 public final class Spring {
 
@@ -36,6 +36,7 @@ public final class Spring {
 
     private final double stiffness;
     private final double drag;
+    private final double maxStepSeconds;
     private final float settleEps;
     private final float settleVelocity;
 
@@ -54,9 +55,14 @@ public final class Spring {
     }
 
     public Spring(Preset preset, float initial) {
+        this(preset, initial, MAX_STEP_S);
+    }
+
+    Spring(Preset preset, float initial, double maxStepSeconds) {
         double omega = 2.0 * Math.PI / preset.response();
         this.stiffness = omega * omega;
         this.drag = 2.0 * preset.damping() * omega;
+        this.maxStepSeconds = maxStepSeconds;
         this.settleEps = preset.settleEps();
         this.settleVelocity = preset.settleVelocity();
         this.value = initial;
@@ -138,7 +144,7 @@ public final class Spring {
 
     private void advanceTo(long nowMs) {
         if (nowMs <= this.lastMs) return;
-        double dt = Math.min((nowMs - (double) this.lastMs) / 1000.0, MAX_STEP_S);
+        double dt = Math.min((nowMs - (double) this.lastMs) / 1000.0, maxStepSeconds);
         this.lastMs = nowMs;
         if (this.settled) return;
 
