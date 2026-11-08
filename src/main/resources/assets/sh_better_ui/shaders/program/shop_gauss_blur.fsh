@@ -29,9 +29,11 @@ uniform vec4 GlassTint;        // rgb = 色调，a = 混合量
 uniform vec4 GlassParams;      // x = 饱和度增量，y = 颗粒幅度，z = 提亮，w = 亮边强度
 uniform vec4 GlassEdge;        // x = 边缘折射 px，y = 亮边宽 px，z = Hole 阴影半径 px，w = Hole 阴影强度
 uniform vec4 MotionAxis;       // x = 第一趟（H）半径倍率，y = 第二趟（V）半径倍率；默认 (1,1)，水平滑动用 (1,0)
-                               // z = 弹层外圈软边宽度 px，w = 液态玻璃圆角半径 px（此时 Hole 为原始轮廓）
+                               // z = 弹层外圈软边宽度 px，圆角模式为负的 Y/X 缩放比
+                               // w = 液态玻璃圆角半径 px（此时 Hole 为原始轮廓）
 uniform vec4 Rect;   // xy = 左下角 UV，zw = 右上角 UV
 uniform vec4 Hole;   // 正在飞行的卡片或浮层矩形，保持清晰
+uniform vec2 Reveal; // 山海：未裁切矩形的过渡起止 U。相等时禁用。
 // PostChain 的 float uniform 走 glUniform1fv，所以这里是 8 个矩形 × 4 分量，不是 vec4[8]。
 // CellCount=0 时忽略，行为与只有 Rect 的旧路径相同。
 uniform float CellRects[32];
@@ -112,6 +114,37 @@ vec3 applyGlass(vec3 rgb, float k, float edgeD, vec2 inward, vec2 uv) {
     return clamp(rgb, 0.0, 1.0);
 }
 
+vec4 revealColor(vec2 uv) {
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    vec4 original = texelFetch(DiffuseSampler, pixel, 0);
+    float amount = 1.0 - smoothstep(Reveal.x, Reveal.y, uv.x);
+    float axisScale = BlurDir.x > 0.5 ? MotionAxis.x : MotionAxis.y;
+    float radius = Radius * Progress * axisScale * amount;
+    if (radius <= 0.1) return original;
+
+    // 两趟均按当前列决定半径。逐像素取样可避免大半径与细纹周期重合。
+    ivec2 direction = ivec2(BlurDir);
+    ivec2 lo = ivec2(round(Rect.xy * InSize));
+    ivec2 hi = ivec2(round(Rect.zw * InSize)) - ivec2(1);
+    float sigma = radius * 0.45;
+    float ratio = exp(-0.5 / (sigma * sigma));
+    float ratioStep = ratio * ratio;
+    float weight = ratio;
+    int limit = int(ceil(3.0 * sigma));
+    vec4 sum = original;
+    float total = 1.0;
+    for (int i = 1; i < limit; i++) {
+        float taperedWeight = weight * (1.0 - smoothstep(2.5, 3.0, float(i) / sigma));
+        ivec2 offset = direction * i;
+        sum += (texelFetch(DiffuseSampler, clamp(pixel + offset, lo, hi), 0)
+                + texelFetch(DiffuseSampler, clamp(pixel - offset, lo, hi), 0)) * taperedWeight;
+        total += 2.0 * taperedWeight;
+        ratio *= ratioStep;
+        weight *= ratio;
+    }
+    return sum / total;
+}
+
 void main() {
     vec2 uv = texCoord;
 
@@ -121,6 +154,10 @@ void main() {
             && uv.y >= Hole.y && uv.y <= Hole.w;
     if (!insideBox(uv, Rect) || insideHole) {
         fragColor = texture(DiffuseSampler, uv);
+        return;
+    }
+    if (Reveal.y > Reveal.x) {
+        fragColor = revealColor(uv);
         return;
     }
 
@@ -186,14 +223,13 @@ void main() {
             glowAdd = WaveGlow * crest * lit;
         }
     }
-    // 注意：这里不能只看 radius。波峰处 radius 恰好归零，而折射位移正是在波峰最强，
-    // 一旦跟着 radius 提前返回，位移就整段被跳过——纯色面板上就完全看不出来。
-    if (!waveActive && radius < 0.5) {
+    // 山海：零半径仍须执行材质，点击波也可在半径为零时产生折射。
+    if (!waveActive && k <= 0.0) {
         fragColor = texture(DiffuseSampler, uv);
         return;
     }
 
-    // 方向模糊：按趟缩放半径。放在上面的提前返回之后，所以 V 趟半径被压成 0 时玻璃层照常执行。
+    // 按趟缩放半径。零半径跳过卷积，仍计算玻璃边缘与色调。
     float axisRadius = radius * (firstPass ? MotionAxis.x : MotionAxis.y);
 
     // ── 玻璃边缘：到 box 四边的像素距离，以及指向内侧的合成方向 ──────────────
@@ -205,8 +241,9 @@ void main() {
                        edgeFall(toLo.y, rimW) - edgeFall(toHi.y, rimW));
     if (rounded) {
         // 山海：按未裁切的圆角轮廓算距离与内法线。两趟都原样传递角外像素。
-        vec2 halfSize = (Hole.zw - Hole.xy) * InSize * 0.5;
-        vec2 local = (uv - (Hole.xy + Hole.zw) * 0.5) * InSize;
+        vec2 metric = vec2(1.0, MotionAxis.z < 0.0 ? -MotionAxis.z : 1.0);
+        vec2 halfSize = (Hole.zw - Hole.xy) * InSize * 0.5 / metric;
+        vec2 local = (uv - (Hole.xy + Hole.zw) * 0.5) * InSize / metric;
         float corner = min(MotionAxis.w, min(halfSize.x, halfSize.y));
         vec2 q = abs(local) - halfSize + corner;
         vec2 arc = max(q, vec2(0.0));
@@ -218,6 +255,10 @@ void main() {
         }
         vec2 normal = arcLength > 0.0 ? arc / arcLength
                 : (q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+        normal /= metric;
+        float normalLength = length(normal);
+        edgeD /= normalLength;
+        normal /= normalLength;
         inward = -sign(local) * normal * edgeFall(edgeD, rimW);
         // 避免第二趟线性采样吸进裁切区外未更新的中间纹理。
         lo += oneTexel * 0.5;

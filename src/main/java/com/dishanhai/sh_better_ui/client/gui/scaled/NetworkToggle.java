@@ -17,6 +17,7 @@ public final class NetworkToggle extends Button {
     private static final int TRACK_WIDTH = 22;
     private static final int TRACK_HEIGHT = 12;
     private static final int KNOB_SIZE = 8;
+    private static final int KNOB_INSET = (TRACK_HEIGHT - KNOB_SIZE) / 2;
     private static final int PADDING = 4;
 
     private final UiPreferences preferences;
@@ -80,10 +81,12 @@ public final class NetworkToggle extends Button {
         int trackY = y + (height - TRACK_HEIGHT) / 2;
         int edge = active ? DarkModeTheme.TEXT_SECONDARY : DarkModeTheme.TEXT_MUTED;
         int fill = value && active ? 0xFF265C83 : 0xFF121A24;
-        DarkModeTheme.rounded(graphics, trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, TRACK_HEIGHT / 2,
+        float knobRadius = KNOB_SIZE * 0.5f;
+        float trackRadius = RoundedCorners.outsetRadius(KNOB_SIZE, KNOB_SIZE, knobRadius, KNOB_INSET);
+        DarkModeTheme.rounded(graphics, trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, trackRadius,
                 1, edge, fill);
-        int knobX = trackX + (value ? TRACK_WIDTH - KNOB_SIZE - 2 : 2);
-        DarkModeTheme.rounded(graphics, knobX, trackY + 2, KNOB_SIZE, KNOB_SIZE, KNOB_SIZE / 2,
+        int knobX = trackX + (value ? TRACK_WIDTH - KNOB_SIZE - KNOB_INSET : KNOB_INSET);
+        DarkModeTheme.rounded(graphics, knobX, trackY + KNOB_INSET, KNOB_SIZE, KNOB_SIZE, knobRadius,
                 0, 0, value && active ? 0xFFFFFFFF : edge);
 
         var font = Minecraft.getInstance().font;

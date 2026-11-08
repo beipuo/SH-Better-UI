@@ -1,0 +1,11 @@
+{
+  "vertex": "sh_better_ui:visual_reveal",
+  "fragment": "sh_better_ui:visual_reveal",
+  "attributes": ["Position", "UV0"],
+  "samplers": [{ "name": "TextureSampler" }],
+  "uniforms": [
+    { "name": "EffectMode", "type": "int", "count": 1, "values": [2] },
+    { "name": "Size", "type": "float", "count": 2, "values": [1, 1] },
+    { "name": "Reveal", "type": "float", "count": 3, "values": [12, 0.25, 0.75] }
+  ]
+}

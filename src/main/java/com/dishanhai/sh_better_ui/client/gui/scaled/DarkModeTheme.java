@@ -47,7 +47,8 @@ public final class DarkModeTheme {
             if (state.hover() > 0f) {
                 for (int spread = 3; spread >= 1; spread--) {
                     rounded(g, x - spread, y - spread + 3, width + 2 * spread, height + 2 * spread,
-                            CARD_RADIUS + spread, 0, 0, opacity(SHADOW, state.hover() * (4 - spread) / 12f));
+                            RoundedCorners.outsetRadius(width, height, CARD_RADIUS, spread),
+                            0, 0, opacity(SHADOW, state.hover() * (4 - spread) / 12f));
                 }
             }
             focus(g, x, y, width, height, CARD_RADIUS, state);
@@ -59,7 +60,7 @@ public final class DarkModeTheme {
         }
     }
 
-    /** 按钮内容与底板一起缩放。焦点环保留在原生控件边界外侧。 */
+    /** 按钮内容、底板和焦点环一起缩放。 */
     public static void button(GuiGraphics g, int x, int y, int width, int height,
                               State state, boolean primary, Runnable content) {
         button(g, x, y, width, height, state, primary, false, 0f, content);
@@ -73,7 +74,7 @@ public final class DarkModeTheme {
             if (state.enabled() && state.hover() > 0f) {
                 for (int spread = 3; spread >= 1; spread--) {
                     rounded(g, x - spread, y - spread, width + 2 * spread, height + 2 * spread,
-                            CONTROL_RADIUS + spread, 1,
+                            RoundedCorners.outsetRadius(width, height, CONTROL_RADIUS, spread), 1,
                             opacity(ACCENT, state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
                 }
             }
@@ -83,7 +84,8 @@ public final class DarkModeTheme {
                 int highlight = opacity(0xFFFFFFFF, (0.15f + 0.05f * state.hover()) * (1f - state.press()));
                 g.fill(x + CONTROL_RADIUS, y + 1, x + width - CONTROL_RADIUS, y + 2, highlight);
                 if (state.press() > 0f) {
-                    rounded(g, x + 1, y + 1, width - 2, height - 2, CONTROL_RADIUS - 1, 1,
+                    rounded(g, x + 1, y + 1, width - 2, height - 2,
+                            RoundedCorners.insetRadius(width, height, CONTROL_RADIUS, 1), 1,
                             opacity(SHADOW, 0.3f * state.press()), 0);
                 }
             }
@@ -91,8 +93,8 @@ public final class DarkModeTheme {
                 g.fill(x + 2, y + height - 3, x + width - 2, y + height - 1, state.focusColor());
             }
             content.run();
+            focus(g, x, y, width, height, CONTROL_RADIUS, state);
         });
-        focus(g, x, y, width, height, CONTROL_RADIUS, state);
     }
 
     /** 页签底部的移动指示条，可用于自绘或原生控件。 */
@@ -155,48 +157,18 @@ public final class DarkModeTheme {
         if (!state.focused()) return;
         int outer = FOCUS_OFFSET + FOCUS_WIDTH;
         rounded(g, x - outer, y - outer, width + 2 * outer, height + 2 * outer,
-                radius + outer, FOCUS_WIDTH, state.focusColor(), 0);
+                RoundedCorners.outsetRadius(width, height, radius, outer), FOCUS_WIDTH, state.focusColor(), 0);
         rounded(g, x - FOCUS_OFFSET, y - FOCUS_OFFSET, width + 2 * FOCUS_OFFSET, height + 2 * FOCUS_OFFSET,
-                radius + FOCUS_OFFSET, FOCUS_OFFSET, BACKGROUND, 0);
+                RoundedCorners.outsetRadius(width, height, radius, FOCUS_OFFSET), FOCUS_OFFSET, BACKGROUND, 0);
     }
 
     private static int opacity(int argb, float alpha) {
         return (argb & 0x00FFFFFF) | (Math.round(255f * alpha) << 24);
     }
 
-    /** 圆角边线与填色各自绘制，半透明卡片内不会叠加边框色。 */
     static void rounded(GuiGraphics g, int x, int y, int width, int height,
-                        int radius, int stroke, int edge, int fill) {
-        int maxRadius = Math.min(width, height) / 2;
-        radius = Math.min(radius, maxRadius);
-        int innerRadius = Math.max(0, radius - stroke);
-        int cap = Math.max(radius, stroke);
-        for (int row = 0; row < height;) {
-            int rows = row == cap ? Math.max(1, height - 2 * cap) : 1;
-            int outer = cornerInset(row, height, radius);
-            int left = x + outer;
-            int right = x + width - outer;
-            if (stroke > 0 && (row < stroke || row >= height - stroke || width <= 2 * stroke)) {
-                band(g, left, right, y + row, rows, edge);
-            } else {
-                int inner = stroke + cornerInset(row - stroke, height - 2 * stroke, innerRadius);
-                band(g, left, x + inner, y + row, rows, edge);
-                band(g, x + inner, x + width - inner, y + row, rows, fill);
-                band(g, x + width - inner, right, y + row, rows, edge);
-            }
-            row += rows;
-        }
-    }
-
-    private static int cornerInset(int row, int height, int radius) {
-        int cornerRow = Math.min(row, height - 1 - row);
-        if (cornerRow >= radius) return 0;
-        double dy = radius - cornerRow - 0.5;
-        return (int) Math.round(radius - Math.sqrt(radius * radius - dy * dy));
-    }
-
-    private static void band(GuiGraphics g, int left, int right, int y, int rows, int color) {
-        if (left < right && (color >>> 24) != 0) g.fill(left, y, right, y + rows, color);
+                        float radius, int stroke, int edge, int fill) {
+        RoundedCorners.draw(g, x, y, width, height, radius, stroke, edge, fill);
     }
 
     /** 每个控件保留一份。使用 {@link PageTransition#nowMs()} 提供单调时间。 */

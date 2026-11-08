@@ -36,9 +36,57 @@ class CapsuleMeshTest {
         }
     }
 
+    @Test
+    void fittedNestedRadiiKeepTheSameCentersAndPixelGapAtEachScale() {
+        for (float width : new float[]{1f, 3f, 9.5f, 27f, 144f, 320f}) {
+            for (float height : new float[]{1f, 7f, 19f, 64f}) {
+                for (float padding : new float[]{0.5f, 1f, 3.25f}) {
+                    float inner = RoundedCorners.fit(width, height, 12f);
+                    float outer = RoundedCorners.outsetRadius(width, height, 12f, padding);
+                    float outerWidth = width + 2f * padding;
+                    float outerHeight = height + 2f * padding;
+                    assertEquals(outer, RoundedCorners.fit(outerWidth, outerHeight, outer));
+                    assertEquals(inner, RoundedCorners.insetRadius(outerWidth, outerHeight, outer, padding));
+                    for (float scale : new float[]{0.75f, 1f, 2f, 3f, 4f}) {
+                        assertEquals((inner + padding) * scale, outer * scale, 0.0001f);
+                        assertEquals(padding * scale, outer * scale - inner * scale, 0.0001f);
+                        assertEquals((width - inner) * scale, (outerWidth - outer - padding) * scale, 0.0001f);
+                        assertEquals((height - inner) * scale, (outerHeight - outer - padding) * scale, 0.0001f);
+                    }
+                }
+            }
+        }
+        assertEquals(3.5f, RoundedCorners.fit(7f, 19f, 12f));
+        assertEquals(0f, RoundedCorners.insetRadius(13f, 9f, 1.5f, 2f));
+    }
+
+    @Test
+    void smallRadiusFallbackKeepsItsInteriorEvenWhenTheStrokeIsThicker() {
+        var vertices = mesh(13f, 9f, 1.5f, 2f, 2f, EDGE, FILL);
+        assertTrue(vertices.stream().anyMatch(v -> near(v.x, 2.25f) && near(v.y, 2.25f) && v.color == FILL));
+        assertTrue(vertices.stream().anyMatch(v -> near(v.x, 10.75f) && near(v.y, 6.75f) && v.color == FILL));
+        assertTrue(vertices.stream().anyMatch(v -> v.color == EDGE));
+    }
+
+    @Test
+    void fillOnlyAndFullyConsumedInteriorUseTheCorrectColor() {
+        var fillOnly = mesh(15f, 7f, 2.5f, 0f, 2f, EDGE, FILL);
+        assertTrue(fillOnly.stream().anyMatch(v -> v.color == FILL));
+        assertTrue(fillOnly.stream().allMatch(v -> v.color == FILL || v.color == (FILL & 0x00FFFFFF)));
+
+        var allBorder = mesh(5f, 3f, 1.5f, 1.5f, 2f, EDGE, FILL);
+        assertTrue(allBorder.stream().anyMatch(v -> v.color == EDGE));
+        assertTrue(allBorder.stream().allMatch(v -> v.color == EDGE || v.color == (EDGE & 0x00FFFFFF)));
+    }
+
     private static List<Vertex> mesh(float scale, int fill) {
+        return mesh(107.5f, 23f, 11.5f, 1f, scale, EDGE, fill);
+    }
+
+    private static List<Vertex> mesh(float width, float height, float radius, float stroke,
+                                     float scale, int edge, int fill) {
         var vertices = new ArrayList<Vertex>();
-        CapsuleMesh.emit(107.5f, 23f, 1f, scale, EDGE, fill,
+        CapsuleMesh.emit(width, height, radius, stroke, scale, edge, fill,
                 (x, y, color) -> vertices.add(new Vertex(x, y, color)));
         return vertices;
     }

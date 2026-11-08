@@ -3,7 +3,6 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
 import com.dishanhai.sh_better_ui.client.glass.GlassBlur;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
 /** 山海：原生界面的液态玻璃绘制。调用方在材质之后绘制内容并管理原生输入。 */
@@ -21,22 +20,37 @@ public final class LiquidGlassTheme {
 
     /** 浮在内容上的工具列或导航底板。先绘制其后方的内容。 */
     public static void toolbar(GuiGraphics g, int x, int y, int width, int height, UiPreferences preferences) {
-        surface(g, x, y, width, height, Math.min(12, height / 2), preferences, true,
-                GlassStyle.LIQUID_CLEAR, 7f, 0xB8252B34, EDGE, false);
+        surface(g, x, y, width, height, 12f, preferences, true,
+                GlassStyle.LIQUID_CLEAR, 7f, 1f, 0xB8252B34, EDGE, false);
     }
 
     /** 独立浮层。较厚的底色用于保证正文与操作项的对比度。 */
     public static void popover(GuiGraphics g, int x, int y, int width, int height, UiPreferences preferences) {
         surface(g, x, y, width, height, POPOVER_RADIUS, preferences, true,
-                GlassStyle.LIQUID_REGULAR, 10f, 0xE6252B34, EDGE, false);
+                GlassStyle.LIQUID_REGULAR, 10f, 1f, 0xE6252B34, EDGE, false);
+    }
+
+    /** 山海：在当前图层位置绘制带柔影的浮层底板。调用方随后在同一位置绘制前景。 */
+    public static void layeredPopover(GuiGraphics g, int x, int y, int width, int height,
+                                      UiPreferences preferences, float blurStrength) {
+        if (width <= 0 || height <= 0) return;
+        if (!preferences.highContrast()) {
+            for (int spread = 6; spread >= 2; spread -= 2) {
+                float corner = RoundedCorners.outsetRadius(width, height, POPOVER_RADIUS, spread);
+                RoundedCorners.draw(g, x - spread, y + 2 - spread, width + 2 * spread, height + 2 * spread,
+                        corner, 0f, 0, 0x18060912, false);
+            }
+        }
+        surface(g, x, y, width, height, POPOVER_RADIUS, preferences, true,
+                GlassStyle.LIQUID_REGULAR, 10f, blurStrength, 0xA6252B34, EDGE, false);
     }
 
     /** 输入框底板。输入、光标、选取及旁白由原生控件管理。 */
     public static void input(GuiGraphics g, int x, int y, int width, int height,
                              UiPreferences preferences, boolean sampleBackground, boolean focused) {
         surface(g, x, y, width, height, 5, preferences, sampleBackground,
-                GlassStyle.LIQUID_REGULAR, 8f, 0xE61D232C, focused ? ACCENT : EDGE, false);
-        focus(g, x, y, width, height, 5, focused);
+                GlassStyle.LIQUID_REGULAR, 8f, 1f, 0xE61D232C, focused ? ACCENT : EDGE, false);
+        focus(g, x, y, width, height, 5, focused, true);
     }
 
     /** 候选项标记与文字分开绘制，保留键盘选择与鼠标悬停的区别。 */
@@ -66,20 +80,20 @@ public final class LiquidGlassTheme {
                               float blurRadius, boolean primary, boolean selected, float emphasis, Runnable content) {
         float radiusVirtual = normalizeBlurRadius(blurRadius);
         if (width <= 0 || height <= 0) return;
-        int radius = (Math.min(width, height) + 1) / 2;
+        float radius = Math.min(width, height) * 0.5f;
         int fill = buttonFill(state, primary, selected, emphasis);
         int edge = selected && state.enabled() ? ACCENT : EDGE;
         GuiRenderUtil.withButtonMotion(g, x, y, width, height, state.buttonScale(), 0f, () -> {
             surface(g, x, y, width, height, radius, preferences, sampleBackground,
-                    GlassStyle.LIQUID_CLEAR, radiusVirtual, fill, edge, true);
+                    GlassStyle.LIQUID_CLEAR, radiusVirtual, 1f, fill, edge, true);
             if (selected && width > 10 && height > 5) {
                 int marker = Math.min(4, width / 4);
                 g.fill(x + width / 2 - marker, y + height - 3, x + width / 2 + marker, y + height - 2,
                         state.enabled() ? ACCENT : TEXT_MUTED);
             }
             content.run();
+            focus(g, x, y, width, height, radius, state.focused(), false);
         });
-        if (state.focused()) drawCapsule(g, x - 3, y - 3, width + 6, height + 6, 2f, ACCENT, 0);
     }
 
     public static int controlText(boolean enabled) {
@@ -100,13 +114,14 @@ public final class LiquidGlassTheme {
         return GuiMotion.lerpColor(fill, 0xAC182434, state.press() * 0.72f);
     }
 
-    private static void surface(GuiGraphics g, int x, int y, int width, int height, int radius,
+    private static void surface(GuiGraphics g, int x, int y, int width, int height, float radius,
                                 UiPreferences preferences, boolean sampleBackground, GlassStyle style,
-                                float blurRadius, int fill, int edge, boolean capsule) {
+                                float blurRadius, float blurStrength, int fill, int edge, boolean capsule) {
         if (width <= 0 || height <= 0) return;
-        int corner = capsule ? radius : Math.min(radius, Math.min(width, height) / 2);
+        float corner = RoundedCorners.fit(width, height, radius);
         if (preferences.useBackdropBlur() && sampleBackground && blurRadius > 0f) {
-            boolean sampled = GlassBlur.roundedBackdrop(g, new GuiRect(x, y, width, height), style, blurRadius, corner);
+            boolean sampled = GlassBlur.tryBackdrop(g, new GuiRect(x, y, width, height), blurStrength,
+                    style, blurRadius, corner);
             if (!sampled) fill |= 0xFF000000;
         } else if (!preferences.useBackdropBlur() || blurRadius == 0f) {
             fill |= 0xFF000000;
@@ -114,28 +129,18 @@ public final class LiquidGlassTheme {
         if (preferences.highContrast()) {
             edge = CONTRAST_EDGE;
         }
-        if (capsule) {
-            drawCapsule(g, x, y, width, height, preferences.highContrast() ? 1f : 0.65f, edge, fill);
-        } else {
-            DarkModeTheme.rounded(g, x, y, width, height, corner, 1, edge, fill);
-        }
+        float stroke = capsule && !preferences.highContrast() ? 0.65f : 1f;
+        RoundedCorners.draw(g, x, y, width, height, corner, stroke, edge, fill, !capsule);
         if (!capsule && !preferences.highContrast() && width > 2 * corner + 2 && height > 3) {
-            g.fill(x + corner, y + 1, x + width - corner, y + 2, 0x45FFFFFF);
+            int highlightInset = (int) Math.ceil(corner);
+            g.fill(x + highlightInset, y + 1, x + width - highlightInset, y + 2, 0x45FFFFFF);
         }
     }
 
-    private static void drawCapsule(GuiGraphics g, int x, int y, int width, int height,
-                                    float stroke, int edge, int fill) {
-        var pose = g.pose().last().pose();
-        double scaleX = Math.hypot(pose.m00(), pose.m01());
-        double scaleY = Math.hypot(pose.m10(), pose.m11());
-        float pixelsPerUnit = (float) (Minecraft.getInstance().getWindow().getGuiScale() * Math.min(scaleX, scaleY));
-        CapsuleRenderer.draw(g, x, y, width, height, stroke, pixelsPerUnit, edge, fill);
-    }
-
-    private static void focus(GuiGraphics g, int x, int y, int width, int height, int radius, boolean focused) {
+    private static void focus(GuiGraphics g, int x, int y, int width, int height,
+                              float radius, boolean focused, boolean writeDepth) {
         if (!focused || width <= 0 || height <= 0) return;
-        int corner = Math.min(radius, Math.min(width, height) / 2);
-        DarkModeTheme.rounded(g, x - 3, y - 3, width + 6, height + 6, corner + 3, 2, ACCENT, 0);
+        float corner = RoundedCorners.outsetRadius(width, height, radius, 3f);
+        RoundedCorners.draw(g, x - 3, y - 3, width + 6, height + 6, corner, 2f, ACCENT, 0, writeDepth);
     }
 }

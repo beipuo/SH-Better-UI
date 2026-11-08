@@ -29,6 +29,7 @@ def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/jei/JeiPlatformTooltip.java']
         'com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java',
 sourceSets {
+        'com/dishanhai/sh_better_ui/client/gui/scaled/VisualRevealRenderer.java',
     main {
         java.srcDir('../src/main/java')
         java.exclude { it.file.toPath().startsWith(file('../src/main/java').toPath()) &&

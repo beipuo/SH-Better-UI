@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.glass
 
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle
+import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 
@@ -98,14 +99,69 @@ object GlassBlur {
     /** 山海：即时绘制圆角背景，返回是否成功完成取样。 */
     @JvmStatic
     fun roundedBackdrop(graphics: GuiGraphics, rect: GuiRect, style: GlassStyle,
-                        radiusVirtual: Float, cornerRadius: Int): Boolean {
-        if (rect.isEmpty || cornerRadius <= 0) return false
+                        radiusVirtual: Float, cornerRadius: Int): Boolean =
+        roundedBackdrop(graphics, rect, style, radiusVirtual, cornerRadius.toFloat())
+
+    @JvmStatic
+    fun roundedBackdrop(graphics: GuiGraphics, rect: GuiRect, style: GlassStyle,
+                        radiusVirtual: Float, cornerRadius: Float): Boolean {
+        if (!(cornerRadius > 0f)) return false
+        return sampleBackdrop(graphics, rect, 1f, style, radiusVirtual, cornerRadius, legacyRadius = true)
+    }
+
+    /**
+     * 山海：在绘制前景之前取样当前主画面。坐标、半径与圆角使用当前 pose 下的 GUI 单位。
+     * 支持正向轴对齐缩放、平移和当前裁切。零半径保留材质处理，零圆角使用矩形。
+     * 未绘制后处理时返回 false，由调用方绘制底板与内容。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun tryBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
+                    radiusVirtual: Float, cornerRadius: Float = 0f): Boolean {
+        if (!strength.isFinite() || strength <= MIN_STRENGTH || !radiusVirtual.isFinite() || radiusVirtual < 0f
+            || !cornerRadius.isFinite() || cornerRadius < 0f) return false
+        return sampleBackdrop(graphics, rect, strength.coerceAtMost(1f), style, radiusVirtual.coerceAtMost(32f),
+            cornerRadius, legacyRadius = false)
+    }
+
+    private fun sampleBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
+                               radiusVirtual: Float, cornerRadius: Float, legacyRadius: Boolean): Boolean {
+        if (rect.isEmpty) return false
+        val pose = graphics.pose().last().pose()
+        if (pose.m01() != 0f || pose.m10() != 0f) return false
+        val view = capture(graphics) ?: return false
+        val window = Minecraft.getInstance().window
+        if (window.width <= 0 || window.height <= 0) return false
+        // 原生正交投影使用未取整的 GUI 宽高，不能使用向上取整的 guiScaledWidth / Height。
+        val pixelScaleX = window.guiScale.toFloat() * view.fbW / window.width
+        val pixelScaleY = window.guiScale.toFloat() * view.fbH / window.height
+        val scaleX = pixelScaleX * view.scaleX
+        val scaleY = pixelScaleY * view.scaleY
+        if (!(scaleX > 0f && scaleY > 0f)) return false
+        val px = GlassGeometry.applyAffine(rect, scaleX, scaleY,
+            view.translateX * pixelScaleX, view.translateY * pixelScaleY)
+        val radius = radiusVirtual * minOf(scaleX, scaleY)
+        val corner = RoundedCorners.fit(rect.w, rect.h, cornerRadius) * scaleX
+        return if (legacyRadius) {
+            GaussBlur.blurRoundedNow(graphics, px.x, px.y, px.w, px.h, radius, style, corner, scaleY / scaleX)
+        } else {
+            GaussBlur.sampleBackdropNow(graphics, px.x, px.y, px.w, px.h, strength, radius, style, corner, scaleY / scaleX)
+        }
+    }
+
+    /** 山海：保留原矩形的过渡位置，交由后处理与当前 scissor 取交集。 */
+    @JvmStatic
+    fun revealRegion(graphics: GuiGraphics, rect: GuiRect, radiusVirtual: Float,
+                     fullBlurUntil: Float, sharpFrom: Float): Boolean {
+        if (rect.isEmpty || radiusVirtual <= 0f) return false
+        val pose = graphics.pose().last().pose()
+        if (pose.m01() != 0f || pose.m10() != 0f) return false
         val view = capture(graphics) ?: return false
         val px = view.toPixels(rect)
         if (px.isEmpty) return false
         val scale = view.pixelScale * minOf(view.scaleX, view.scaleY)
-        return GaussBlur.blurNow(graphics, px.x, px.y, px.w, px.h, 1f,
-            radiusVirtual * scale, style, cornerRadius * scale)
+        return GaussBlur.revealNow(graphics, px.x, px.y, px.w, px.h,
+            radiusVirtual * scale, fullBlurUntil, sharpFrom)
     }
 
     /** 一帧内的换算上下文：framebuffer 尺寸、GUI 尺寸，以及当前 pose 的缩放与平移。 */
