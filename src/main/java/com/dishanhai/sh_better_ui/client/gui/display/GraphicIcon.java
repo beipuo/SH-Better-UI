@@ -1,5 +1,8 @@
 package com.dishanhai.sh_better_ui.client.gui.display;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.mojang.math.Axis;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -10,18 +13,15 @@ import org.lwjgl.opengl.GL20;
 import java.util.Objects;
 
 /** 山海：可着色的 16×16 GUI 图标，可使用库内图标或调用方的透明 PNG。 */
-public record GraphicIcon(ResourceLocation texture) {
+public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, GraphicIconMotion motion) {
     public static final int PIXELS = 16;
     public static final GraphicIcon INFO = builtIn("info");
     public static final GraphicIcon SUCCESS = builtIn("success");
     public static final GraphicIcon WARNING = builtIn("warning");
+    public static final GraphicIcon CRITICAL_WARNING = builtIn("critical_warning");
     public static final GraphicIcon ERROR = builtIn("error");
     public static final GraphicIcon PREVIOUS = builtIn("previous");
     public static final GraphicIcon NEXT = builtIn("next");
-    public static final GraphicIcon CRITICAL_WARNING = builtIn("critical_warning");
-    public static final GraphicIcon ADD = builtIn("add");
-    public static final GraphicIcon REMOVE = builtIn("remove");
-    public static final GraphicIcon SEARCH = builtIn("search");
     public static final GraphicIcon BACK = builtIn("back");
     public static final GraphicIcon FORWARD = builtIn("forward");
     public static final GraphicIcon SWITCH = builtIn("switch");
@@ -33,9 +33,9 @@ public record GraphicIcon(ResourceLocation texture) {
     public static final GraphicIcon RUN = builtIn("run");
     public static final GraphicIcon PAUSE = builtIn("pause");
     public static final GraphicIcon RESUME = builtIn("resume");
-    public static final GraphicIcon SETTINGS = builtIn("settings");
-    public static final GraphicIcon REFRESH = builtIn("refresh");
-    public static final GraphicIcon CLOSE = builtIn("close");
+    public static final GraphicIcon ADD = builtIn("add");
+    public static final GraphicIcon REMOVE = builtIn("remove");
+    public static final GraphicIcon SEARCH = builtIn("search");
     public static final GraphicIcon FILTER = builtIn("filter");
     public static final GraphicIcon SORT = builtIn("sort");
     public static final GraphicIcon EDIT = builtIn("edit");
@@ -52,8 +52,8 @@ public record GraphicIcon(ResourceLocation texture) {
     public static final GraphicIcon COLLAPSE = builtIn("collapse");
     public static final GraphicIcon UPLOAD = builtIn("upload");
     public static final GraphicIcon DOWNLOAD = builtIn("download");
-    public static final GraphicIcon HOME = builtIn("home");
-    public static final GraphicIcon LIST = builtIn("list");
+    public static final GraphicIcon SETTINGS = builtIn("settings");
+    public static final GraphicIcon REFRESH = builtIn("refresh");
     public static final GraphicIcon REPAIR = builtIn("repair");
     public static final GraphicIcon RESET = builtIn("reset");
     public static final GraphicIcon DISABLE = builtIn("disable");
@@ -137,15 +137,15 @@ public record GraphicIcon(ResourceLocation texture) {
     public static final GraphicIcon PULL_DOWN = builtIn("pull_down");
     public static final GraphicIcon BUBBLE = builtIn("bubble");
     public static final GraphicIcon COMMENT = BUBBLE;
-    public static final GraphicIcon WIRELESS = builtIn("wireless");
+    public static final GraphicIcon CLOSE = builtIn("close");
     public static final GraphicIcon CANCEL = CLOSE;
     public static final GraphicIcon CRITICAL_CANCEL = builtIn("critical_cancel");
+    public static final GraphicIcon HOME = builtIn("home");
+    public static final GraphicIcon LIST = builtIn("list");
+    public static final GraphicIcon WIRELESS = builtIn("wireless");
     public static final GraphicIcon TOPOLOGY = builtIn("topology");
     public static final GraphicIcon STATISTICS = builtIn("statistics");
     public static final GraphicIcon MEMBERS = builtIn("members");
-
-    public GraphicIcon {
-        Objects.requireNonNull(texture, "texture");
     public static final GraphicIcon CONFIG = builtIn("config");
     public static final GraphicIcon MANAGEMENT = builtIn("management");
     public static final GraphicIcon PERMISSIONS = builtIn("permissions");
@@ -172,6 +172,27 @@ public record GraphicIcon(ResourceLocation texture) {
     public static final GraphicIcon REWARD = builtIn("reward");
     public static final GraphicIcon SCHEDULER = builtIn("scheduler");
     public static final GraphicIcon TASK = builtIn("task");
+
+    public GraphicIcon {
+        Objects.requireNonNull(texture, "texture");
+    }
+
+    public GraphicIcon(ResourceLocation texture) {
+        this(texture, null, null);
+    }
+
+    public GraphicIcon(ResourceLocation texture, GraphicIconShader shader) {
+        this(texture, shader, null);
+    }
+
+    /** 返回共用同一贴图和动效的新图标。传 null 移除着色器。 */
+    public GraphicIcon withShader(GraphicIconShader shader) {
+        return new GraphicIcon(texture, shader, motion);
+    }
+
+    /** 返回共用同一贴图和着色器的新图标。传 null 移除几何动效。 */
+    public GraphicIcon withMotion(GraphicIconMotion motion) {
+        return new GraphicIcon(texture, shader, motion);
     }
 
     /** 按正整数倍缩放，坐标和返回尺寸均使用逻辑 GUI 单位。 */
@@ -182,10 +203,17 @@ public record GraphicIcon(ResourceLocation texture) {
 
     /** 在客户端渲染线程绘制，ARGB 色值与外层颜色相乘。 */
     public void draw(GuiGraphics graphics, int x, int y, int scale, int argb) {
+        draw(graphics, x, y, scale, argb, UiPreferences.DEFAULT);
+    }
+
+    /** 在客户端渲染线程绘制，可传入宿主画面的动效偏好。 */
+    public void draw(GuiGraphics graphics, int x, int y, int scale, int argb, UiPreferences preferences) {
         int size = size(scale);
         if ((argb >>> 24) == 0) return;
 
         float[] color = RenderSystem.getShaderColor().clone();
+        var previousShader = RenderSystem.getShader();
+        int previousTexture = RenderSystem.getShaderTexture(0);
         boolean depthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         boolean blending = GL11.glIsEnabled(GL11.GL_BLEND);
         int sourceRgb = GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB);
@@ -203,9 +231,29 @@ public record GraphicIcon(ResourceLocation texture) {
             RenderSystem.setShaderColor(color[0] * ((argb >>> 16) & 255) / 255f,
                     color[1] * ((argb >>> 8) & 255) / 255f, color[2] * (argb & 255) / 255f,
                     color[3] * (argb >>> 24) / 255f);
-            graphics.blit(texture, x, y, size, size, 0f, 0f, PIXELS, PIXELS, PIXELS, PIXELS);
+            boolean animate = motion != null && !preferences.reducedMotion();
+            var pose = graphics.pose();
+            if (animate) pose.pushPose();
+            try {
+                if (animate) {
+                    var frame = motion.sample(PageTransition.nowMs(), size, false);
+                    float centerX = x + size * 0.5f;
+                    float centerY = y + size * 0.5f;
+                    pose.translate(centerX, centerY + frame.offsetY(), 0f);
+                    pose.mulPose(Axis.ZP.rotationDegrees(frame.rotationDegrees()));
+                    pose.scale(frame.scale(), frame.scale(), 1f);
+                    pose.translate(-centerX, -centerY, 0f);
+                }
+                if (shader == null || !shader.draw(graphics, texture, x, y, size, preferences)) {
+                    graphics.blit(texture, x, y, size, size, 0f, 0f, PIXELS, PIXELS, PIXELS, PIXELS);
+                }
+            } finally {
+                if (animate) pose.popPose();
+            }
         } finally {
             RenderSystem.setShaderColor(color[0], color[1], color[2], color[3]);
+            RenderSystem.setShader(() -> previousShader);
+            RenderSystem.setShaderTexture(0, previousTexture);
             GL20.glBlendEquationSeparate(equationRgb, equationAlpha);
             RenderSystem.blendFuncSeparate(sourceRgb, destinationRgb, sourceAlpha, destinationAlpha);
             if (blending) RenderSystem.enableBlend();

@@ -27,6 +27,7 @@ def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/glass/GlassTooltip.java',
         'com/dishanhai/sh_better_ui/client/gui/selection/IngredientValues.java',
         'com/dishanhai/sh_better_ui/client/jei/JeiPlatformTooltip.java']
+        'com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java',
 sourceSets {
     main {
         java.srcDir('../src/main/java')
