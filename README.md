@@ -289,6 +289,21 @@ private final InterruptibleAnimation motion = new InterruptibleAnimation(Spring.
 // 关闭途中再次 setOpen(true, ...) 会从当时的位置与速度继续。
 ```
 
+### 配方切换、模式指示与实时状态
+
+- `UiRecipePageTransition.start(direction, viewport, nowMs, preferences)` 使用配方修改器的 640 ms 双页滑动。每帧取 `sample()`，将只负责绘制的旧页和新页回调交给 `draw()`。侧栏可读取 `Frame.companion()`，在遮罩最深时换内容。只显示当前页的场景用 `enter()` 和单回调 `draw()`，鼠标坐标减去同一帧的 `incomingX()`、`incomingY()`。
+- `UiButton.setModeIndicators(count, selectedIndex)` 用零基索引标记当前模式。开关可用 `UiToggleButton.setModeIndicatorsVisible(true)`，显示关和开两档并随 `setValue()` 同步。
+- `UiDynamicStatus` 接收 `Supplier<Snapshot>`。`Snapshot` 可组合 `ButtonFeedback.Status`、自定义 `Component` 和 0–100 的整数进度。每次 `render()` 只读取一次来源，返回的快照也可用于旁白。状态图标可通过 `UiDynamicStatus.icon(status)` 单独使用。
+
+这些 API 可在游戏内的开发者图库预览并复制 Java 示例。
+
+### 加载提示
+
+- 首页卡片等待数据时用 `UiSkeleton.card()` 占位。自定义布局可用 `UiSkeleton.draw()` 传入与内容位置对应的占位块。
+- 列表正在刷新或请求下一批数据时，用 `UiLoading.edgeSpinner()` 在顶部或底部显示小圆环。`UiPullRefresh` 在等待回执期间已接入顶部圆环。
+- 上传、下载与可测量的加载用 `UiLoading.progressBar()` 或 `topBar()` 直接绘制完成量除以总量。总量未知时，顶部加载条可使用 `nowMs` 重载。
+- 整理任务可把真实完成比例传给 `UiLoading.spinner()` 的 `float` 重载，弧长表达进度。传入 `nowMs` 则绘制未知进度的圆环。减少动效时未知进度提示停留在静态位置，真实进度仍随数据更新。
+
 ### 可选按钮与玻璃动效
 
 `client.gui.scaled` 提供三项可组合的装饰接口，接入方调用后才显示：
@@ -364,6 +379,8 @@ AI 服务入口可用 `CHATGPT`、`CLAUDE`、`DEEPSEEK`、`GROK` 和 `GEMINI`。
 联络和获取支持的入口可用 `QQ`、`WECHAT`（微信）、`X`（原 Twitter）、`DISCORD`、`TELEGRAM`、`WHATSAPP` 和 `FACEBOOK`。邮件入口可用 `EMAIL`（通用信封）、`QQ_MAIL`、`ICLOUD_MAIL` 和 `GMAIL`。调用方可通过 `UiButton.setLeadingIcon` 将图标与本地化按钮文字配合使用。
 
 视频平台入口可用 `BILIBILI`（哔哩哔哩）、`DOUYIN`（抖音）、`KUAISHOU`（快手）和 `YOUTUBE`。
+
+通用入口可用 `MUSIC`（音乐）、`APP`（应用）、`QUESTION`（疑问）、`CALCULATE`（计算）、`CPU`、`GPU`（显卡）、`DISK`（磁盘）和 `MAP`（地图）。AE2 的 ME 网络频道使用 `AE_CHANNEL`，图案取自智能线缆的频道指示线。
 
 ```java
 // 面板内框使用 Screen 的逻辑坐标。entries 是当前页的 List<GraphicDisplay.Entry>。

@@ -1,5 +1,5 @@
 <!-- 作者：山海／dishanhai -->
-# 对话框、气泡提示、动作面板与下拉刷新
+# 对话框、气泡提示、动作面板、底部抽屉与下拉刷新
 
 Forge 1.20.1 和 NeoForge 1.21.1 共用 `com.dishanhai.sh_better_ui.client.gui.scaled` 下的接口。画面持有一个 `UiOverlayHost`，每个可刷新的列表独立持有一个 `UiPullRefresh`。从客户端线程调用。按钮和正文传入 `Component.translatable(...)`。
 
@@ -25,6 +25,18 @@ overlays.hideBubble();
 
 对话框与动作面板在同一个 Screen 中打开，库负责绘制和优先输入分派。Tab、Shift+Tab、Enter、空格和 Esc 操作前景控件。动作带 `UiConfirmation.Prompt` 时，先显示确认框，取消后返回动作列表。请求应从确认回调中发出。普通关闭归还有效焦点，主动调用 `close()` 会一并清除气泡。容器的原生拖拽进行中应延后打开模态。
 
+### 胶囊按钮展开为对话框
+
+将 `UiStyle.LIQUID_GLASS` 按钮注册为画面的原生控件，在按下回调中传给 `showDialogFrom`。
+
+```java
+addRenderableWidget(new UiButton(x, y, width, height, label,
+        button -> overlays.showDialogFrom((UiButton) button, prompt, this::submit),
+        preferences, false, UiStyle.LIQUID_GLASS));
+```
+
+同一块玻璃底板随过阻尼弹簧改变位置、尺寸和圆角。Esc 可以在展开途中收回。展开到位后可操作确认和取消，确认回调立即执行，收合结束后归还源按钮焦点。开启减少动效时直接切换。源按钮被移除或移出视口后，对话框使用居中布局，关闭时直接结束。
+
 ## 16×16 px 图标
 
 提示框、确认框、气泡和动作面板的标题分别使用 `INFO`、`WARNING`、`BUBBLE` 和 `LIST`。确认、取消与动作项可以同时显示图标和文字。带二次确认的动作默认用警告图标，其他动作可按用途指定图标。窄画面优先显示文字。
@@ -38,6 +50,35 @@ overlays.showActions(menuTitle, List.of(
 ```
 
 `showNotice`、`showDialog`、`showActions`、`showBubble` 以及独立的 `UiConfirmation.open` 可在最后一个参数传入自定义图标，传 `null` 时标题或气泡只显示文字。自定义资源使用 16×16 px 透明 PNG，白色像素支持着色。原生 `UiButton` 可用 `setLeadingIcon(icon)` 同时显示图标与名称。
+
+## 底部抽屉
+
+每个抽屉持有一个 `UiBottomSheet`。档位是从底边向上露出的视口比例，按 `0..1` 严格递增，`0` 表示完全隐藏。下面的抽屉初始停在第二档，露出视口的 25%。视口可以是整个画面，也可以是留给抽屉的局部区域。
+
+```java
+private final UiBottomSheet drawer = new UiBottomSheet(1, 0f, 0.25f, 0.55f, 0.85f);
+private UiBottomSheet.Frame drawerFrame;
+
+// 在原画面内容之后绘制。drawDrawerContents 接收正文的绝对 GUI 坐标。
+drawerFrame = drawer.render(graphics, new Bounds(0, 0, width, height), mouseX, mouseY,
+        PageTransition.nowMs(), preferences, this::drawDrawerContents);
+
+// 在 Screen.mouseClicked 中，先分派正文点击，再检查把手。
+if (drawerFrame != null && drawerFrame.content().contains(x, y)) {
+    clickDrawerContents(x, y, button);
+    return true;
+}
+if (drawer.beginCaptured(this, drawerFrame, button, x, y)) return true;
+if (drawerFrame != null && drawerFrame.viewport().contains(x, y)
+        && drawerFrame.panel().contains(x, y)) return true;
+return super.mouseClicked(x, y, button);
+```
+
+`Bounds` 是 `GraphicDisplayLayout.Bounds`。绘制回调和正文输入共用裁切后的 `Frame.content()`，按下使用最近一次绘制返回的 `Frame`。原生 `Screen` 用 `beginCaptured` 接收拖动、放开、Esc 和失焦取消。自行分派输入的容器用 `begin`、`drag`、`release` 和 `cancelGesture`，事件与绘制统一使用 `PageTransition.nowMs()`。画面重建时清除旧的 `drawerFrame`，新视口由下一帧提供。
+
+拖到最小或最大档位之外时，额外位移越大，阻力越强。松手时纳入放开坐标，用近 100 毫秒的纵向速度投影落点，选中距投影位置最近的档位。快速甩动可跨档，停住后按当前位置吸附。拖动时的短线和 `Frame.targetAnchor()` 预览落点，松手后可用 `drawer.targetAnchor()` 读取选定档位。减少动效时仍可跟手拖动，边界直接止住，放开即到位。
+
+将本地化的展开和收起按钮注册到 `Screen` 的焦点顺序中，从按钮回调调用 `drawer.animateTo(index, PageTransition.nowMs())`。需要从隐藏档打开时，把展开按钮放在抽屉外。通过 `snapTo(index)` 可以直接重置档位和手势。
 
 ## 原生 Screen 下拉刷新
 
