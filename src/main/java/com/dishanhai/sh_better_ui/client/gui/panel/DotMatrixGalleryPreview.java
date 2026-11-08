@@ -8,6 +8,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile.ColorStop;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile.Fade;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile.Flow;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile.Gradient;
+import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile.PointerWave;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiDotMatrix;
@@ -17,12 +18,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
@@ -31,8 +34,9 @@ import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.l
 /** 山海：材质图库中的实时点阵预览，重建控件时保留调节值。 */
 final class DotMatrixGalleryPreview {
     static final int PREVIEW_EXTRA = 68;
-    static final int SETTINGS_WIDTH = 100;
+    static final int SETTINGS_WIDTH = 72;
     private static final int GAP = 4;
+    private static final int WAVE_TOGGLE_WIDTH = 70;
     private static final int MAX_FLOATING = 128;
     private static final int INITIAL_HUE = 280;
     private static final String TEXT = "gallery.dot_matrix.";
@@ -48,9 +52,11 @@ final class DotMatrixGalleryPreview {
     private Colorway colorway = Colorway.RAINBOW;
     private Direction direction = Direction.RIGHT;
     private boolean motionSettings;
+    private boolean pointerWave = true;
     private final UiDotMatrix matrix = new UiDotMatrix(profile());
 
-    List<AbstractWidget> widgets(Bounds area, Bounds settingsArea, UiPreferences preferences) {
+    List<AbstractWidget> widgets(Bounds area, Bounds settingsArea, UiPreferences preferences,
+                                 BooleanSupplier pointerEnabled) {
         matrix.clearPulse();
         int gap = area.height() < 80 ? 2 : GAP;
         int controlHeight = area.height() < 80 ? 16 : area.height() < 100 ? 18 : 22;
@@ -94,10 +100,20 @@ final class DotMatrixGalleryPreview {
                     showSettings.run();
                     pressed.setMessage(settingsLabel());
                 });
+        var waveToggle = DeveloperPanelScreen.button(settingsArea.x() - GAP - WAVE_TOGGLE_WIDTH, settingsArea.y(),
+                WAVE_TOGGLE_WIDTH, settingsArea.height(), pointerWaveLabel(), null, preferences, pressed -> {
+                    pointerWave = !pointerWave;
+                    matrix.setProfile(profile());
+                    pressed.setMessage(pointerWaveLabel());
+                    ((UiButton) pressed).setSelected(pointerWave);
+                });
+        waveToggle.setSelected(pointerWave);
+        waveToggle.setTooltip(Tooltip.create(label(TEXT + "pointer_wave.tooltip")));
         showSettings.run();
         List<AbstractWidget> widgets = new ArrayList<>();
+        widgets.add(waveToggle);
         widgets.add(settings);
-        widgets.add(new Canvas(canvas, matrix, preferences));
+        widgets.add(new Canvas(canvas, matrix, preferences, pointerEnabled));
         widgets.addAll(basic);
         widgets.addAll(advanced);
         return widgets;
@@ -125,6 +141,10 @@ final class DotMatrixGalleryPreview {
         return label(TEXT + (motionSettings ? "settings_basic" : "settings_motion"));
     }
 
+    private Component pointerWaveLabel() {
+        return label(TEXT + "pointer_wave", Component.translatable(pointerWave ? "options.on" : "options.off"));
+    }
+
     DotMatrixProfile profile() {
         DotMatrixProfile.Palette palette = BASE.palette();
         DotMatrixProfile.Motion motion = BASE.motion();
@@ -134,7 +154,8 @@ final class DotMatrixGalleryPreview {
                         tint(palette.highlightArgb(), normalized), palette.glow()))
                 .withMotion(new DotMatrixProfile.Motion(mode.effect, motion.periodMs(), chance / 100f,
                         maxFloating, motion.floatDistance()))
-                .withFade(new Fade(fadeChance / 100f, 2600));
+                .withFade(new Fade(fadeChance / 100f, 2600))
+                .withPointerWave(pointerWave ? PointerWave.DEFAULT : PointerWave.NONE);
         if (colorway.stops.isEmpty()) return profile;
         List<ColorStop> stops = colorway.stops;
         if (hue != INITIAL_HUE) {
@@ -222,14 +243,16 @@ final class DotMatrixGalleryPreview {
         private final Bounds area;
         private final UiDotMatrix matrix;
         private final UiPreferences preferences;
+        private final BooleanSupplier pointerEnabled;
 
-        Canvas(Bounds area, UiDotMatrix matrix, UiPreferences preferences) {
+        Canvas(Bounds area, UiDotMatrix matrix, UiPreferences preferences, BooleanSupplier pointerEnabled) {
             super(area.x(), area.y(), area.width(), area.height(), label(TEXT + "pulse"),
                     ignored -> matrix.pulse(area, area.x() + area.width() * 0.5, area.y() + area.height() * 0.5),
                     DEFAULT_NARRATION);
             this.area = area;
             this.matrix = matrix;
             this.preferences = preferences;
+            this.pointerEnabled = pointerEnabled;
             active = !preferences.highContrast();
         }
 
@@ -240,7 +263,9 @@ final class DotMatrixGalleryPreview {
 
         @Override
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            matrix.render(graphics, area, mouseX, mouseY, PageTransition.nowMs(), preferences);
+            boolean available = pointerEnabled.getAsBoolean() && Minecraft.getInstance().isWindowActive();
+            matrix.render(graphics, area, available ? mouseX : Double.NaN, available ? mouseY : Double.NaN,
+                    PageTransition.nowMs(), preferences);
             int edge = isFocused() || preferences.highContrast() ? DarkModeTheme.TEXT
                     : isHovered() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), edge);

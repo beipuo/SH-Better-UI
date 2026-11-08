@@ -71,10 +71,11 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
     private final UiScreenReturn returning = new UiScreenReturn(this);
     private boolean entered;
     private UiOverlayHost overlays;
-    private Supplier<UiButton> galleryEntry;
+    private Supplier<UiButton> returnEntry;
     private UiButton controls;
     private UiButton materials;
     private UiButton bottomSheet;
+    private UiButton animationExample;
     private UiButton dialogExample;
     private UiButton toastExample;
     private int panelWidth;
@@ -90,13 +91,14 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         this(parent, preferences, null);
     }
 
-    DeveloperPanelScreen(Screen parent, UiPreferences preferences, UiButton source) {
+    DeveloperPanelScreen(Screen parent, UiPreferences preferences, Supplier<UiButton> source) {
         super(label("title"));
         this.parent = parent;
         this.preferences = preferences;
         this.overlays = new UiOverlayHost(this, preferences);
         if (source != null) {
             entrance.startFrom(source);
+            returning.beginHandoff(parent, preferences);
             entered = true;
         }
     }
@@ -106,6 +108,7 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         controls = null;
         materials = null;
         bottomSheet = null;
+        animationExample = null;
         dialogExample = null;
         toastExample = null;
         compact = width < 248 || height < PANEL_HEIGHT + 8;
@@ -142,7 +145,10 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
                 pressed -> showDialog(overlays, (UiButton) pressed, this::showToast)));
         addButton(contentX + demoWidth + GAP, demoY, demoWidth, label("demo.toast"), GraphicIcon.INFO, this::showToast);
         bottomSheet = addButton(sheetX, demoY, contentX + contentWidth - sheetX, label("demo.bottom_sheet"),
-                null, () -> minecraft.setScreen(new DeveloperBottomSheetScreen(this, preferences, bottomSheet)));
+                null, () -> {
+                    returnEntry = () -> bottomSheet;
+                    minecraft.setScreen(new DeveloperBottomSheetScreen(this, preferences, returnEntry));
+                });
 
         int copyX = contentX + contentWidth - COPY_WIDTH;
         dialogExample = addButton(contentX, top + EXAMPLES_Y + 13, columnWidth, label("example.open_dialog"),
@@ -150,6 +156,8 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         toastExample = addButton(contentX + columnWidth + GAP, top + EXAMPLES_Y + 13, contentWidth - columnWidth - GAP,
                 label("example.open_toast"),
                 null, () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, DeveloperSamples.TOAST, () -> toastExample));
+        animationExample = addButton(contentX, top + FOOTER_Y, copyX - contentX - GAP,
+                label("demo.animation"), null, () -> DeveloperAnimationScreen.open(this, preferences, () -> animationExample));
         addButton(copyX, top + FOOTER_Y, COPY_WIDTH, BACK, GraphicIcon.BACK, this::onClose);
     }
 
@@ -171,21 +179,13 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
     }
 
     private void openGallery(DeveloperGalleryScreen.Section section, DeveloperSamples example, Supplier<UiButton> entry) {
-        galleryEntry = entry;
-        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section, example, entry.get()));
+        returnEntry = entry;
+        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section, example, entry));
     }
 
-    void restoreGalleryFocus() {
-        UiButton target = galleryEntry == null ? null : galleryEntry.get();
-        galleryEntry = null;
-        restoreFocus(target);
-    }
-
-    void restoreBottomSheetFocus() {
-        restoreFocus(bottomSheet);
-    }
-
-    private void restoreFocus(UiButton target) {
+    void restoreReturnFocus() {
+        UiButton target = returnEntry == null ? null : returnEntry.get();
+        returnEntry = null;
         overlays = new UiOverlayHost(this, preferences);
         if (target != null) setInitialFocus(target);
     }
@@ -210,8 +210,13 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderScreen(graphics, mouseX, mouseY, partialTick);
+        returning.renderHandoff(graphics, preferences);
+    }
+
+    private void renderScreen(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (entrance.closing()) {
-            returning.render(graphics, width, height, partialTick, preferences);
+            returning.renderBackdrop(graphics, width, height, partialTick);
         } else if (minecraft.level == null) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
         } else {
@@ -226,7 +231,10 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
             }
         } else {
             var panel = new Bounds(left, top, panelWidth, PANEL_HEIGHT);
-            if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
+            if (returning.renderTransition(entrance, graphics, panel, preferences, () -> {
+                boolean pointer = entrance.allowsPointer(mouseX, mouseY);
+                renderContent(graphics, pointer ? mouseX : -1, pointer ? mouseY : -1, partialTick);
+            })) return;
             LiquidGlassTheme.popover(graphics, left, top, panelWidth, PANEL_HEIGHT, preferences);
             renderContent(graphics, mouseX, mouseY, partialTick);
             return;
@@ -246,13 +254,20 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return !entrance.active() && super.mouseClicked(mouseX, mouseY, button);
+        if (entrance.closing()) {
+            if (entrance.reopenFromSource(mouseX, mouseY, button)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        return entrance.allowsPointer(mouseX, mouseY) && super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
-        if (entrance.closing()) return true;
-        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
+        if (entrance.closing()) {
+            if (entrance.reopenFromKey(key)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        if (!entrance.allowsActivation(key, getFocused())) return true;
         return super.keyPressed(key, scanCode, modifiers);
     }
 
@@ -273,14 +288,24 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
 
     @Override
     public void onClose() {
-        if (!compact && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        if (entrance.closing()) return;
+        if (!compact && !preferences.reducedMotion()) {
+            returning.beginHandoff(this, preferences);
+            returning.prepare(parent, width, height);
+        }
         entrance.close(preferences, () -> minecraft.setScreen(parent));
         if (compact) entrance.finish();
     }
 
     @Override
     public void prepareReturnLayer() {
-        if (!compact) entrance.startAt(width * 0.5f, top + 5f);
+        if (returnEntry != null) setFocused(returnEntry.get());
+    }
+
+    @Override
+    public void removed() {
+        returning.clearHandoff();
+        super.removed();
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
 import com.dishanhai.sh_better_ui.client.gui.panel.ControlPanelScreen;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -64,11 +65,16 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonPressed(ScreenEvent.MouseButtonPressed.Pre event) {
+        if (event.getScreen() instanceof ControlPanelScreen panel && panel.reopenFromMouse(event.getButton())) {
+            event.setCanceled(true);
+            return;
+        }
         UiPointerCapture.beforePress(event.getScreen(), event.getButton());
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
         if (overlay != null && overlay.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton())) {
             event.setCanceled(true);
-        } else if (UiPointerCapture.press(event.getScreen(), event.getButton(), event.getMouseX(), event.getMouseY())) {
+        } else if (UiSwipeToast.handleOverlayPress(event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton())
+                || UiPointerCapture.press(event.getScreen(), event.getButton(), event.getMouseX(), event.getMouseY())) {
             event.setCanceled(true);
         }
     }
@@ -108,10 +114,16 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onKeyPressed(ScreenEvent.KeyPressed.Pre event) {
+        if (event.getScreen() instanceof ControlPanelScreen panel
+                && panel.reopenFromKey(event.getKeyCode(), event.getScanCode(), event.getModifiers())) {
+            event.setCanceled(true);
+            return;
+        }
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
         if (overlay != null && overlay.keyPressed(event.getKeyCode(), event.getScanCode(), event.getModifiers())) {
             event.setCanceled(true);
-        } else if (event.getKeyCode() == GLFW.GLFW_KEY_ESCAPE && UiPointerCapture.cancel(event.getScreen())) {
+        } else if (event.getKeyCode() == GLFW.GLFW_KEY_ESCAPE
+                && (UiPointerCapture.cancel(event.getScreen()) || UiSwipeToast.handleEscape(event.getScreen()))) {
             event.setCanceled(true);
         }
     }

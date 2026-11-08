@@ -18,6 +18,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiDisclosure;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiDynamicStatus;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiFrameHandoff;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPageSlide;
@@ -28,18 +29,22 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlideConfirm;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTextDetails;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchIndex;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
@@ -56,6 +61,9 @@ final class DeveloperGalleryScreen extends Screen {
     private static final int PREVIEW_HEIGHT = 46;
     private static final int DETAILS_PREVIEW_EXTRA = 26;
     private static final int SLIDE_PREVIEW_EXTRA = 20;
+    private static final int TOAST_PREVIEW_EXTRA = 18;
+    private static final int TOAST_BUTTON_HEIGHT = 16;
+    private static final int TOAST_BUTTON_GAP = 3;
     private static final int FOOTER_GAP = 5;
     private static final int CODE_PADDING = 4;
     private static final int MIN_DRAWER_HEIGHT = 58;
@@ -69,7 +77,8 @@ final class DeveloperGalleryScreen extends Screen {
     enum Section {
         CONTROLS("gallery.controls", List.of(DeveloperSamples.BUTTON, DeveloperSamples.TOGGLE, DeveloperSamples.SECTIONS,
                 DeveloperSamples.DISCLOSURE, DeveloperSamples.TEXT_DETAILS, DeveloperSamples.SLIDER, DeveloperSamples.FRAME_TIMELINE,
-                DeveloperSamples.ELECTRIC_LOGO, DeveloperSamples.PATTERN_WAVES,
+                DeveloperSamples.ELECTRIC_LOGO, DeveloperSamples.PATTERN_WAVES, DeveloperSamples.ANTIGRAVITY,
+                DeveloperSamples.LIGHT_RAYS,
                 DeveloperSamples.SLIDE_CONFIRM, DeveloperSamples.CAPSULE_TOGGLE, DeveloperSamples.MODE_INDICATORS,
                 DeveloperSamples.PAGE_SLIDE,
                 DeveloperSamples.RECIPE_TRANSITION, DeveloperSamples.DYNAMIC_STATUS, DeveloperSamples.LOADING_SPINNER,
@@ -102,6 +111,8 @@ final class DeveloperGalleryScreen extends Screen {
     private final UiCapsuleReveal entrance = new UiCapsuleReveal();
     private final UiScreenReturn returning = new UiScreenReturn(this);
     private final UiCapsuleReveal sampleReveal = new UiCapsuleReveal();
+    private final UiFrameHandoff sampleTitleHandoff = new UiFrameHandoff();
+    private final UiFrameHandoff samplePreviewHandoff = new UiFrameHandoff();
     private final List<AbstractWidget> previewWidgets = new ArrayList<>();
     private boolean openCodeOnEntry;
     private final DarkModeTheme.Interaction cardMotion = DarkModeTheme.Interaction.card();
@@ -114,6 +125,8 @@ final class DeveloperGalleryScreen extends Screen {
     private final PatternWavesGalleryPreview patternWaves = new PatternWavesGalleryPreview();
     private final FrameTimelineGalleryPreview frameTimeline = new FrameTimelineGalleryPreview();
     private final ElectricLogoGalleryPreview electricLogo = new ElectricLogoGalleryPreview();
+    private final AntigravityGalleryPreview antigravity = new AntigravityGalleryPreview();
+    private final LightRaysGalleryPreview lightRays = new LightRaysGalleryPreview();
     private UiRecipePageTransition recipeTransition;
     private Bounds preview;
     private Bounds codeViewport;
@@ -125,6 +138,7 @@ final class DeveloperGalleryScreen extends Screen {
     private int top;
     private int sampleIndex;
     private int pendingStep;
+    private boolean continueSampleReveal;
     private UiButton previousSample;
     private UiButton nextSample;
     private UiButton codeToggle;
@@ -136,6 +150,8 @@ final class DeveloperGalleryScreen extends Screen {
     private UiButton detailsPage;
     private UiToggleButton capsule;
     private UiToggleButton slideMode;
+    private UiSwipeToast floatingToast;
+    private UiSwipeToast inlineToast;
     private UiPageSlide.Effects slideEffects = UiPageSlide.Effects.NONE;
     private boolean slideDepth;
     private boolean alternateSlidePage;
@@ -150,7 +166,7 @@ final class DeveloperGalleryScreen extends Screen {
     private boolean copied;
 
     DeveloperGalleryScreen(DeveloperPanelScreen parent, UiPreferences preferences, Section section,
-                           DeveloperSamples example, UiButton source) {
+                           DeveloperSamples example, Supplier<UiButton> source) {
         super(label(section.titleKey));
         this.parent = parent;
         this.preferences = preferences;
@@ -159,7 +175,10 @@ final class DeveloperGalleryScreen extends Screen {
         sampleIndex = example == null ? 0 : samples.indexOf(example);
         codeDrawer = UiBottomSheet.capsule(0, 0f, 1f);
         openCodeOnEntry = example != null;
+        entrance.setSkeletonLayout(target -> skeletonBlocks(children()));
+        sampleReveal.setSkeletonLayout(target -> skeletonBlocks(previewWidgets));
         entrance.startFrom(source);
+        returning.beginHandoff(parent, preferences);
     }
 
     @Override
@@ -172,13 +191,18 @@ final class DeveloperGalleryScreen extends Screen {
         codeFrame = null;
         capsule = null;
         slideMode = null;
+        floatingToast = null;
+        inlineToast = null;
         recipeTransition = new UiRecipePageTransition();
         compact = width < 240 || height < MIN_PANEL_HEIGHT + 8;
         if (compact || sample() != DeveloperSamples.ELECTRIC_LOGO) electricLogo.release();
+        antigravity.suspend();
+        lightRays.suspend();
         if (compact) {
             frameTimeline.pause();
             entrance.finish();
             sampleReveal.finish();
+            clearSampleHandoff();
             if (width >= 36 && height >= BUTTON_HEIGHT + 8) {
                 int buttonWidth = Math.min(100, width - 8);
                 addButton((width - buttonWidth) / 2, height - BUTTON_HEIGHT - 4,
@@ -193,7 +217,10 @@ final class DeveloperGalleryScreen extends Screen {
             case PATTERN_WAVES -> PatternWavesGalleryPreview.PREVIEW_EXTRA;
             case FRAME_TIMELINE -> FrameTimelineGalleryPreview.PREVIEW_EXTRA;
             case ELECTRIC_LOGO -> ElectricLogoGalleryPreview.PREVIEW_EXTRA;
+            case ANTIGRAVITY -> AntigravityGalleryPreview.PREVIEW_EXTRA;
+            case LIGHT_RAYS -> LightRaysGalleryPreview.PREVIEW_EXTRA;
             case TEXT_DETAILS -> DETAILS_PREVIEW_EXTRA;
+            case TOAST -> TOAST_PREVIEW_EXTRA;
             case PAGE_SLIDE, RECIPE_TRANSITION, LOADING_SPINNER, LOADING_PROGRESS, LOADING_SKELETON -> SLIDE_PREVIEW_EXTRA;
             default -> 0;
         };
@@ -210,10 +237,9 @@ final class DeveloperGalleryScreen extends Screen {
         int drawerY = footerY + BUTTON_HEIGHT + PADDING + FOOTER_GAP;
         codeViewport = new Bounds(contentX, drawerY, contentWidth, top + frameHeight - drawerY);
 
-        previousSample = addArrow(contentX, top + SAMPLE_Y, false, "gallery.previous_sample", () -> pendingStep = -1);
-        nextSample = addArrow(contentRight - NAV_WIDTH, top + SAMPLE_Y, true, "gallery.next_sample", () -> pendingStep = 1);
-        previousSample.active = sampleIndex > 0;
-        nextSample.active = sampleIndex + 1 < samples.size();
+        previousSample = addArrow(contentX, top + SAMPLE_Y, false, "gallery.previous_sample", () -> requestStep(-1));
+        nextSample = addArrow(contentRight - NAV_WIDTH, top + SAMPLE_Y, true, "gallery.next_sample", () -> requestStep(1));
+        updateSampleArrows(sampleIndex);
         addPreviewWidgets();
         addCodeDrawer(contentX, contentRight, footerY);
     }
@@ -297,13 +323,17 @@ final class DeveloperGalleryScreen extends Screen {
         switch (sample) {
             case FRAME_TIMELINE -> frameTimeline.widgets(preview, preferences).forEach(this::addPreviewWidget);
             case ELECTRIC_LOGO -> electricLogo.widgets(preview, preferences).forEach(this::addPreviewWidget);
-            case PATTERN_WAVES -> patternWaves.widgets(preview, preferences,
-                            () -> !entrance.active() && !sampleReveal.active() && !overlays.isModalOpen())
+            case ANTIGRAVITY -> antigravity.widgets(preview, preferences, this::previewInteractive)
+                    .forEach(this::addPreviewWidget);
+            case LIGHT_RAYS -> lightRays.widgets(preview, preferences, this::previewInteractive)
+                    .forEach(this::addPreviewWidget);
+            case PATTERN_WAVES -> patternWaves.widgets(preview, preferences, this::previewInteractive)
                     .forEach(this::addPreviewWidget);
             case DOT_MATRIX -> {
                 int settingsWidth = DotMatrixGalleryPreview.SETTINGS_WIDTH;
                 var settings = new Bounds(preview.right() - settingsWidth, top + 5, settingsWidth, BUTTON_HEIGHT);
-                dotMatrix.widgets(preview, settings, preferences).forEach(this::addPreviewWidget);
+                dotMatrix.widgets(preview, settings, preferences, this::previewInteractive)
+                        .forEach(this::addPreviewWidget);
             }
             case TOGGLE -> {
                 toggle = new NetworkToggle(new Bounds(x, y, w, BUTTON_HEIGHT), label("gallery.try_toggle"),
@@ -336,9 +366,51 @@ final class DeveloperGalleryScreen extends Screen {
                     label("demo.dialog"), GraphicIcon.WARNING, preferences,
                     pressed -> DeveloperPanelScreen.showDialog(overlays, (UiButton) pressed,
                             () -> DeveloperPanelScreen.showToast(preferences))));
-            case TOAST -> addPreviewButton(x, y, w, label("demo.toast"), GraphicIcon.INFO,
-                    () -> DeveloperPanelScreen.showToast(preferences));
+            case TOAST -> addToastDemo();
             default -> { }
+        }
+    }
+
+    private void addToastDemo() {
+        int x = preview.x() + 6;
+        int w = 82;
+        int stride = TOAST_BUTTON_HEIGHT + TOAST_BUTTON_GAP;
+        int y = preview.y() + (preview.height() - 2 * stride - TOAST_BUTTON_HEIGHT) / 2;
+        addToastDemoButton(x, y, w, "gallery.toast_classic", () -> DeveloperPanelScreen.showToast(preferences));
+        addToastDemoButton(x, y + stride, w, "gallery.toast_floating", this::showFloatingToast);
+        addToastDemoButton(x, y + 2 * stride, w, "gallery.toast_inline", () -> showInlineToast(x + w + 8));
+    }
+
+    private void addToastDemoButton(int x, int y, int w, String key, Runnable action) {
+        addPreviewWidget(DeveloperPanelScreen.button(x, y, w, TOAST_BUTTON_HEIGHT, label(key), null,
+                preferences, action));
+    }
+
+    private void showFloatingToast() {
+        if (floatingToast == null) {
+            var acknowledge = new UiSwipeToast.Action(label("gallery.toast_acknowledge"),
+                    () -> UiToast.show(UiToast.Kind.SUCCESS, label("gallery.toast_acknowledged"), Component.empty(),
+                            UiToast.Effect.FADE, 2_500L, preferences));
+            floatingToast = addRenderableWidget(new UiSwipeToast(this, UiSwipeToast.Placement.BOTTOM_RIGHT,
+                    new UiSwipeToast.Content(label("demo.toast"), label("demo.toast_details"),
+                            GraphicIcon.INFO, acknowledge),
+                    new UiSwipeToast.Options(4_000L, true, true, true), UiSwipeToast.Style.DEFAULT,
+                    preferences, ignored -> {}));
+        } else {
+            floatingToast.setOpen(true);
+        }
+    }
+
+    private void showInlineToast(int x) {
+        if (inlineToast == null) {
+            var toast = new UiSwipeToast(this, UiSwipeToast.Placement.INLINE,
+                    new UiSwipeToast.Content(label("gallery.toast_inline"), Component.empty(), null, null),
+                    new UiSwipeToast.Options(4_000L, true, true, true), UiSwipeToast.Style.DEFAULT,
+                    preferences, ignored -> {});
+            toast.setInlineBounds(x, preview.y() + 6, preview.right() - x - 6);
+            inlineToast = addPreviewWidget(toast);
+        } else {
+            inlineToast.setOpen(true);
         }
     }
 
@@ -484,18 +556,42 @@ final class DeveloperGalleryScreen extends Screen {
         minecraft.getNarrator().say(label("copied"));
     }
 
+    private void requestStep(int direction) {
+        int requested = sampleIndex + pendingStep;
+        int next = Math.clamp(requested + direction, 0, samples.size() - 1);
+        if (next == requested) return;
+        if (pendingStep == 0) {
+            continueSampleReveal = sampleTransitioning();
+            if (minecraft != null && minecraft.screen == this) {
+                sampleTitleHandoff.capture(sampleTitleBounds(), preferences);
+                samplePreviewHandoff.capture(preview, preferences);
+            }
+        }
+        pendingStep = next - sampleIndex;
+        if (pendingStep == 0 && !sampleReveal.active()) clearSampleHandoff();
+        updateSampleArrows(next);
+    }
+
+    private void updateSampleArrows(int index) {
+        previousSample.active = index > 0;
+        nextSample.active = index + 1 < samples.size();
+    }
+
     private void applyPendingStep() {
         if (pendingStep == 0) return;
         int step = pendingStep;
         pendingStep = 0;
         frameTimeline.pause();
-        sampleIndex = Math.clamp(sampleIndex + step, 0, samples.size() - 1);
+        sampleIndex += step;
         copied = false;
         codeDrawer.cancelGesture(PageTransition.nowMs());
         rebuildWidgets();
         if (!compact) {
             UiButton direction = step < 0 ? previousSample : nextSample;
-            sampleReveal.startAt(direction.getX() + direction.getWidth() * 0.5f, preview.y() + 5f);
+            float centerX = direction.getX() + direction.getWidth() * 0.5f;
+            float centerY = preview.y() + 5f;
+            if (continueSampleReveal) sampleReveal.retargetAt(centerX, centerY);
+            else sampleReveal.startAt(centerX, centerY);
             setInitialFocus(direction.active ? direction : step < 0 ? nextSample : previousSample);
             minecraft.getNarrator().say(sampleTitle());
         }
@@ -505,14 +601,40 @@ final class DeveloperGalleryScreen extends Screen {
         return label("gallery.sample_page", label("gallery.sample." + sample().key), sampleIndex + 1, samples.size());
     }
 
+    private Bounds sampleTitleBounds() {
+        int inset = NAV_WIDTH + 4;
+        return new Bounds(preview.x() + inset, top + SAMPLE_Y, preview.width() - 2 * inset, BUTTON_HEIGHT);
+    }
+
+    private boolean sampleTransitioning() {
+        return pendingStep != 0 || sampleReveal.active() || sampleTitleHandoff.active() || samplePreviewHandoff.active();
+    }
+
+    private boolean previewInteractive() {
+        return !entrance.active() && !sampleTransitioning() && !overlays.isModalOpen();
+    }
+
+    private void clearSampleHandoff() {
+        sampleTitleHandoff.clear();
+        samplePreviewHandoff.clear();
+    }
+
     // NeoForge 由 Screen.render 调用，Forge 1.20.1 使用不同签名。
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        try {
+            renderScreen(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            returning.renderHandoff(graphics, preferences);
+        }
+    }
+
+    private void renderScreen(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         applyPendingStep();
         if (entrance.closing()) {
-            returning.render(graphics, width, height, partialTick, preferences);
+            returning.renderBackdrop(graphics, width, height, partialTick);
         } else if (minecraft.level == null) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
         } else {
@@ -527,7 +649,7 @@ final class DeveloperGalleryScreen extends Screen {
             }
         } else {
             var panel = new Bounds(left, top, panelWidth, codeViewport.y() - top - FOOTER_GAP);
-            if (entrance.render(graphics, panel, preferences, () -> {
+            if (returning.renderTransition(entrance, graphics, panel, preferences, () -> {
                 renderPanelContent(graphics, -1, -1, partialTick);
                 super.render(graphics, -1, -1, partialTick);
             })) return;
@@ -539,19 +661,21 @@ final class DeveloperGalleryScreen extends Screen {
             updateCodeDrawerControls(codeFrame);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
-        if (search != null && !sampleReveal.active()) search.renderSuggestions(graphics, mouseX, mouseY, height);
+        if (search != null && !sampleTransitioning()) search.renderSuggestions(graphics, mouseX, mouseY, height);
     }
 
     private void renderPanelContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.drawString(font, getTitle(), preview.x(), top + 11, LiquidGlassTheme.TEXT, false);
-        drawCentered(graphics, sampleTitle(), preview.x() + NAV_WIDTH + 4, top + SAMPLE_Y,
-                preview.width() - (NAV_WIDTH + 4) * 2);
-        if (!sampleReveal.render(graphics, preview, preferences,
+        var title = sampleTitleBounds();
+        drawCentered(graphics, sampleTitle(), title.x(), title.y(), title.width());
+        if (!sampleReveal.renderInset(graphics, preview, preferences,
                 () -> renderPreviewContent(graphics, -1, -1, partialTick))) {
             RoundedCorners.draw(graphics, preview.x(), preview.y(), preview.width(), preview.height(), 5, 1,
                     preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.BORDER, DarkModeTheme.BACKGROUND);
             renderPreviewContent(graphics, mouseX, mouseY, partialTick);
         }
+        sampleTitleHandoff.render(graphics, preferences);
+        samplePreviewHandoff.render(graphics, preferences);
     }
 
     private void renderPreviewContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -559,6 +683,18 @@ final class DeveloperGalleryScreen extends Screen {
         for (AbstractWidget widget : previewWidgets) {
             widget.render(graphics, mouseX, mouseY, partialTick);
         }
+    }
+
+    private List<UiSkeleton.Block> skeletonBlocks(List<? extends GuiEventListener> elements) {
+        var blocks = new ArrayList<UiSkeleton.Block>();
+        for (var element : elements) {
+            if (element instanceof AbstractWidget widget && widget.visible) {
+                blocks.add(new UiSkeleton.Block(new Bounds(widget.getX(), widget.getY(),
+                        widget.getWidth(), widget.getHeight())));
+            }
+        }
+        if (previewWidgets.isEmpty()) blocks.add(new UiSkeleton.Block(preview, 5f));
+        return blocks;
     }
 
     private void renderCodeExcerpt(GuiGraphics graphics, Bounds content) {
@@ -747,32 +883,38 @@ final class DeveloperGalleryScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (entrance.active() || (sampleReveal.active() && previewWidgets.stream()
+        if (entrance.closing()) {
+            if (entrance.reopenFromSource(mouseX, mouseY, button)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        if (!entrance.allowsPointer(mouseX, mouseY) || (sampleTransitioning() && previewWidgets.stream()
                 .anyMatch(widget -> widget.isMouseOver(mouseX, mouseY)))) return false;
-        return (search != null && search.mouseClickedSuggestion(mouseX, mouseY, button, height))
+        return (!sampleTransitioning() && search != null && search.mouseClickedSuggestion(mouseX, mouseY, button, height))
                 || codeDrawer.beginCaptured(this, codeFrame, button, mouseX, mouseY)
                 || super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int key, int scan, int modifiers) {
-        if (entrance.closing()) return true;
-        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
-        if (key == GLFW.GLFW_KEY_TAB || (getFocused() != previousSample && getFocused() != nextSample)) {
-            sampleReveal.finish();
+        if (entrance.closing()) {
+            if (entrance.reopenFromKey(key)) returning.beginHandoff(this, preferences);
+            return true;
         }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (search != null && search.dismissSuggestions()) return true;
-            if (!compact && (openCodeOnEntry || codeDrawer.targetAnchor() != 0)) {
+            if (!compact && (codeDrawer.targetAnchor() != 0 || openCodeOnEntry && !entrance.active())) {
                 setCodeDrawerOpen(false);
                 return true;
             }
         }
+        if (!entrance.allowsActivation(key, getFocused())) return true;
+        if (sampleTransitioning() && previewWidgets.contains(getFocused()) && key != GLFW.GLFW_KEY_TAB
+                && key != GLFW.GLFW_KEY_ESCAPE) return true;
         return super.keyPressed(key, scan, modifiers);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return !entrance.active() && !sampleReveal.active() && search != null
+        return entrance.allowsPointer(mouseX, mouseY) && !sampleTransitioning() && search != null
                 && search.mouseScrolledSuggestions(mouseX, mouseY, delta, height);
     }
 
@@ -782,19 +924,30 @@ final class DeveloperGalleryScreen extends Screen {
 
     @Override
     public void removed() {
+        returning.clearHandoff();
+        clearSampleHandoff();
         frameTimeline.pause();
         electricLogo.release();
+        antigravity.suspend();
+        lightRays.suspend();
         super.removed();
     }
 
     @Override
     public void onClose() {
-        frameTimeline.pause();
-        pendingStep = 0;
-        if (!compact && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        if (entrance.closing()) return;
+        if (pendingStep != 0) {
+            pendingStep = 0;
+            updateSampleArrows(sampleIndex);
+            if (!sampleReveal.active()) clearSampleHandoff();
+        }
+        if (!compact && !preferences.reducedMotion()) {
+            returning.beginHandoff(this, preferences);
+            returning.prepare(parent, width, height);
+        }
         entrance.close(preferences, () -> {
             minecraft.setScreen(parent);
-            if (minecraft.screen == parent) parent.restoreGalleryFocus();
+            if (minecraft.screen == parent) parent.restoreReturnFocus();
         });
         if (compact) entrance.finish();
     }

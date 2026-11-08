@@ -10,6 +10,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiBottomSheet;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
@@ -19,9 +20,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
@@ -59,11 +60,12 @@ final class DeveloperBottomSheetScreen extends Screen {
     private UiButton back;
     private int displayedAnchor;
 
-    DeveloperBottomSheetScreen(DeveloperPanelScreen parent, UiPreferences preferences, UiButton source) {
+    DeveloperBottomSheetScreen(DeveloperPanelScreen parent, UiPreferences preferences, Supplier<UiButton> source) {
         super(label("demo.bottom_sheet"));
         this.parent = parent;
         this.preferences = preferences;
         entrance.startFrom(source);
+        returning.beginHandoff(parent, preferences);
     }
 
     @Override
@@ -127,13 +129,21 @@ final class DeveloperBottomSheetScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (entrance.closing()) returning.render(graphics, width, height, partialTick, preferences);
+        renderScreen(graphics, mouseX, mouseY, partialTick);
+        returning.renderHandoff(graphics, preferences);
+    }
+
+    private void renderScreen(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (entrance.closing()) returning.renderBackdrop(graphics, width, height, partialTick);
         else if (minecraft.level == null) DarkModeTheme.background(graphics, 0, 0, width, height);
         else graphics.fill(0, 0, width, height, 0x6020252E);
         if (panel == null) {
             renderTooSmall(graphics);
         } else {
-            if (entrance.render(graphics, panel, preferences, () -> renderContent(graphics, -1, -1, partialTick))) return;
+            if (returning.renderTransition(entrance, graphics, panel, preferences, () -> {
+                boolean pointer = entrance.allowsPointer(mouseX, mouseY);
+                renderContent(graphics, pointer ? mouseX : -1, pointer ? mouseY : -1, partialTick);
+            })) return;
             LiquidGlassTheme.popover(graphics, panel.x(), panel.y(), panel.width(), panel.height(), preferences);
             renderContent(graphics, mouseX, mouseY, partialTick);
             return;
@@ -189,25 +199,43 @@ final class DeveloperBottomSheetScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return !entrance.active()
+        if (entrance.closing()) {
+            if (entrance.reopenFromSource(mouseX, mouseY, button)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        return entrance.allowsPointer(mouseX, mouseY)
                 && (sheet.beginCaptured(this, frame, button, mouseX, mouseY) || super.mouseClicked(mouseX, mouseY, button));
     }
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
-        if (entrance.closing()) return true;
-        if (key != GLFW.GLFW_KEY_ESCAPE) entrance.finish();
+        if (entrance.closing()) {
+            if (entrance.reopenFromKey(key)) returning.beginHandoff(this, preferences);
+            return true;
+        }
+        if (!entrance.allowsActivation(key, getFocused())) return true;
         return super.keyPressed(key, scanCode, modifiers);
     }
 
     @Override
     public void onClose() {
-        if (panel != null && !preferences.reducedMotion()) returning.prepare(parent, width, height);
+        if (entrance.closing()) return;
+        UiPointerCapture.cancel(this);
+        if (panel != null && !preferences.reducedMotion()) {
+            returning.beginHandoff(this, preferences);
+            returning.prepare(parent, width, height);
+        }
         entrance.close(preferences, () -> {
             minecraft.setScreen(parent);
-            if (minecraft.screen == parent) parent.restoreBottomSheetFocus();
+            if (minecraft.screen == parent) parent.restoreReturnFocus();
         });
         if (panel == null) entrance.finish();
+    }
+
+    @Override
+    public void removed() {
+        returning.clearHandoff();
+        super.removed();
     }
 
     @Override

@@ -421,7 +421,62 @@ enum DeveloperSamples {
                         .withMotion(new DotMatrixProfile.Motion(effect, motion.periodMs(), floatPercent / 100f,
                                 maxFloatingDots, motion.floatDistance()))
                         .withFade(new DotMatrixProfile.Fade(fadePercent / 100f, 2200))
+                        .withPointerWave(DotMatrixProfile.PointerWave.DEFAULT)
                         .withGradient(gradient));
+            }
+            """),
+    ANTIGRAVITY("antigravity", """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.Antigravity;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.AntigravityProfile;
+            import net.minecraft.client.gui.GuiGraphics;
+
+            private final Antigravity particles = ShBetterUiApi.graphics().antigravity(
+                    AntigravityProfile.builder().count(1500).ringRadius(7).magnetRadius(9).build());
+
+            private void drawParticles(GuiGraphics graphics, Bounds area, boolean inputAllowed) {
+                var mouse = inputAllowed ? ShBetterUiApi.interactions().mouseState() : null;
+                particles.draw(graphics, area, mouse, ShBetterUiApi.settings().preferences());
+            }
+
+            private void changeShape() {
+                particles.setProfile(particles.profile().toBuilder()
+                        .particleShape(AntigravityProfile.Shape.SPHERE).build());
+            }
+
+            // 键盘动作可调用 particles.burst(1)。离页时停止采样，保留位置。
+            @Override
+            public void removed() {
+                particles.suspend();
+                super.removed();
+            }
+            """),
+    LIGHT_RAYS("light_rays", """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.LightRays;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.LightRaysProfile;
+            import net.minecraft.client.gui.GuiGraphics;
+
+            private final LightRaysProfile.Builder settings = LightRaysProfile.builder();
+            private final LightRays rays = ShBetterUiApi.graphics().lightRays(settings.build());
+
+            private void changePreview(boolean lightBoard, int spreadPercent) {
+                rays.setProfile(settings.lightMode(lightBoard).lightSpread(spreadPercent / 100f).build());
+            }
+
+            private void drawRays(GuiGraphics graphics, Bounds area, boolean inputAllowed) {
+                int color = rays.profile().lightMode() ? 0xFFF0F4FF : 0xFF0B1220;
+                graphics.fill(area.x(), area.y(), area.right(), area.bottom(), color);
+                var mouse = inputAllowed ? ShBetterUiApi.interactions().mouseState() : null;
+                rays.draw(graphics, area, mouse, ShBetterUiApi.settings().preferences());
+            }
+
+            @Override
+            public void removed() {
+                rays.suspend();
+                super.removed();
             }
             """),
     PATTERN_WAVES("pattern_waves", """

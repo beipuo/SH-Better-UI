@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.gui.panel;
 
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -24,6 +25,7 @@ class DotMatrixGalleryPreviewTest {
         assertSame(DeveloperSamples.DOT_MATRIX, sample);
         assertTrue(sample.code.contains("dots.setProfile("));
         assertTrue(sample.code.contains(".withFade("));
+        assertTrue(sample.code.contains(".withPointerWave("));
         assertTrue(sample.code.contains(".withGradient("));
     }
 
@@ -31,10 +33,10 @@ class DotMatrixGalleryPreviewTest {
     void changingWidgetsUpdatesTheProfileAndRetainsValuesAfterResize() {
         var preview = new DotMatrixGalleryPreview();
         var widgets = widgets(preview, NARROW);
-        var hue = assertInstanceOf(UiSlider.class, widgets.get(2));
-        var effect = assertInstanceOf(Button.class, widgets.get(3));
-        var chance = assertInstanceOf(UiSlider.class, widgets.get(4));
-        var cap = assertInstanceOf(UiSlider.class, widgets.get(5));
+        var hue = assertInstanceOf(UiSlider.class, widgets.get(3));
+        var effect = assertInstanceOf(Button.class, widgets.get(4));
+        var chance = assertInstanceOf(UiSlider.class, widgets.get(5));
+        var cap = assertInstanceOf(UiSlider.class, widgets.get(6));
         var initial = preview.profile();
 
         hue.onClick(hue.getX() + 4, hue.getY() + 4);
@@ -62,22 +64,22 @@ class DotMatrixGalleryPreviewTest {
         var current = preview.profile();
         var resized = widgets(preview, WIDE);
         assertEquals(current, preview.profile());
-        assertEquals(hue.value(), ((UiSlider) resized.get(2)).value());
-        assertEquals(effect.getMessage(), resized.get(3).getMessage());
-        assertEquals(chance.value(), ((UiSlider) resized.get(4)).value());
-        assertEquals(cap.value(), ((UiSlider) resized.get(5)).value());
-        assertNotSame(hue, resized.get(2));
+        assertEquals(hue.value(), ((UiSlider) resized.get(3)).value());
+        assertEquals(effect.getMessage(), resized.get(4).getMessage());
+        assertEquals(chance.value(), ((UiSlider) resized.get(5)).value());
+        assertEquals(cap.value(), ((UiSlider) resized.get(6)).value());
+        assertNotSame(hue, resized.get(3));
     }
 
     @Test
     void motionSettingsUpdateTheFadePaletteDirectionAndPeriodIndependently() {
         var preview = new DotMatrixGalleryPreview();
         var widgets = widgets(preview, NARROW);
-        var settings = assertInstanceOf(Button.class, widgets.getFirst());
-        var fade = assertInstanceOf(UiSlider.class, widgets.get(6));
-        var palette = assertInstanceOf(Button.class, widgets.get(7));
-        var flow = assertInstanceOf(Button.class, widgets.get(8));
-        var period = assertInstanceOf(UiSlider.class, widgets.get(9));
+        var settings = assertInstanceOf(Button.class, widgets.get(1));
+        var fade = assertInstanceOf(UiSlider.class, widgets.get(7));
+        var palette = assertInstanceOf(Button.class, widgets.get(8));
+        var flow = assertInstanceOf(Button.class, widgets.get(9));
+        var period = assertInstanceOf(UiSlider.class, widgets.get(10));
         var initial = preview.profile();
         assertEquals(DotMatrixProfile.Gradient.RAINBOW, initial.gradient());
         assertTrue(initial.fade().probability() > 0f && initial.fade().probability() < 1f);
@@ -85,7 +87,7 @@ class DotMatrixGalleryPreviewTest {
 
         settings.onPress();
         assertTrue(fade.visible);
-        assertFalse(widgets.get(2).visible);
+        assertFalse(widgets.get(3).visible);
         fade.onClick(fade.getX() + 4, fade.getY() + 4);
         assertEquals(0f, preview.profile().fade().probability());
         palette.onPress();
@@ -111,9 +113,28 @@ class DotMatrixGalleryPreviewTest {
         var current = preview.profile();
         var resized = widgets(preview, WIDE);
         assertEquals(current, preview.profile());
-        assertTrue(resized.get(6).visible);
-        assertFalse(resized.get(2).visible);
-        assertEquals(settings.getMessage(), resized.getFirst().getMessage());
+        assertTrue(resized.get(7).visible);
+        assertFalse(resized.get(3).visible);
+        assertEquals(settings.getMessage(), resized.get(1).getMessage());
+    }
+
+    @Test
+    void pointerWaveTogglesIndependentlyAndKeepsItsValueAfterResize() {
+        var preview = new DotMatrixGalleryPreview();
+        var toggle = assertInstanceOf(UiButton.class, widgets(preview, NARROW).getFirst());
+        var initial = preview.profile();
+        assertTrue(toggle.isSelected());
+        assertEquals(DotMatrixProfile.PointerWave.DEFAULT, initial.interaction().pointerWave());
+
+        toggle.onPress();
+        assertFalse(toggle.isSelected());
+        assertEquals(initial.withPointerWave(DotMatrixProfile.PointerWave.NONE), preview.profile());
+
+        var resized = assertInstanceOf(UiButton.class, widgets(preview, WIDE).getFirst());
+        assertFalse(resized.isSelected());
+        assertEquals(toggle.getMessage(), resized.getMessage());
+        resized.onPress();
+        assertEquals(initial, preview.profile());
     }
 
     @Test
@@ -121,10 +142,13 @@ class DotMatrixGalleryPreviewTest {
         var preview = new DotMatrixGalleryPreview();
         for (Bounds area : List.of(NARROW, WIDE)) {
             List<AbstractWidget> widgets = widgets(preview, area);
-            var settings = assertInstanceOf(Button.class, widgets.getFirst());
+            var waveToggle = boundsOf(widgets.getFirst());
+            var settings = assertInstanceOf(Button.class, widgets.get(1));
+            assertTrue(waveToggle.x() >= area.x() && waveToggle.right() < settings.getX());
+            assertTrue(waveToggle.bottom() < area.y());
             assertTrue(boundsOf(settings).bottom() < area.y());
             for (int page = 0; page < 2; page++) {
-                var visible = widgets.stream().skip(1).filter(widget -> widget.visible).toList();
+                var visible = widgets.stream().skip(2).filter(widget -> widget.visible).toList();
                 assertEquals(5, visible.size());
                 for (int i = 0; i < visible.size(); i++) {
                     Bounds widget = boundsOf(visible.get(i));
@@ -145,7 +169,7 @@ class DotMatrixGalleryPreviewTest {
     private static List<AbstractWidget> widgets(DotMatrixGalleryPreview preview, Bounds area) {
         var settings = new Bounds(area.right() - DotMatrixGalleryPreview.SETTINGS_WIDTH, area.y() - 54,
                 DotMatrixGalleryPreview.SETTINGS_WIDTH, 22);
-        return preview.widgets(area, settings, UiPreferences.DEFAULT);
+        return preview.widgets(area, settings, UiPreferences.DEFAULT, () -> true);
     }
 
     private static Bounds boundsOf(AbstractWidget widget) {
