@@ -54,6 +54,8 @@ public final class VisualRevealRenderer extends RenderType {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent event) throws IOException {
+        PatternWavesRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
+        ShapeWavesRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
                 ResourceLocation.fromNamespaceAndPath(ShBetterUi.MOD_ID, "visual_reveal"), DefaultVertexFormat.POSITION_TEX),
                 loaded -> shader = loaded);
@@ -178,7 +180,7 @@ public final class VisualRevealRenderer extends RenderType {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
     }
 
-    private static void quad(GuiGraphics graphics, RenderType type, int x, int y, int width, int height, Matrix4f pose) {
+    static void quad(GuiGraphics graphics, RenderType type, int x, int y, int width, int height, Matrix4f pose) {
         var vertices = graphics.bufferSource().getBuffer(type);
         float right = (float) x + width;
         float bottom = (float) y + height;

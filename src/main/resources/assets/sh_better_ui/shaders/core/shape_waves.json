@@ -1,0 +1,29 @@
+{
+  "blend": { "func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha", "srcalpha": "one", "dstalpha": "1-srcalpha" },
+  "vertex": "sh_better_ui:icon_gradient_sweep",
+  "fragment": "sh_better_ui:shape_waves",
+  "attributes": ["Position", "UV0"],
+  "samplers": [{ "name": "MaskSampler" }],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ColorModulator", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "Area", "type": "float", "count": 4, "values": [1, 1, 10, 0.75] },
+    { "name": "Motion", "type": "float", "count": 4, "values": [0, 1, 0, 0] },
+    { "name": "Tone", "type": "float", "count": 4, "values": [1, 0.4, 0.25, 0.35] },
+    { "name": "Effect", "type": "float", "count": 4, "values": [1, 40, 0, 0] },
+    { "name": "MaskRect", "type": "float", "count": 4, "values": [0, 0, 1, 1] },
+    { "name": "ShapeMode", "type": "int", "count": 1, "values": [0] },
+    { "name": "InkColor", "type": "float", "count": 4, "values": [0.572549, 0.572549, 0.572549, 1] },
+    { "name": "HoverColor", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "BackgroundColor", "type": "float", "count": 4, "values": [0, 0, 0, 1] },
+    { "name": "Ripple0", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple1", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple2", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple3", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple4", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple5", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple6", "type": "float", "count": 4, "values": [0, 0, 0, 0] },
+    { "name": "Ripple7", "type": "float", "count": 4, "values": [0, 0, 0, 0] }
+  ]
+}

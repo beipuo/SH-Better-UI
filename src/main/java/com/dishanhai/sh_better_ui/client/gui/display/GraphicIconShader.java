@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -17,6 +18,7 @@ import org.lwjgl.opengl.GL20;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 /** 山海：以 POSITION_TEX 绘制单个图标，shader 使用 Sampler0、GUI 矩阵与 ColorModulator。 */
 public record GraphicIconShader(ResourceLocation id, BiConsumer<ShaderInstance, Frame> uniforms) {
@@ -49,29 +51,42 @@ public record GraphicIconShader(ResourceLocation id, BiConsumer<ShaderInstance, 
     }
 
     boolean draw(GuiGraphics graphics, ResourceLocation texture, int x, int y, int size, UiPreferences preferences) {
-        String name = id.getNamespace().equals("minecraft") ? id.getPath() : id.toString();
-        Minecraft minecraft = Minecraft.getInstance();
-        ShaderInstance shader = minecraft.gameRenderer.getShader(name);
-        if (shader == null || shader.getVertexFormat() != DefaultVertexFormat.POSITION_TEX) return false;
+        ShaderInstance shader = find(id);
+        if (shader == null) return false;
 
+        Minecraft minecraft = Minecraft.getInstance();
+        drawTexturedQuad(graphics, shader, x, y, size, size,
+                () -> minecraft.getTextureManager().getTexture(texture),
+                () -> uniforms.accept(shader, new Frame(PageTransition.nowMs(), preferences.reducedMotion(), size)));
+        return true;
+    }
+
+    static ShaderInstance find(ResourceLocation id) {
+        String name = id.getNamespace().equals("minecraft") ? id.getPath() : id.toString();
+        ShaderInstance shader = Minecraft.getInstance().gameRenderer.getShader(name);
+        return shader != null && shader.getVertexFormat() == DefaultVertexFormat.POSITION_TEX ? shader : null;
+    }
+
+    static void drawTexturedQuad(GuiGraphics graphics, ShaderInstance shader, int x, int y, int width, int height,
+                                 Supplier<AbstractTexture> source, Runnable configure) {
         int previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         int activeTexture = GlStateManager._getActiveTexture();
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
         int boundTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         try {
-            uniforms.accept(shader, new Frame(PageTransition.nowMs(), preferences.reducedMotion(), size));
+            configure.run();
             shader.safeGetUniform("ModelViewMat").set(RenderSystem.getModelViewMatrix());
             shader.safeGetUniform("ProjMat").set(RenderSystem.getProjectionMatrix());
             shader.safeGetUniform("ColorModulator").set(RenderSystem.getShaderColor());
-            shader.setSampler("Sampler0", minecraft.getTextureManager().getTexture(texture));
+            shader.setSampler("Sampler0", source.get());
             try {
                 shader.apply();
-                // 核心 shader 可以设置混合状态，图标统一使用直通 alpha 的 source-over 合成。
+                // 核心 shader 可以设置混合状态，此处统一使用直通 alpha 的 source-over 合成。
                 RenderSystem.enableBlend();
                 RenderSystem.blendEquation(GL14.GL_FUNC_ADD);
                 RenderSystem.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA,
                         GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                IconShaderRenderer.drawQuad(graphics.pose().last().pose(), x, y, size);
+                IconShaderRenderer.drawQuad(graphics.pose().last().pose(), x, y, width, height);
             } finally {
                 shader.clear();
                 shader.setSampler("Sampler0", null);
@@ -82,6 +97,5 @@ public record GraphicIconShader(ResourceLocation id, BiConsumer<ShaderInstance, 
             RenderSystem.activeTexture(activeTexture);
             GlStateManager._glUseProgram(previousProgram);
         }
-        return true;
     }
 }

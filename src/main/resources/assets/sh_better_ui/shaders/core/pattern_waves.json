@@ -1,0 +1,19 @@
+{
+  "blend": { "func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha", "srcalpha": "one", "dstalpha": "1-srcalpha" },
+  "vertex": "sh_better_ui:icon_gradient_sweep",
+  "fragment": "sh_better_ui:pattern_waves",
+  "attributes": ["Position", "UV0"],
+  "samplers": [{ "name": "FieldSampler" }, { "name": "GlyphSampler" }],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ColorModulator", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "Area", "type": "float", "count": 4, "values": [1, 1, 9, 9] },
+    { "name": "Grid", "type": "int", "count": 2, "values": [3, 3] },
+    { "name": "Pattern", "type": "int", "count": 1, "values": [0] },
+    { "name": "GlyphCount", "type": "int", "count": 1, "values": [0] },
+    { "name": "MarkSize", "type": "float", "count": 1, "values": [0.95] },
+    { "name": "InkColor", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "BackgroundColor", "type": "float", "count": 4, "values": [0, 0, 0, 1] }
+  ]
+}
