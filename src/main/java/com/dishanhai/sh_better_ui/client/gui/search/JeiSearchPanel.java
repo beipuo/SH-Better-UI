@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -61,6 +62,7 @@ public final class JeiSearchPanel {
     private final UiButton choose;
 
     private SearchIndex<Ingredient> index = new SearchIndex<>(List.of());
+    private SearchIndex<String> modIndex = new SearchIndex<>(List.of());
     private IngredientCatalog catalog;
     private Predicate<? super Ingredient> filter = ingredient -> true;
     private Predicate<? super Ingredient> chosen = ingredient -> false;
@@ -69,6 +71,7 @@ public final class JeiSearchPanel {
     private long recipeRevision = Long.MIN_VALUE;
     private Language language;
     private String modQuery = "";
+    private Set<String> pinyinMods = Set.of();
     private boolean available;
     private int firstResult;
     private String selectedKey;
@@ -100,7 +103,7 @@ public final class JeiSearchPanel {
         int searchWidth = innerWidth - filterWidth - GAP;
         search = new SearchField<>(font, innerX, controlsY, searchWidth, CONTROL_HEIGHT, index);
         modSearch = new SearchField<>(font, innerX + searchWidth + GAP, controlsY,
-                filterWidth, CONTROL_HEIGHT, new SearchIndex<>(List.of()));
+                filterWidth, CONTROL_HEIGHT, modIndex);
         modSearch.setMessage(MOD_FILTER);
         modSearch.setHint(MOD_FILTER);
 
@@ -149,6 +152,7 @@ public final class JeiSearchPanel {
         });
         modSearch.setResponder(query -> {
             modQuery = query.strip().toLowerCase(Locale.ROOT);
+            pinyinMods = modIndex.searchValuesByPinyin(modQuery);
             search.setScope(this::inScope);
             refreshResults(true);
         });
@@ -336,15 +340,18 @@ public final class JeiSearchPanel {
             }
         }
         index = new SearchIndex<>(entries);
+        modIndex = new SearchIndex<>(List.copyOf(mods.values()));
+        pinyinMods = modIndex.searchValuesByPinyin(modQuery);
         search.setIndex(index);
-        modSearch.setIndex(new SearchIndex<>(List.copyOf(mods.values())));
+        modSearch.setIndex(modIndex);
         selected = null;
         refreshResults(false);
     }
 
     private boolean inModScope(Ingredient ingredient) {
         return modQuery.isEmpty() || ingredient.id().getNamespace().contains(modQuery)
-                || ingredient.modName().toLowerCase(Locale.ROOT).contains(modQuery);
+                || ingredient.modName().toLowerCase(Locale.ROOT).contains(modQuery)
+                || pinyinMods.contains(ingredient.id().getNamespace());
     }
 
     private boolean inScope(Ingredient ingredient) {

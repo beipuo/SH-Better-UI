@@ -98,6 +98,38 @@ class JeiSearchPanelTest {
     }
 
     @Test
+    void pinyinModFilterAndItemQueryShareTheResultAndSuggestionScope() {
+        var vanilla = new TestIngredient("vanilla", "铁锭", ResourceLocation.tryParse("minecraft:iron_ingot"),
+                "Minecraft", List.of(), JeiIntegration.Kind.ITEM, true);
+        var modded = new TestIngredient("modded", "铁板", ResourceLocation.tryParse("demo:iron_plate"),
+                "测试模组", List.of(), JeiIntegration.Kind.ITEM, true);
+        var backend = new TestBackend(vanilla, modded);
+        JeiIntegration.install(backend);
+        try {
+            var panel = newPanel();
+            var search = (EditBox) panel.widgets().get(0);
+            var modSearch = (EditBox) panel.widgets().get(1);
+            modSearch.setValue("csmz");
+            modSearch.setFocused(true);
+            assertTrue(panel.hasOpenSuggestions(400));
+            modSearch.setFocused(false);
+
+            search.setValue("tie");
+            search.setFocused(true);
+            assertTrue(panel.hasOpenSuggestions(400));
+            assertTrue(search.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
+            assertEquals("铁板", search.getValue());
+            assertNull(panel.snapshot().selectedKey());
+
+            search.setValue("tie");
+            assertTrue(search.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+            assertEquals(modded.key(), panel.snapshot().selectedKey());
+        } finally {
+            JeiIntegration.uninstall(backend);
+        }
+    }
+
+    @Test
     void disconnectStopsOldPreviewAndReconnectDoesNotReuseSelectionAcrossRuntimes() {
         var oldIngredient = item("world1:iron", "minecraft:iron_ingot", "Minecraft", "old", true);
         var newIngredient = item("world2:iron", "minecraft:iron_ingot", "Minecraft", "new", true);

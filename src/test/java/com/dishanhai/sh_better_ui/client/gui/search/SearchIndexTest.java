@@ -25,6 +25,40 @@ class SearchIndexTest {
     }
 
     @Test
+    void matchesPinyinFromLocalizedNamesAndAliases() {
+        var iron = entry(1, "鐵錠", "mod:iron");
+        var copper = entry(2, "铜锭", "mod:copper", "赤金属");
+        var gem = entry(3, "绿宝石", "mod:gem");
+        var index = new SearchIndex<>(List.of(iron, copper, gem));
+
+        assertEquals(List.of(iron), index.search("TIEDING"));
+        assertEquals(List.of(iron), index.search("tiě dìng"));
+        assertEquals(List.of(iron, copper), index.search("td"));
+        assertEquals(List.of(iron), index.search("鐵 ding mod:iron"));
+        assertEquals(List.of(copper), index.search("tongd"));
+        assertEquals(List.of(copper), index.search("cjs"));
+        assertEquals(List.of(gem), index.search("lǜbǎoshí"));
+        assertEquals(List.of(gem), index.search("lvbaoshi"));
+        assertEquals(List.of(gem), index.search("lbs"));
+        assertEquals(List.of(copper), index.search("td", value -> value == 2));
+        assertEquals(List.of(), index.search("td gem"));
+    }
+
+    @Test
+    void keepsLiteralSuggestionsAheadOfPinyinAndFillsTheOriginalName() {
+        var iron = entry(1, "铁锭", "mod:iron");
+        var byId = entry(2, "Iron", "mod:tieding");
+        var byName = entry(3, "Tieding", "mod:translation");
+        var index = new SearchIndex<>(List.of(iron, byId, byName));
+
+        assertEquals(List.of(3, 2, 1), values(index.suggest("tieding", 3)));
+        var suggestion = index.suggest("td", 1).getFirst();
+        assertEquals("铁锭", suggestion.completion());
+        assertEquals("", suggestion.suffixFor("td"));
+        assertEquals(List.of(), index.suggest("td", value -> true, 1, text -> text.length() <= 1));
+    }
+
+    @Test
     void ranksNameBeforeIdsAndAliasesWithStableTiesAndLimits() {
         var index = new SearchIndex<>(List.of(entry(7, "Other", "mod:other", "iron"),
                 entry(6, "Metal", "mod:iron"), entry(5, "Refined", "iron_plate"),
