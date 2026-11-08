@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import org.joml.Vector2i;
 import org.lwjgl.glfw.GLFW;
 
@@ -27,6 +29,10 @@ import java.util.function.Predicate;
 public final class SearchField<T> extends EditBox {
     private static final int SUGGESTION_LIMIT = 8;
     private static final int GAP = 2;
+    private static final int BORDERED_TEXT_PADDING = 4;
+    private static final int ICON_RIGHT_PADDING = 4;
+    private static final int ICON_TEXT_GAP = 8;
+    private static final int MIN_TEXT_WIDTH = 32;
     private static final float DROPDOWN_Z = 300f;
     private static final int TOOLTIP_PADDING = 4;
     private static final Component USAGE = Component.translatable("sh_better_ui.search.usage");
@@ -39,6 +45,7 @@ public final class SearchField<T> extends EditBox {
     private Predicate<String> filter = text -> true;
     private Consumer<String> onChange;
     private Consumer<String> onSubmit;
+    private Component hint;
     private String observedQuery = "";
     private String undoQuery;
     private List<SearchIndex.Suggestion<T>> suggestions;
@@ -47,7 +54,6 @@ public final class SearchField<T> extends EditBox {
     private int firstVisible;
     private boolean dismissed;
     private boolean bordered = true;
-    private boolean glassForeground;
     private boolean sampleBackground = true;
 
     public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index) {
@@ -80,7 +86,36 @@ public final class SearchField<T> extends EditBox {
 
     @Override
     public int getInnerWidth() {
-        return glassForeground ? getWidth() - 8 : super.getInnerWidth();
+        return nativeTextWidth() - searchIconInset();
+    }
+
+    private int nativeTextWidth() {
+        // 原生 EditBox 的带边框文字留白也适用于玻璃主题。
+        return bordered ? getWidth() - 2 * BORDERED_TEXT_PADDING : getWidth();
+    }
+
+    private int searchIconInset() {
+        int nativeRightPadding = bordered ? BORDERED_TEXT_PADDING : 0;
+        int inset = GraphicIcon.PIXELS + ICON_TEXT_GAP + ICON_RIGHT_PADDING - nativeRightPadding;
+        return getHeight() >= GraphicIcon.PIXELS + 2 && nativeTextWidth() - inset >= MIN_TEXT_WIDTH ? inset : 0;
+    }
+
+    @Override
+    public void setHint(Component hint) {
+        this.hint = hint;
+        super.setHint(hint);
+    }
+
+    private Component fittedHint() {
+        int width = getInnerWidth();
+        if (hint == null || font.width(hint) <= width) return hint;
+
+        var clipped = Component.empty();
+        font.substrByWidth(hint, width).visit((style, text) -> {
+            clipped.append(Component.literal(text).withStyle(style));
+            return Optional.empty();
+        }, Style.EMPTY);
+        return clipped;
     }
 
     public void setIndex(SearchIndex<T> index) {
@@ -231,6 +266,7 @@ public final class SearchField<T> extends EditBox {
 
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (!isVisible()) return;
         String query = getValue();
         String suffix = "";
         if (suggestionsOpen() && getCursorPosition() == query.length() && getHighlighted().isEmpty()) {
@@ -238,7 +274,27 @@ public final class SearchField<T> extends EditBox {
             suffix = font.plainSubstrByWidth(suggestions.get(selected).suffixFor(query), space);
         }
         setSuggestion(suffix.isEmpty() ? null : suffix);
-        if (style != UiStyle.LIQUID_GLASS || !bordered || !isVisible()) {
+
+        boolean showIcon = searchIconInset() != 0;
+        boolean fitHint = showIcon && hint != null && query.isEmpty() && !isFocused();
+        if (fitHint) super.setHint(fittedHint());
+        try {
+            renderInput(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            if (fitHint) super.setHint(hint);
+        }
+        if (showIcon) {
+            boolean glass = style == UiStyle.LIQUID_GLASS;
+            int color = preferences.highContrast() || isFocused()
+                    ? (glass ? LiquidGlassTheme.TEXT : DarkModeTheme.TEXT)
+                    : (glass ? LiquidGlassTheme.TEXT_MUTED : DarkModeTheme.TEXT_MUTED);
+            GraphicIcon.SEARCH.draw(graphics, getX() + getWidth() - ICON_RIGHT_PADDING - GraphicIcon.PIXELS,
+                    getY() + (getHeight() - GraphicIcon.PIXELS) / 2, 1, color);
+        }
+    }
+
+    private void renderInput(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (style != UiStyle.LIQUID_GLASS || !bordered) {
             super.renderWidget(graphics, mouseX, mouseY, partialTick);
             return;
         }
@@ -248,13 +304,11 @@ public final class SearchField<T> extends EditBox {
         graphics.pose().pushPose();
         try {
             // 隐藏原生底板，同时保持原生带边框时的文字起点、游标与可用宽度。
-            graphics.pose().translate(4f, (getHeight() - 8) / 2, 0f);
-            glassForeground = true;
+            graphics.pose().translate(BORDERED_TEXT_PADDING, (getHeight() - 8) / 2, 0f);
             super.setBordered(false);
             super.renderWidget(graphics, mouseX, mouseY, partialTick);
         } finally {
             super.setBordered(bordered);
-            glassForeground = false;
             graphics.pose().popPose();
         }
     }

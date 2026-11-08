@@ -21,13 +21,31 @@ class SearchFieldTest {
     @Test
     void liquidGlassKeepsNativeInputPaddingAndCompletionUndo() {
         var field = fieldAt(20, UiStyle.LIQUID_GLASS);
-        assertEquals(92, field.getInnerWidth());
+        assertEquals(68, field.getInnerWidth());
         field.setValue("Ir");
         assertTrue(field.keyPressed(GLFW.GLFW_KEY_DOWN, 0, 0));
         assertTrue(field.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0));
         assertEquals("Iridium", field.getValue());
         assertTrue(field.undoCompletion());
         assertEquals("Ir", field.getValue());
+    }
+
+    @Test
+    void searchIconReservesTextSpaceOnlyWhenBothDimensionsFit() {
+        for (var style : UiStyle.values()) {
+            var field = fieldAt(20, style);
+            assertEquals(68, field.getInnerWidth());
+
+            field.setWidth(64);
+            assertEquals(32, field.getInnerWidth());
+            field.setWidth(63);
+            assertEquals(55, field.getInnerWidth());
+
+            field.setBordered(false);
+            assertEquals(35, field.getInnerWidth());
+            field.setHeight(17);
+            assertEquals(63, field.getInnerWidth());
+        }
     }
 
     @Test
