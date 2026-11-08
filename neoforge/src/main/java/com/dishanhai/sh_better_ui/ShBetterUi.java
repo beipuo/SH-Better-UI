@@ -1,6 +1,10 @@
 package com.dishanhai.sh_better_ui;
 
+import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
+import com.electronwill.nightconfig.core.CommentedConfig;
+import com.electronwill.nightconfig.core.concurrent.ConcurrentCommentedConfig;
+import com.electronwill.nightconfig.core.io.WritingException;
 import com.mojang.logging.LogUtils;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -14,23 +18,105 @@ import org.slf4j.Logger;
 public final class ShBetterUi {
     public static final String MOD_ID = "sh_better_ui";
     public static final Logger LOGGER = LogUtils.getLogger();
+    private static final String BACKDROP_SECTION = "glassBackdrop";
+    private static final String UI_SECTION = "ui";
+    private static volatile ModConfig clientConfig;
 
     public ShBetterUi(ModContainer container) {
-        var defaults = GlassBackdropSettings.DEFAULT;
-        var builder = new ModConfigSpec.Builder().push("glassBackdrop");
-        var enabled = builder.define("enabled", defaults.enabled());
-        var radius = builder.defineInRange("blurRadiusScale", defaults.blurRadiusScale(), 0.0, 2.0);
-        var strength = builder.defineInRange("strength", defaults.strength(), 0.0, 1.0);
-        var tint = builder.defineInRange("tintScale", defaults.tintScale(), 0.0, 2.0);
-        var grain = builder.defineInRange("grainScale", defaults.grainScale(), 0.0, 2.0);
+        var defaults = ClientUiSettings.DEFAULT;
+        var backdrop = defaults.backdrop();
+        var builder = new ModConfigSpec.Builder().push(BACKDROP_SECTION);
+        var enabled = builder.define("enabled", backdrop.enabled());
+        var radius = builder.defineInRange("blurRadiusScale", backdrop.blurRadiusScale(), 0.0, 2.0);
+        var strength = builder.defineInRange("strength", backdrop.strength(), 0.0, 1.0);
+        var tint = builder.defineInRange("tintScale", backdrop.tintScale(), 0.0, 2.0);
+        var grain = builder.defineInRange("grainScale", backdrop.grainScale(), 0.0, 2.0);
+        var saturation = builder.defineInRange("saturationScale", backdrop.saturationScale(), 0.0, 2.0);
+        var lift = builder.defineInRange("lift", backdrop.lift(), 0.0, 0.15);
+        var rim = builder.defineInRange("rimScale", backdrop.rimScale(), 0.0, 2.0);
+        var refraction = builder.defineInRange("refractionScale", backdrop.refractionScale(), 0.0, 2.0);
+        var denseSampling = builder.define("denseSampling", backdrop.denseSampling());
+        builder.pop().push(UI_SECTION);
+        var highContrast = builder.define("highContrast", defaults.highContrast());
+        var reducedMotion = builder.define("reducedMotion", defaults.reducedMotion());
+        var widgetBackdropBlur = builder.define("widgetBackdropBlur", defaults.widgetBackdropBlur());
         var spec = builder.pop().build();
         container.getEventBus().addListener((ModConfigEvent event) -> {
             if (event.getConfig().getSpec() != spec) return;
-            GlassBackdropSettings.update(spec.isLoaded()
-                    ? new GlassBackdropSettings(enabled.get(), radius.get().floatValue(), strength.get().floatValue(),
-                            tint.get().floatValue(), grain.get().floatValue())
+            boolean loaded = spec.isLoaded();
+            clientConfig = loaded ? event.getConfig() : null;
+            ClientUiSettings.update(loaded
+                    ? new ClientUiSettings(new GlassBackdropSettings(enabled.get(), radius.get().floatValue(),
+                            strength.get().floatValue(), tint.get().floatValue(), grain.get().floatValue(),
+                            saturation.get().floatValue(), lift.get().floatValue(), rim.get().floatValue(),
+                            refraction.get().floatValue(), denseSampling.get()),
+                            highContrast.get(), reducedMotion.get(), widgetBackdropBlur.get())
                     : defaults);
         });
         container.registerConfig(ModConfig.Type.CLIENT, spec);
+    }
+
+    public static boolean saveGlassBackdrop(GlassBackdropSettings settings) {
+        return saveClientUiSettings(ClientUiSettings.current().withBackdrop(settings));
+    }
+
+    public static boolean saveClientUiSettings(ClientUiSettings settings) {
+        ModConfig config = clientConfig;
+        if (config == null || !(config.getSpec() instanceof ModConfigSpec spec)) return false;
+        var loaded = config.getLoadedConfig();
+        if (loaded == null || !(loaded.config() instanceof ConcurrentCommentedConfig data)) return false;
+        CommentedConfig previousBackdrop = data.get(BACKDROP_SECTION);
+        CommentedConfig previousUi = data.get(UI_SECTION);
+        if (previousBackdrop == null || previousUi == null) return false;
+
+        var backdrop = settings.backdrop();
+        CommentedConfig updatedBackdrop = copySection(data, previousBackdrop);
+        updatedBackdrop.set("enabled", backdrop.enabled());
+        replaceScale(updatedBackdrop, "blurRadiusScale", backdrop.blurRadiusScale());
+        replaceScale(updatedBackdrop, "strength", backdrop.strength());
+        replaceScale(updatedBackdrop, "tintScale", backdrop.tintScale());
+        replaceScale(updatedBackdrop, "grainScale", backdrop.grainScale());
+        replaceScale(updatedBackdrop, "saturationScale", backdrop.saturationScale());
+        replaceScale(updatedBackdrop, "lift", backdrop.lift());
+        replaceScale(updatedBackdrop, "rimScale", backdrop.rimScale());
+        replaceScale(updatedBackdrop, "refractionScale", backdrop.refractionScale());
+        updatedBackdrop.set("denseSampling", backdrop.denseSampling());
+        CommentedConfig updatedUi = copySection(data, previousUi);
+        updatedUi.set("highContrast", settings.highContrast());
+        updatedUi.set("reducedMotion", settings.reducedMotion());
+        updatedUi.set("widgetBackdropBlur", settings.widgetBackdropBlur());
+
+        replaceSections(data, updatedBackdrop, updatedUi);
+        spec.afterReload();
+        try {
+            loaded.save();
+        } catch (WritingException error) {
+            replaceSections(data, previousBackdrop, previousUi);
+            spec.afterReload();
+            LOGGER.warn("Could not save {}", config.getFileName(), error);
+            return false;
+        }
+        return true;
+    }
+
+    private static CommentedConfig copySection(CommentedConfig data, CommentedConfig previous) {
+        CommentedConfig copy = data.createSubConfig();
+        for (var entry : previous.entrySet()) {
+            copy.set(entry.getKey(), entry.getRawValue());
+        }
+        copy.putAllComments(previous);
+        return copy;
+    }
+
+    private static void replaceSections(ConcurrentCommentedConfig data, CommentedConfig backdrop, CommentedConfig ui) {
+        data.bulkCommentedUpdate(root -> {
+            root.set(BACKDROP_SECTION, backdrop);
+            root.set(UI_SECTION, ui);
+        });
+    }
+
+    private static void replaceScale(CommentedConfig section, String key, float value) {
+        Number previous = section.get(key);
+        if (previous.floatValue() != value) section.set(key, Double.valueOf(Float.toString(value)));
     }
 }

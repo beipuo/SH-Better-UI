@@ -2,26 +2,52 @@ package com.dishanhai.sh_better_ui.client;
 
 import com.dishanhai.sh_better_ui.ShBetterUi;
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
+import com.dishanhai.sh_better_ui.client.gui.panel.ControlPanelScreen;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.lwjgl.glfw.GLFW;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 /** 山海：整個進程只註冊一條共用後處理管線；消費端僅提供畫面 predicates。 */
 @EventBusSubscriber(modid = ShBetterUi.MOD_ID, value = Dist.CLIENT)
 public final class UiClient {
+    private static KeyMapping controlPanelKey;
+
     private UiClient() {
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if (controlPanelKey == null) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        while (controlPanelKey.consumeClick()) {
+            if (minecraft.player != null && minecraft.screen == null && minecraft.getOverlay() == null) {
+                minecraft.setScreen(createControlPanel(null));
+            }
+        }
+    }
+
+    private static Screen createControlPanel(Screen parent) {
+        return new ControlPanelScreen(parent, controlPanelKey, ShBetterUi::saveClientUiSettings);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -154,6 +180,20 @@ public final class UiClient {
     @EventBusSubscriber(modid = ShBetterUi.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static final class ReloadRegistration {
         private ReloadRegistration() {
+        }
+
+        @SubscribeEvent
+        public static void onClientSetup(FMLClientSetupEvent event) {
+            ModList.get().getModContainerById(ShBetterUi.MOD_ID).ifPresent(container ->
+                    container.registerExtensionPoint(IConfigScreenFactory.class,
+                            (ignored, parent) -> createControlPanel(parent)));
+        }
+
+        @SubscribeEvent
+        public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+            controlPanelKey = new KeyMapping("key.sh_better_ui.control_panel", KeyConflictContext.IN_GAME,
+                    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F8, "key.categories.sh_better_ui");
+            event.register(controlPanelKey);
         }
 
         @SubscribeEvent
