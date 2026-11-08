@@ -16,8 +16,9 @@
 | `ingredients()` | 素材来源、筛选、物品包装、选取草稿与 `openPicker()` |
 | `materials()` | 玻璃主题、Slate、液态玻璃、槽位和圆角绘制 |
 | `blur()` | GUI 坐标即时模糊、像素坐标帧末请求、渐进清晰、渐变和前景回调 |
-| `graphics()` | 图标、文字、图文布局、网络风格界面和电光轮廓 |
+| `graphics()` | 图标、文字、图文布局、网络风格界面、电光轮廓与反重力粒子 |
 | `motion()` | 时钟、弹簧、可打断动画、切页、胶囊过渡、点阵、图案波面、形状波面与帧时间轴 |
+| `audio()` | `systemOutput()` 显式开启 Windows 输出回环；`analyzer()` 独立分析 PCM，配合 `motion().musicMotion()` 驱动动效，详见 [音乐律动](docs/music-rhythm.md) |
 | `platform()` | 当前加载器的 `fluid()`、`renderTooltip()` 与可选 `ldlib()` 桥接 |
 
 下面在 `Screen.init()` 中注册一个原生按钮。`label` 和 `onPress` 由宿主提供。
@@ -38,6 +39,35 @@ ingredients.openPicker(this, request, this::currentPickerButton, this::applySele
 ```
 
 枚举、请求、布局和配置继续使用已有类型。`platform().ldlib()` 下的方法按各端安装的 LDLib 版本调用，常用分组在 JEI 和 LDLib 缺席时也可加载。[共享分组源码](src/main/java/com/dishanhai/sh_better_ui/client/api/) · [NeoForge 平台分组](neoforge/src/main/java/com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java)
+
+## 通用接入与 API 协作
+
+`ShBetterUiApi.client()` 返回可传递的 `UiClientApi` 实例，Java 与 KubeJS 共用 `UiApi` 分组访问契约。需要增加独立能力时，可通过 `extensions()` 注册工厂，再由 `UiApiContext` 取得实例。现有分组保持类型化调用。
+
+```java
+// 在调用方的客户端初始化中登记，持有句柄，在调用方卸载时 close()。
+var registration = ShBetterUiApi.extensions().register(
+        "your_mod:waves", PatternWaves.class, api -> api.motion().patternWaves());
+
+ShBetterUiApi.screen(Component.translatable("your_mod.ui.title"))
+        .onRender((screen, frame) -> {
+            var waves = screen.context().extension("your_mod:waves", PatternWaves.class);
+            waves.draw(frame.graphics(), frame.viewport(), frame.mouse(), frame.preferences());
+        })
+        .open();
+```
+
+`PatternWaves` 位于 `client.gui.scaled`。扩展工厂接收上下文，可通过 `api.extension(otherId, OtherType.class)` 组合其他扩展。注册 ID 必须包含 `namespace:path`，重复 ID 会报错，关闭注册句柄后可重新登记。每个上下文按需创建并缓存自己的扩展，已解析实例保留到上下文关闭。工厂失败后可重试，循环依赖会报告解析路径。
+
+扩展实现 `AutoCloseable` 时，上下文会自动管理其释放。其他资源可用 `context.manage(resource)` 登记，也可以用 `context.onClose(task)` 登记释放函数。同一个资源按对象身份去重，并按依赖创建的相反顺序释放。手动创建上下文时使用 `try-with-resources`。上下文由客户端线程持有，工厂执行期间不占用注册表锁。[注册表](src/main/java/com/dishanhai/sh_better_ui/client/api/UiExtensionRegistry.java) · [协作上下文](src/main/java/com/dishanhai/sh_better_ui/client/api/UiApiContext.java)
+
+`screen()` 构建器提供默认返回顶栏、原生控件输入与旁白、父页及有效焦点恢复。`onInit` 在打开和重布局时注册控件，`onRender` 在控件之前绘制，`onForeground` 在控件之后绘制，两者共享一个 `UiFrame`。`frame.viewport()` 是扣除返回栏后的内容区域。离开页面会调用 `onRemoved` 并关闭上下文，返回同一页面时重新初始化。跨页面保留的业务草稿由调用方持有。`dispose()` 可永久释放单页，`disposeAll()` 用于一并释放存在父子关系的页面。
+
+通过 `ShBetterUiApi.client().run(task)` 把异步回执交给客户端线程。`screen().open()` 在执行时捕获当前父页，显式 `parent(null)` 可返回游戏，`backButton(false)` 由调用方安排返回控件。父页重建入口控件时，传入 `returnFocus(() -> currentButton)`，关闭后会取得新的有效焦点。自绘背景与控件均裁切到内容区域，点击与滚轮使用同一边界。[界面构建器](src/main/java/com/dishanhai/sh_better_ui/client/api/UiScreenBuilder.java) · [帧快照](src/main/java/com/dishanhai/sh_better_ui/client/api/UiFrame.java)
+
+Java 调用方可用 `onError((screen, failure) -> ...)` 接收构建器生命周期及便捷按钮回调的运行时异常，页面会先永久关闭并释放资源。省略时沿用 Java 异常传播。KubeJS 构建器默认启用日志报告和页面释放。
+
+KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构建器，并按脚本重载周期清理登记的扩展、界面及上下文。完整示例、双端版本和生命周期约定见 [KubeJS 接入](KUBEJS.md)。
 
 ## 双端接入
 
@@ -105,7 +135,7 @@ Minecraft.getInstance().setScreen(preview); // 客户端线程
 
 | 用途 | 入口与调用约定 |
 | --- | --- |
-| 本地搜索与联想 | `SearchIndex<T>` 用 `Entry(value, name, ids, aliases)` 建立快照。`search(query, scope)` 保留来源顺序，`suggest(query, scope, limit)` 返回可填充建议，`Suggestion.suffixFor()` 取灰字补全。数据或语言变化时重建索引。**工作区新增行为** 名称和别名支持汉字全拼及首字母匹配，素材面板的模组筛选也支持拼音。 |
+| 本地搜索与联想 | `SearchIndex<T>` 用 `Entry(value, name, ids, aliases)` 建立快照，也可用六参数重载追加 `modName, tags`。`search(query, scope)` 保留来源顺序，`suggest(query, scope, limit)` 返回可填充建议，`Suggestion.suffixFor()` 取灰字补全，`label()` 取候选行文字。数据或语言变化时重建索引。名称和别名支持汉字全拼及首字母匹配。**工作区新增行为** `@模组`、`#tag` 支持筛选与去重联想，填充保留前面的查询；模组 ID 自动取自条目 ID 命名空间，模组名称支持拼音，多词名称使用 `@"名称"`。素材面板自动接入模组与 tag 数据。 |
 | 原生搜索输入框 | `SearchField<T>` 继承 `EditBox`。`setIndex()/setScope()` 更新来源和范围，`setResponder()/setOnSubmit()` 接收查询变化和 Enter。普通控件之后调用 `renderSuggestions()`。在 Screen 默认分派前调用 `mouseClickedSuggestion()/mouseScrolledSuggestions()`，Esc 先交给 `dismissSuggestions()`。存在帧末后处理时，可通过 `GaussBlur.deferTopLayer()` 绘制候选。 |
 | 嵌入素材搜索与配方预览 | `JeiSearchPanel` 最小为 `144 × 132` GUI 单位。注册 `widgets()`、转发 `tick()` 和候选输入，按 `renderBackground()` → Screen 控件 → `renderOverlays()` 绘制。`snapshot()/restore()` 用于重建面板，`setOnChoose()` 在明确选用时回传素材。候选显示时可通过 `hasOpenSuggestions()` 暂停宿主底层 tooltip。`JeiIntegration.setExtraAreas(screen, panel::extraAreas)` 为 JEI 侧栏留出避让区，永久移除时传 `null`。NeoForge 滚轮转发垂直量 `scrollY`。 |
 | 素材来源与筛选 | `IngredientCatalog.jei()` 取可见 JEI 素材，`registry()` 取物品默认形态及源流体，`automatic()` 优先 JEI 并可回退原生注册表，`of(candidates)` 接收自建列表。`JeiSearchPanel` 默认用 `jei()`，需要无 JEI 回退时传入 `automatic()`。`IngredientFilter.all()/items()/fluids()` 可叠加 `withKinds()/withIds()/withMods()/withTags()`，同组任一命中，跨组全部匹配。 |
@@ -129,7 +159,8 @@ Minecraft.getInstance().setScreen(preview); // 客户端线程
 
 | 用途 | 入口与调用约定 |
 | --- | --- |
-| 时间、弹簧与连续反馈 | `PageTransition.advance()/progress()` 按阶段推进。`InterruptibleAnimation.animateTo()/animateToAfter()/sample()` 可从当前轨迹接续或换向。`Spring`、`SpringTable<K>`、`GuiMotion`、`GlassMotion`、`RepeatCurve` 提供底层弹簧、插值与长按节奏。**工作区新增** `Spring.FLUID_PANEL` 预设。 |
+| 时间、弹簧与连续反馈 | `PageTransition.advance()/progress()` 按阶段推进。`InterruptibleAnimation.transitionTo()/blendTo()/sample()` 提供属性级打断、优先级与一次性完成事件，`UiApiContext.animation()` 随页面释放。`Spring`、`SpringTable<K>`、`GuiMotion`、`GlassMotion`、`RepeatCurve` 提供弹簧、插值与长按节奏。 |
+| 异步状态同步 | `UiApiContext.query()` 提供随页面释放的最新查询槽，`ShBetterUiApi.client().operation()` 提供由业务模型持有的单次操作槽。回执经客户端线程验证 UUID 与连接，超时或断线后可按服务端记录对账，模型处理回执后调用 `acknowledgeReceipt()`。 |
 | 页签提示与局部效果 | `UiAttention.select()/sample()` 提供选区移动和目标提示。`ClickRipple.trigger()/sample()` 配合 `GlassEffectRenderer.drawRipple()` 绘制点击折射，`drawFlowBorder()/drawBreathingGlow()` 提供边框与聚焦效果。`GlassEffectMotion` 和 `RoundedCorners` 可供自绘复用。 |
 | 单页和双页切换 | `UiPageSlide.start()/sample()/draw()` 用于四方向单页进入，可叠加立体倾斜和模糊。`UiRecipePageTransition.start()/sample()/draw()` 用于新旧页衔接。交互命中使用绘制时同一帧的新页位移。 |
 | 胶囊展开与返回 | `UiCapsuleReveal.startFrom()/startAt()` 记录起点，`render()` 绘制展开，`close(preferences, onClosed)` 收回后执行一次返回动作。`UiScreenReturn.prepare()/render()` 用现有父 Screen 实例预绘返回层，父界面可实现 `Target.prepareReturnLayer()`。`FluidMorph.seed()/between()` 计算小胶囊起点和变形轮廓。**工作区新增** `UiCapsuleReveal`、`UiScreenReturn` 与公开的 `FluidMorph`。 |
@@ -137,7 +168,118 @@ Minecraft.getInstance().setScreen(preview); // 客户端线程
 | 点阵背景 | **工作区新增** `UiDotMatrix.render()/pulse()` 绘制背景并接收波纹触发。`DotMatrixProfile` 配置色板、网格、渐变、淡出、运动与互动。先画点阵，再画原生控件。 |
 | 电光轮廓 | **工作区新增** `ElectricLogo` 以图片轮廓绘制电丝与电弧，`setTexture()` 切换贴图，`draw()` 接受 `ElectricLogoProfile`，`pulse()` 接收宿主点击。每个视图持有独立实例，`draw()` 返回 `false` 时可画后备内容，移除视图时在渲染线程 `close()`。 |
 
+`UiCapsuleReveal.setSkeletonLayout(target -> blocks)` 适用于 `render()` 和 `renderInset()`。占位块使用与正文一致的 Screen 坐标。回调会读取当前目标区域，适合随窗口尺寸和控件布局变化重新计算。正文开始淡入后，占位块与正文共用当前轮廓的裁切区。
+
+点阵跟随波纹通过 `profile.withPointerWave(new DotMatrixProfile.PointerWave(radius, lift))` 单独开启，半径和抬升高度均为 GUI 单位。每帧把同一坐标系下的指针坐标传给 `UiDotMatrix.render()`。需要独立采集时，可复用 `UiMouseState.read()` 的 `x()/y()`。指针不可用或被模态层遮挡时传入 `Double.NaN`。减少动效时保留环形高亮，半径设为零时关闭。
+
+### 点阵光标透镜
+
+每个区域持有一个 `UiDotMatrix` 和一个 `UiPointerTracker`。下面是规则彩虹点阵的接入示例。
+
+```java
+private final UiDotMatrix dots = ShBetterUiApi.graphics().dotMatrix(DotMatrixProfile.VIOLET
+        .withGrid(new DotMatrixProfile.Grid(8, 2, 1f, 27L))
+        .withMotion(new DotMatrixProfile.Motion(DotMatrixProfile.Effect.TWINKLE, 2800, 0f, 0, 0f))
+        .withInteraction(new DotMatrixProfile.Interaction(0, 0))
+        .withGradient(DotMatrixProfile.Gradient.RAINBOW)
+        .withPointerLens(DotMatrixProfile.PointerLens.DEFAULT));
+private final UiPointerTracker pointer = ShBetterUiApi.interactions().pointerTracker();
+
+void drawDots(GuiGraphics graphics, Bounds area, UiPreferences preferences, boolean acceptsPointer) {
+    long now = PageTransition.nowMs();
+    UiMouseState mouse = acceptsPointer ? ShBetterUiApi.interactions().mouseState() : null;
+    boolean active = mouse != null && mouse.focused() && !mouse.grabbed() && !preferences.highContrast();
+    var input = pointer.update(area, graphics.pose().last().pose(), mouse, active, now);
+    dots.render(graphics, area, active ? input : null, now, preferences);
+}
+```
+
+`PointerLens(radius, bulgeStrength, twistDegrees, glowRadius, glowArgb, glowIntensity, holdToZoom)` 配置透镜半径、径向强度、旋转角度、柔光半径、ARGB 柔光颜色与强度，以及左键长按是否加深效果。半径使用 GUI 单位，鼓胀强度为 −1 到 1，负值向内收缩。透镜半径为零时关闭整项效果，柔光半径为零时关闭柔光。正常移出传入区域外的帧以淡出，失焦、关闭交互或被模态层遮挡时传入 `null`。减少动效时仅保留静态柔光。绘制放在前景控件之前，指针追踪不消耗鼠标事件。
+
 [动效源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [可打断动画](docs/interruptible-animation.md) · [电光轮廓源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/ElectricLogo.java)
+
+### 反重力粒子
+
+`ShBetterUiApi.graphics().antigravity()` 或 `antigravity(profile)` 为每个区域创建独立粒子场。不可变 `AntigravityProfile` 配置形状、色板、吸附、波浪、旋转、蓄力与入场；`ShBetterUiApi.interactions().pointerTracker()` 单独提供 pose 变换后的区域指针与按压／释放／取消状态。开发者控件图库提供四种形状、三种配色、暂停与重播。[完整接入说明](docs/antigravity-api.md)。
+
+### 光束背景
+
+每个 GUI 区域保留一个 `LightRays` 实例。在底板之后、文字和控件之前绘制。
+
+```java
+// Screen 字段
+private final LightRays rays = ShBetterUiApi.graphics().lightRays(LightRaysProfile.builder()
+        .raysOrigin(LightRaysProfile.Origin.TOP_CENTER)
+        .raysColor(0xFFE4F0FF)
+        .lightSpread(.5f)
+        .build());
+
+// Screen.render 内
+rays.draw(graphics, ShBetterUiApi.graphics().bounds(16, 16, 240, 120));
+```
+
+- `LightRaysProfile` 提供八个光源位置。颜色使用 ARGB，长度和淡出距离以区域长边为单位，正倾角在 GUI 坐标中顺时针旋转。`lightMode(true)` 适用于浅色底板。
+- `raysSpeed(0)` 冻结光束相位。`followMouse`、`cursorShadow` 和 `clickPulse` 分别控制跟随、阴影和点击波。宿主可用 `pulse()` 接入键盘动作。
+- 需要共享快照或屏蔽被模态层遮住的区域时，调用 `draw(graphics, bounds, mouse, preferences)`。传 `null` 屏蔽指针。`ShBetterUiApi.interactions().pointerTracker()` 可独立用于区域按压和取消检测。
+- `suspend()` 清除指针和点击波并保留入场进度，`restart()` 重播。减少动效时显示静态光束。高对比或着色器不可用时 `draw()` 返回 `false`，宿主可绘制底板。
+
+[光束源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRays.java) · [配置源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRaysProfile.java) · [效果参考](https://reactbits.dev/backgrounds/light-rays)
+
+### 激光流背景
+
+每个 GUI 区域持有一个 `LaserFlow` 实例。先绘制底板和受光面的底色，再调用 `draw`，最后绘制文字和控件。
+
+```java
+// Screen 字段
+private final LaserFlow laser = ShBetterUiApi.graphics().laserFlow(LaserFlowProfile.builder()
+        .beamPosition(.6f).color(0xFF3847FF).intensity(1.8f)
+        .beamWidth(1.5f).flare(1.5f).spread(1.5f).spill(1f)
+        .fog(.2f).dust(1.6f).build());
+
+// Screen.render 内按当前布局提供区域和受光面
+var area = ShBetterUiApi.graphics().bounds(16, 16, 300, 180);
+var surface = new LaserFlowSurface(ShBetterUiApi.graphics().bounds(70, 102, 180, 74), 12f);
+laser.draw(graphics, area, surface, null);
+```
+
+- `LaserFlowProfile` 还可设置流线、点纹、脉动、速度、随机种子、浅色模式、入场和鼠标增强。用 `laser.setProfile(laser.profile().toBuilder().paused(true).build())` 可即时暂停时间轴并保留进度。速度为 0 时呈现完整静态效果，`restart()` 可重播已启用的入场。
+- `beamPosition` 从绘制区域左侧开始按 0–1 定位。光束未覆盖受光面的水平范围时，按区域高度比例 `surfaceLevel` 落下。受光面的圆角、区域和指针半径使用 GUI 单位。
+- 第四个参数可传 `new LaserFlowReveal(texture, radius, opacity)`。贴图使用完整资源路径并映射到绘制区域，只在指针附近的受光处显现。鼠标增强和贴图揭示可以分别启用。
+- 显式传入共享的 `UiMouseState` 和 `UiPreferences` 可管理每层输入。传入空鼠标快照可屏蔽被遮挡区域的交互。减少动效时显示完整静态效果，高对比或着色器不可用时 `draw` 返回 `false`。
+
+### 代码雨与 ASCII 字符场
+
+每个背景区域保留一个 `ShBetterUiApi.graphics().codeRain()` 实例可绘制默认下落代码雨。用 `CodeRainProfile` 设置字符集、单元尺寸、密度、速度、拖尾长度、ARGB 颜色和随机种子。ASCII 模式使用固定网格，可按光强从稀疏到密集选字。
+
+```java
+private final CodeRainEffects.Interaction interaction =
+        CodeRainEffects.interaction(true, CodeRainEffects.Click.WAVE, .12f);
+private final CodeRain rain = ShBetterUiApi.graphics().codeRain(
+        CodeRainProfile.builder()
+                .mode(CodeRainProfile.Mode.ASCII)
+                .characters(" .:=+xX0S8#@")
+                .cellSize(10)
+                .speed(6)
+                .build(),
+        CodeRainEffects.shape(CodeRainEffects.Shape.HORIZON, .55f),
+        CodeRainEffects.gradient(0xFF1E3FD8, 0xFF38BDF8, 0xFFA5D8FF, 0xFFF6F8FF),
+        CodeRainEffects.intro(1.4f),
+        CodeRainEffects.flicker(.2f),
+        CodeRainEffects.glow(.3f),
+        CodeRainEffects.dotMatrix(.25f, .35f),
+        interaction);
+
+// 在底板之后、前景控件之前调用。previewBounds 使用当前 GUI pose 的局部坐标。
+rain.draw(graphics, font, previewBounds, mouseSnapshot, preferences);
+```
+
+- `shape` 支持地平线 `HORIZON`、束腰 `PINCH`、底部上升 `RISE` 和日蚀 `ECLIPSE`。可独立调整软边和流动幅度。`gradient` 按当前亮度为字形采样 2–8 色，所以通常放在形状遮罩之后。
+- `interaction` 可独立启用光标乱字、扩散环或局部爆发，半径按区域短边计算。输入复用 `UiMouseState` 与 `UiPointerTracker`，可传 `null` 屏蔽物理鼠标采样。持有 `CodeRainEffects.Interaction` 时可调用 `pulse(localX, localY)` 从宿主动作或键盘触发。
+- `dotMatrix(size, coverage)` 把固定比例的单元改为方点。示例将 35% 的单元改为宽度为单元四分之一的亮点。覆盖率设为 `1` 可得到纯点阵代码雨。方点沿用代码雨的颜色、亮度、光晕和交互。
+- 自定义 `CodeRainEffect` 可用 lambda 修改单元字形索引、亮度、颜色、发光强度或点宽。`Cell` 坐标是区域内的单元中心，实例会重复使用。需要指针的扩展可覆盖 `usesPointer()`，有状态的扩展应由一个区域独占。
+- 高对比模式跳过装饰层并返回 `false`。减少动效冻结字符场、立即完成入场并清除互动。界面离开时调用 `suspend()`，重播时调用 `restart()`。
+
+[代码雨源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRain.java) · [扩展接口](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffect.java) · [内置扩展](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffects.java)
 
 ### 图案波面与鼠标快照
 

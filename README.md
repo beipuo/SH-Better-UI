@@ -70,6 +70,44 @@ Forge 和 NeoForge 客户端首次启动后，在 `config/sh_better_ui-client.to
 
 设置适用于通过本库绘制的毛玻璃背景，包括根面板、分区、按钮与提示框。经典主题沿用自己的绘制方式，换页模糊和点击折射波各自独立。
 
+### 主控面板的反馈与标签栏配置
+
+F8 主控面板使用彩虹点阵背景，顶层分为「配置」「开发配置」「模组概览」。配置页包含毛玻璃、显示偏好、动效与反馈、标签栏和快捷键；开发配置提供采样质量、控件底板模糊及开发者面板入口。支持草稿预览、应用、重置及撤销重置，切换标签保留草稿。设置保存在客户端配置的 `[ui]` 段，Forge 与 NeoForge 使用相同键。
+
+模组概览每秒刷新可观测的模组详情、运行状态、总体状态、模块状态、系统与设备信息；硬件和加载器元数据首次读取后缓存。长设备名称自动换行，各信息组支持键盘聚焦和完整旁白。可选依赖只显示安装状态，未将其标记为健康检查结果。
+
+| 配置键 | 默认值 | 作用 |
+| --- | --- | --- |
+| `hoverAnimation` | `true` | 悬停颜色过渡与卡片抬升；关闭后保留静态悬停反馈。 |
+| `pressAnimation` | `true` | 按钮按压缩放与释放过渡；关闭后保留按下颜色。 |
+| `selectionPulse` | `true` | 新选中按钮的短暂强调动画；选中标记始终保留。 |
+| `tooltipDelayMs` | `0` | 按钮、滑杆、滚动标签栏的悬停提示延迟，范围 `0–2000` 毫秒。 |
+| `tabWheelEnabled` | `true` | 在标签栏上使用滚轮浏览，不改变选择。 |
+| `tabDragEnabled` | `true` | 拖动浏览，超过阈值后放开不会误选；Esc 取消并恢复原位置。 |
+| `tabAutoReveal` | `true` | 自动显示选中项；关闭后键盘焦点仍会滚入视口。 |
+| `tabScrollStep` | `32` | 每格滚轮移动的 GUI 单位，范围 `8–128`，支持小数滚轮输入。 |
+
+「减少动效」优先于各项动效开关。`ClientUiSettings.feedback()` 与 `tabs()` 分别返回独立的 `ControlFeedbackSettings`、`TabScrollSettings`；编辑一组设置会保留其余组。已有 `ClientUiSettings` 三／四参数和 `UiPreferences` 三参数构造器仍可使用，新增项取默认值。控件使用创建时传入的偏好快照；已打开的调用方画面可用 `setPreferences()` 和 `setSettings()` 更新。
+
+### 可滚动标签栏 API
+
+`UiScrollableSectionBar` 是一个原生控件，内部复用 `UiButton` 与 `UiSectionBar.Section`。宿主只注册标签栏一次；`buttons()` 供读取按钮位置与状态，不再单独注册内部按钮。
+
+```java
+var tabs = ShBetterUiApi.controls().scrollableSectionBar(
+        new Bounds(x, y, width, 22), UiPreferences.configured(), sections,
+        selectedIndex, index -> requestedSection = index);
+addRenderableWidget(tabs);
+```
+
+`sections` 为含本地化名称与图标的 `List<UiSectionBar.Section>`。默认标签宽度为 104 GUI 单位；工厂重载可显式传入 `TabScrollSettings` 与标签宽度。原有等宽 `UiSectionBar` 继续可用，适合不会溢出的少量标签。
+
+宿主将 `mouseScrolled` 的单轴／双轴参数转给标签栏。鼠标按下立即反馈，放开提交选择，拖动不会切页；Tab 进入标签组后，用左右键／Home／End 定位并切换，Enter／空格提交当前焦点。若宿主继承原生 `Screen`，应将捕获期间的 `mouseReleased` 显式转给 `tabs`，确保在栏外放开也能结束；在调用 `super.keyPressed` 前让标签栏处理拖动期间的 Esc，避免关闭整个画面。关闭宿主时调用 `cancelDrag()`。主控面板包含这一接入实现。
+
+`select(index)` 更新已确认选择而不回调，`focus(index)` 移动键盘焦点并确保可见，`scrollTo(offset)` 与 `reveal(index)` 可接自定义输入，`setBounds(area)` 更新布局。绘制、鼠标命中和提示均限制在视口内。
+
+只需滚动计算时，使用 `ShBetterUiApi.interactions().tabScrollState()` 或直接创建 `TabScrollState`。通过 `resize(viewportWidth, contentWidth)` 设置范围，再使用 `scrollBy`、`scrollTo`、`reveal`、`beginDrag`／`drag`／`endDrag` 和 `cancelDrag`；该状态不依赖 Minecraft，拖动读取复用 `PointerDrag`。
+
 ### 中性浅色玻璃
 
 参考 `src_collection/collection/liquid-glass-react-master` 的背景模糊、边缘折射与受光亮边思路，沿用本库既有 shader 实现。浅色版改为柔和浅灰，`GlassStyle.CLEAR` 的提亮由 0.035 降至 0.008，保留较弱的受光亮边与折射；面板／独立按钮模糊半径为 14／8 GUI 单位。浅灰与烟灰底使用 65 点高斯核，旧有飞行及切页模糊保留原核。`GlassSurface.panel()` 与 `control()` 共用 `GlassColors.CLEAR`，面板内按钮只薄叠色；独立按钮保留深色文字所需的底色。shader 不可用时仍有浅灰半透明底。
@@ -159,6 +197,12 @@ cancelButton.setIcon(GraphicIcon.CLOSE);
 `client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的纯文字名称、任意数量的 ID 和别名建立快照。多词查询要求每个词都命中，词可落在不同字段。比对忽略大小写与多余空白。
 
 索引会为名称和别名中的连续汉字生成拼音。输入 `tieding`、`tie ding` 或 `td` 都可以找到「铁锭」和「鐵錠」，也可和汉字或 ID 一起搜索。字面名称和 ID 优先出现在联想中，选中拼音候选时填入原名称。多音字采用默认读音，调用方可以用别名补充其他读音。
+
+输入 `@` 联想模组，输入 `#` 联想 tag，例如 `铁锭 @mine #forge:ingots/`。模组 ID 从条目 ID 的命名空间取得；需要按模组名称或 tag 搜索时，使用 `Entry(value, name, ids, aliases, modName, tags)`，其中名称来自调用方本地化，tags 为完整的 `namespace:path` 字符串。旧四参数构造继续可用。`@` 支持模组 ID、名称、汉字全拼和首字母；含空格的模组名称可写成 `@"Applied Energistics 2"`。`#` 比对完整 tag 的片段。筛选词与普通词共同限制结果；没有前缀的普通搜索保持原有含义。
+
+模组和 tag 候选按精确、前缀、包含、拼音匹配排序并去重，只来自当前范围内且符合其余查询词的条目。填充保留此前输入与空白，仅替换最后一个词；`Suggestion.label()` 提供候选行文字，`completion()` 提供填入的完整查询。JEI 面板和自建素材来源共用这一行为，素材或标签版本更新后随索引重建刷新。
+
+名称中作为普通文字使用的 `@`、`#` 可放在双引号内，例如 `"Block #1"`；自动填充会按需引用并转义名称，保证填充后仍能匹配原条目。
 
 - `search(query, scope)` 按来源顺序返回命中项目，空查询返回范围内全部项目。`suggest(query, scope, limit)` 依名称、ID 的精确／前缀／包含命中排序，最后列出别名或跨字段命中。自绘输入框可用 `Suggestion.suffixFor(query)` 取得可直接追加的灰字后缀。
 - `SearchField` 沿用原生 `EditBox`。空间足够时在右侧显示 16×16 放大镜，较窄或较矮的输入框把空间留给文字。输入变更会更新联想，光标在末端且没有选取文字时才显示灰字。上下键选择，`Tab` 或点击填充，`Esc` 收起联想并保留输入。`setOnSubmit` 接收 `Enter` 提交的当前查询，`Ctrl+Z`（Mac 为 `⌘Z`）或 `undoCompletion()` 恢复填充前的查询。
@@ -545,6 +589,29 @@ UiToast.show(UiToast.Kind.WARNING,
 
 提示依次显示，默认基础停留时间为 3500 毫秒，受 Minecraft 通知时长设置影响。完整 `show` 重载可传入停留时间与 `UiPreferences`，启用减少动效时会直接显示。视觉内容最多六行，建议传入本地化短句。系统旁白启用时会朗读完整内容。
 
+#### 可滑动关闭的通知
+
+在原生 `Screen` 内使用 `UiSwipeToast`。`BOTTOM_RIGHT` 固定在画面右下角；`INLINE` 使用调用方传入的槽位宽度，可用 `occupiedHeight()` 排列后续项目。两种位置都要注册成可渲染控件，才能绘制并参与原生键盘焦点。开发者面板 → 控件图库 → 浮动通知提供两种示例。
+
+```java
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+
+// 在 Screen 子类内创建。restore 是由调用方提供的撤销操作。
+var toast = addRenderableWidget(new UiSwipeToast(this, UiSwipeToast.Placement.BOTTOM_RIGHT,
+        new UiSwipeToast.Content(Component.translatable("your_mod.archive.title"),
+                Component.translatable("your_mod.archive.details"), null,
+                new UiSwipeToast.Action(Component.translatable("your_mod.archive.undo"), restore)),
+        new UiSwipeToast.Options(4000, true, true, true), UiSwipeToast.Style.DEFAULT,
+        UiPreferences.configured(), reason -> onToastClosed(reason)));
+```
+
+向下拖过阈值或快速轻甩可关闭。短拖、反向释放及失焦取消会归位。Tab 聚焦后可用左右键选择操作或关闭，按 Enter／空格激活，或按 Esc 关闭支持滑动的通知。悬停暂停可配置；拖动、聚焦和窗口失焦时暂停。`Fuse.TOP`、`BOTTOM` 和 `NONE` 只影响进度线的绘制；`setDurationMs(0)` 让通知持续显示。
+
+`setOpen(false)` 主动关闭；关闭回调在退出动画和行内槽位收合结束后触发一次，可区分 `TIMEOUT`、`SWIPE`、`ACTION`、`CLOSE`、`ESCAPE` 和 `PROGRAMMATIC`。控件由画面渲染推进，请保留到关闭回调后再移除。`setOpen(true)` 可重新打开并重新计时。行内模式用 `setInlineBounds(x, y, availableWidth)` 指定 GUI 坐标。
+
+可直接使用 `SwipeGesture`（位移、速度和向下滑动判定）和 `PausableCountdown`（暂停、重置和剩余比例）。两者接收调用方提供的单调毫秒时间，不依赖 Screen 或通知。`ShBetterUiApi.interactions()` 同样提供 `swipeGesture()`、`countdown(...)` 和 `swipeToast(...)`。
+
 ### 中性玻璃渲染预览
 
 左为调整前，右为调整后。玻璃使用实际 shader 离屏渲染与实际色板；背景、字体与排版为测试示意，并非 Minecraft 实机界面。文字柔光的接入范围及验证结果见[玻璃维护记录](docs/neutral-glass-maintenance.md)，游戏验收项目见 [TODO](TODO.md)。
@@ -569,3 +636,7 @@ $env:TMP = 'C:\jtmp'
 两平台共用的 shader 将 `WaveOrigin` 声明为 GLSL `vec2`，匹配 Minecraft 的 `float/count=2` 上传。资源测试检查各平台的实际构建输出。
 
 NeoForge 版本提供原生 `Screen` API 和可选的 `compat.ldlib2.LdLib2UiBridge`。使用桥接时安装 LDLib2 `2.2.44`，首次构建时联网解析编译依赖。Forge 1.20.1 的 `compat.ldlib` 套件随 Forge 产物发布。测试与待验项目见 `neoforge/VERIFICATION.md` 与 `TODO.md`。
+
+### 反重力粒子 API
+
+通过 `ShBetterUiApi.graphics().antigravity()` 创建粒子场，独立输入跟踪使用 `ShBetterUiApi.interactions().pointerTracker()`。开发者控件图库提供四种形状、三种配色、暂停与重播。[接入与参数说明](docs/antigravity-api.md)。
