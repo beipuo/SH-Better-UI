@@ -84,8 +84,13 @@ public final class GlassStyle {
 
     /** 山海：玻璃底采用更密的核；飞行与页面方向模糊保留原来的采样模式。 */
     public float blurMode(boolean smooth) {
+        return blurMode(smooth, true);
+    }
+
+    float blurMode(boolean smooth, boolean denseSampling) {
         if (!smooth) return 0f;
-        return this == CLEAR || this == FROSTED || this == LIQUID_CLEAR || this == LIQUID_REGULAR ? 2f : 1f;
+        return denseSampling && (this == CLEAR || this == FROSTED || this == LIQUID_CLEAR || this == LIQUID_REGULAR)
+                ? 2f : 1f;
     }
 
     /**
@@ -98,15 +103,26 @@ public final class GlassStyle {
     }
 
     void write(float scale, float[] tint, float[] params, float[] edge, float tintScale, float grainScale) {
+        write(scale, tint, params, edge, tintScale, grainScale, 1f, 0f);
+    }
+
+    void write(float scale, float[] tint, float[] params, float[] edge,
+               float tintScale, float grainScale, float saturationScale, float liftOffset) {
+        write(scale, tint, params, edge, tintScale, grainScale, saturationScale, liftOffset, 1f, 1f);
+    }
+
+    void write(float scale, float[] tint, float[] params, float[] edge,
+               float tintScale, float grainScale, float saturationScale, float liftOffset,
+               float rimScale, float refractionScale) {
         tint[0] = tintR;
         tint[1] = tintG;
         tint[2] = tintB;
         tint[3] = Math.min(1f, tintAmount * tintScale);
-        params[0] = saturation;
+        params[0] = this == NONE ? 0f : saturation + (1f + saturation) * (saturationScale - 1f);
         params[1] = grain * grainScale;
-        params[2] = lift;
-        params[3] = rim;
-        edge[0] = refractV * scale;
+        params[2] = this == NONE ? 0f : lift + liftOffset;
+        params[3] = rim * rimScale;
+        edge[0] = refractV * scale * refractionScale;
         edge[1] = rimWidthV * scale;
         edge[2] = shadowV * scale;
         edge[3] = shadowStrength;

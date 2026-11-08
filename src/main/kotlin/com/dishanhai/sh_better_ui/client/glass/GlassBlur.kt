@@ -3,6 +3,7 @@ package com.dishanhai.sh_better_ui.client.glass
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners
+import com.dishanhai.sh_better_ui.config.GlassBackdropSettings
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 
@@ -37,6 +38,17 @@ object GlassBlur {
             sample.axisX, sample.axisY,
             GlassStyle.SWAP,
         )
+    }
+
+    /** 山海：页面画完后即时施加速度模糊，保持当前裁切，让随后绘制的工具栏和提示清晰。 */
+    @JvmStatic
+    fun pageSlideNow(graphics: GuiGraphics, viewport: GuiRect, sample: GlassMotion.Sample): Boolean {
+        if (!sample.isActive || viewport.isEmpty) return false
+        val view = capture(graphics) ?: return false
+        val px = view.toPixels(viewport)
+        val radius = sample.radiusVirtual * view.pixelScale * minOf(view.scaleX, view.scaleY)
+        return GaussBlur.directionalNow(graphics, px.x, px.y, px.w, px.h, sample.strength, radius,
+            sample.axisX, sample.axisY)
     }
 
     private const val POPUP_STRENGTH = 0.85f
@@ -117,15 +129,22 @@ object GlassBlur {
     @JvmStatic
     @JvmOverloads
     fun tryBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
-                    radiusVirtual: Float, cornerRadius: Float = 0f): Boolean {
+                    radiusVirtual: Float, cornerRadius: Float = 0f): Boolean =
+        tryBackdrop(graphics, rect, strength, style, radiusVirtual, cornerRadius, GlassBackdropSettings.current())
+
+    /** 山海：使用独立设置快照预览玻璃取样。 */
+    @JvmStatic
+    fun tryBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
+                    radiusVirtual: Float, cornerRadius: Float, settings: GlassBackdropSettings): Boolean {
         if (!strength.isFinite() || strength <= MIN_STRENGTH || !radiusVirtual.isFinite() || radiusVirtual < 0f
             || !cornerRadius.isFinite() || cornerRadius < 0f) return false
         return sampleBackdrop(graphics, rect, strength.coerceAtMost(1f), style, radiusVirtual.coerceAtMost(32f),
-            cornerRadius, legacyRadius = false)
+            cornerRadius, legacyRadius = false, settings = settings)
     }
 
     private fun sampleBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
-                               radiusVirtual: Float, cornerRadius: Float, legacyRadius: Boolean): Boolean {
+                               radiusVirtual: Float, cornerRadius: Float, legacyRadius: Boolean,
+                               settings: GlassBackdropSettings = GlassBackdropSettings.current()): Boolean {
         if (rect.isEmpty) return false
         val pose = graphics.pose().last().pose()
         if (pose.m01() != 0f || pose.m10() != 0f) return false
@@ -145,14 +164,21 @@ object GlassBlur {
         return if (legacyRadius) {
             GaussBlur.blurRoundedNow(graphics, px.x, px.y, px.w, px.h, radius, style, corner, scaleY / scaleX)
         } else {
-            GaussBlur.sampleBackdropNow(graphics, px.x, px.y, px.w, px.h, strength, radius, style, corner, scaleY / scaleX)
+            GaussBlur.sampleBackdropNow(graphics, px.x, px.y, px.w, px.h, strength, radius, style, corner,
+                scaleY / scaleX, settings)
         }
     }
 
     /** 山海：保留原矩形的过渡位置，交由后处理与当前 scissor 取交集。 */
     @JvmStatic
     fun revealRegion(graphics: GuiGraphics, rect: GuiRect, radiusVirtual: Float,
-                     fullBlurUntil: Float, sharpFrom: Float): Boolean {
+                     fullBlurUntil: Float, sharpFrom: Float): Boolean =
+        revealRegion(graphics, rect, radiusVirtual, fullBlurUntil, sharpFrom, GaussBlur.RevealDirection.LEFT_TO_RIGHT)
+
+    /** 山海：从指定边缘到另一侧的空间渐进模糊，继续沿用当前裁切。 */
+    @JvmStatic
+    fun revealRegion(graphics: GuiGraphics, rect: GuiRect, radiusVirtual: Float,
+                     fullBlurUntil: Float, sharpFrom: Float, direction: GaussBlur.RevealDirection): Boolean {
         if (rect.isEmpty || radiusVirtual <= 0f) return false
         val pose = graphics.pose().last().pose()
         if (pose.m01() != 0f || pose.m10() != 0f) return false
@@ -161,7 +187,7 @@ object GlassBlur {
         if (px.isEmpty) return false
         val scale = view.pixelScale * minOf(view.scaleX, view.scaleY)
         return GaussBlur.revealNow(graphics, px.x, px.y, px.w, px.h,
-            radiusVirtual * scale, fullBlurUntil, sharpFrom)
+            radiusVirtual * scale, fullBlurUntil, sharpFrom, direction)
     }
 
     /** 一帧内的换算上下文：framebuffer 尺寸、GUI 尺寸，以及当前 pose 的缩放与平移。 */

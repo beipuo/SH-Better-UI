@@ -18,6 +18,9 @@ class GlassStyleTest {
         assertArrayEquals(new float[]{0f, 0f, 0f, 0f}, tint, 0f);
         assertArrayEquals(new float[]{0f, 0f, 0f, 0f}, params, 0f);
         assertArrayEquals(new float[]{0f, 0f, 0f, 0f}, edge, 0f);
+        GlassStyle.NONE.write(3f, tint, params, edge, 2f, 2f, 0f, 0.15f, 2f, 2f);
+        assertArrayEquals(new float[]{0f, 0f, 0f, 0f}, params, 0f);
+        assertArrayEquals(new float[]{0f, 0f, 0f, 0f}, edge, 0f);
     }
 
     @Test
@@ -110,14 +113,56 @@ class GlassStyleTest {
     }
 
     @Test
-    void denseSamplingIsLimitedToFrostedSurfaces() {
-        assertEquals(2f, GlassStyle.CLEAR.blurMode(true));
-        assertEquals(2f, GlassStyle.FROSTED.blurMode(true));
+    void denseSamplingDowngradesOnlyTheDenseGlassKernel() {
+        for (GlassStyle style : new GlassStyle[]{GlassStyle.CLEAR, GlassStyle.FROSTED,
+                GlassStyle.LIQUID_CLEAR, GlassStyle.LIQUID_REGULAR}) {
+            assertEquals(2f, style.blurMode(true));
+            assertEquals(2f, style.blurMode(true, true));
+            assertEquals(1f, style.blurMode(true, false));
+            assertEquals(0f, style.blurMode(false, true));
+            assertEquals(0f, style.blurMode(false, false));
+        }
         for (GlassStyle style : new GlassStyle[]{GlassStyle.NONE, GlassStyle.SWAP,
                 GlassStyle.OVERLAY, GlassStyle.BACKDROP, GlassStyle.CONTROL}) {
             assertEquals(1f, style.blurMode(true));
             assertEquals(0f, style.blurMode(false));
+            assertEquals(1f, style.blurMode(true, false));
+            assertEquals(0f, style.blurMode(false, false));
         }
-        assertEquals(0f, GlassStyle.CLEAR.blurMode(false));
+    }
+
+    @Test
+    void backdropEdgeSettingsScaleRimAndRefractionIndependently() {
+        float[] tint = new float[4], params = new float[4], edge = new float[4];
+        float[] tunedTint = new float[4], tunedParams = new float[4], tunedEdge = new float[4];
+        for (GlassStyle style : new GlassStyle[]{GlassStyle.LIQUID_REGULAR, GlassStyle.FROSTED,
+                GlassStyle.OVERLAY}) {
+            style.write(3f, tint, params, edge, 1f, 1f, 0.8f, 0.05f);
+
+            style.write(3f, tunedTint, tunedParams, tunedEdge, 1f, 1f, 0.8f, 0.05f, 0f, 2f);
+            assertArrayEquals(tint, tunedTint, 0f);
+            assertArrayEquals(new float[]{params[0], params[1], params[2], 0f}, tunedParams, 0f);
+            assertArrayEquals(new float[]{edge[0] * 2f, edge[1], edge[2], edge[3]}, tunedEdge, 0f);
+
+            style.write(3f, tunedTint, tunedParams, tunedEdge, 1f, 1f, 0.8f, 0.05f, 2f, 0f);
+            assertArrayEquals(new float[]{params[0], params[1], params[2], params[3] * 2f}, tunedParams, 0f);
+            assertArrayEquals(new float[]{0f, edge[1], edge[2], edge[3]}, tunedEdge, 0f);
+        }
+    }
+
+    @Test
+    void backdropSaturationMultipliesChromaAndLiftAddsBrightness() {
+        float[] tint = new float[4], params = new float[4], edge = new float[4];
+        GlassStyle.FROSTED.write(1f, tint, params, edge);
+        float originalSaturation = params[0];
+        float originalLift = params[2];
+
+        GlassStyle.FROSTED.write(1f, tint, params, edge, 1f, 1f, 0f, 0.15f);
+        assertEquals(-1f, params[0], 0f);
+        assertEquals(originalLift + 0.15f, params[2], 0f);
+
+        GlassStyle.FROSTED.write(1f, tint, params, edge, 1f, 1f, 2f, 0f);
+        assertEquals(2f * (1f + originalSaturation), 1f + params[0], 1e-6f);
+        assertEquals(originalLift, params[2], 0f);
     }
 }

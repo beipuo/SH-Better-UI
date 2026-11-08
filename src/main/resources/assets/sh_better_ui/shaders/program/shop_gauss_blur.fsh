@@ -33,7 +33,8 @@ uniform vec4 MotionAxis;       // x = 第一趟（H）半径倍率，y = 第二�
                                // w = 液态玻璃圆角半径 px（此时 Hole 为原始轮廓）
 uniform vec4 Rect;   // xy = 左下角 UV，zw = 右上角 UV
 uniform vec4 Hole;   // 正在飞行的卡片或浮层矩形，保持清晰
-uniform vec2 Reveal; // 山海：未裁切矩形的过渡起止 U。相等时禁用。
+uniform vec2 Reveal; // 山海：未裁切矩形沿渐进方向的过渡起止值。相等时禁用。
+uniform vec2 RevealAxis;
 // PostChain 的 float uniform 走 glUniform1fv，所以这里是 8 个矩形 × 4 分量，不是 vec4[8]。
 // CellCount=0 时忽略，行为与只有 Rect 的旧路径相同。
 uniform float CellRects[32];
@@ -117,12 +118,13 @@ vec3 applyGlass(vec3 rgb, float k, float edgeD, vec2 inward, vec2 uv) {
 vec4 revealColor(vec2 uv) {
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     vec4 original = texelFetch(DiffuseSampler, pixel, 0);
-    float amount = 1.0 - smoothstep(Reveal.x, Reveal.y, uv.x);
+    float position = RevealAxis.x == 0.0 && RevealAxis.y == 0.0 ? uv.x : dot(uv, RevealAxis);
+    float amount = 1.0 - smoothstep(Reveal.x, Reveal.y, position);
     float axisScale = BlurDir.x > 0.5 ? MotionAxis.x : MotionAxis.y;
     float radius = Radius * Progress * axisScale * amount;
     if (radius <= 0.1) return original;
 
-    // 两趟均按当前列决定半径。逐像素取样可避免大半径与细纹周期重合。
+    // 两趟按当前像素的投影位置决定半径，逐像素取样可避免与细纹周期重合。
     ivec2 direction = ivec2(BlurDir);
     ivec2 lo = ivec2(round(Rect.xy * InSize));
     ivec2 hi = ivec2(round(Rect.zw * InSize)) - ivec2(1);
