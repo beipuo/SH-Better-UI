@@ -129,6 +129,13 @@ class NetworkIconTest {
                 GraphicIcon.YOUTUBE));
     }
 
+    @Test
+    void utilityAndAeChannelIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.MUSIC, GraphicIcon.APP, GraphicIcon.QUESTION,
+                GraphicIcon.CALCULATE, GraphicIcon.CPU, GraphicIcon.GPU, GraphicIcon.DISK,
+                GraphicIcon.MAP, GraphicIcon.AE_CHANNEL));
+    }
+
     private static void assertIconTextures(List<GraphicIcon> icons) throws IOException {
         for (var icon : icons) {
             var id = icon.texture();

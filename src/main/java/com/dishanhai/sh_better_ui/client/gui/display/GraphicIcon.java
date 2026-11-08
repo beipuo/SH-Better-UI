@@ -20,6 +20,13 @@ public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, Gr
     public static final GraphicIcon WARNING = builtIn("warning");
     public static final GraphicIcon CRITICAL_WARNING = builtIn("critical_warning");
     public static final GraphicIcon ERROR = builtIn("error");
+    public static final GraphicIcon STATUS_READY = builtIn("status_ready");
+    public static final GraphicIcon STATUS_PENDING = builtIn("status_pending").withMotion(GraphicIconMotion.SPIN);
+    public static final GraphicIcon STATUS_SUCCEEDED = builtIn("status_succeeded");
+    public static final GraphicIcon STATUS_PARTIAL = builtIn("status_partial");
+    public static final GraphicIcon STATUS_FAILED = builtIn("status_failed");
+    public static final GraphicIcon STATUS_CANCELLED = builtIn("status_cancelled");
+    public static final GraphicIcon STATUS_TIMED_OUT = builtIn("status_timed_out");
     public static final GraphicIcon PREVIOUS = builtIn("previous");
     public static final GraphicIcon NEXT = builtIn("next");
     public static final GraphicIcon BACK = builtIn("back");
@@ -132,6 +139,15 @@ public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, Gr
     public static final GraphicIcon DOUYIN = builtIn("douyin");
     public static final GraphicIcon KUAISHOU = builtIn("kuaishou");
     public static final GraphicIcon YOUTUBE = builtIn("youtube");
+    public static final GraphicIcon MUSIC = builtIn("music");
+    public static final GraphicIcon APP = builtIn("app");
+    public static final GraphicIcon QUESTION = builtIn("question");
+    public static final GraphicIcon CALCULATE = builtIn("calculate");
+    public static final GraphicIcon CPU = builtIn("cpu");
+    public static final GraphicIcon GPU = builtIn("gpu");
+    public static final GraphicIcon DISK = builtIn("disk");
+    public static final GraphicIcon MAP = builtIn("map");
+    public static final GraphicIcon AE_CHANNEL = builtIn("ae_channel");
     public static final GraphicIcon MCMOD = builtIn("mcmod");
     public static final GraphicIcon WIKI = builtIn("wiki");
     public static final GraphicIcon PULL_DOWN = builtIn("pull_down");
@@ -203,7 +219,7 @@ public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, Gr
 
     /** 在客户端渲染线程绘制，ARGB 色值与外层颜色相乘。 */
     public void draw(GuiGraphics graphics, int x, int y, int scale, int argb) {
-        draw(graphics, x, y, scale, argb, UiPreferences.DEFAULT);
+        draw(graphics, x, y, scale, argb, UiPreferences.configured());
     }
 
     /** 在客户端渲染线程绘制，可传入宿主画面的动效偏好。 */
