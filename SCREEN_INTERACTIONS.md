@@ -1,5 +1,5 @@
 <!-- 作者：山海／dishanhai -->
-# 对话框、气泡提示、动作面板、底部抽屉与下拉刷新
+# 对话框、气泡提示、动作面板、底部抽屉、下拉刷新与滑动确认
 
 Forge 1.20.1 和 NeoForge 1.21.1 共用 `com.dishanhai.sh_better_ui.client.gui.scaled` 下的接口。画面持有一个 `UiOverlayHost`，每个可刷新的列表独立持有一个 `UiPullRefresh`。从客户端线程调用。按钮和正文传入 `Component.translatable(...)`。
 
@@ -52,6 +52,8 @@ overlays.showActions(menuTitle, List.of(
 `showNotice`、`showDialog`、`showActions`、`showBubble` 以及独立的 `UiConfirmation.open` 可在最后一个参数传入自定义图标，传 `null` 时标题或气泡只显示文字。自定义资源使用 16×16 px 透明 PNG，白色像素支持着色。原生 `UiButton` 可用 `setLeadingIcon(icon)` 同时显示图标与名称。
 
 ## 底部抽屉
+
+游戏中按 F8 打开 SHBUI 主控面板，进入「开发者面板 → 组件演示 → 底部抽屉」。从低档慢拖并停一下再松手，回到低档后快速向上甩，比较两次的落点。切到高档后继续上拉可试越界回弹。底部的「减少动效」开关只影响这页示例。
 
 每个抽屉持有一个 `UiBottomSheet`。档位是从底边向上露出的视口比例，按 `0..1` 严格递增，`0` 表示完全隐藏。下面的抽屉初始停在第二档，露出视口的 25%。视口可以是整个画面，也可以是留给抽屉的局部区域。
 
@@ -111,6 +113,22 @@ private boolean beginPull(double x, double y, int button) {
 在客户端线程处理回执，先调用 `complete(requestId, tone, PageTransition.nowMs())`。只有返回 `true` 且业务回执成功时才应用新的列表结果。回执超时或失败后可以重试。画面移除或切换数据源时调用 `reset(PageTransition.nowMs())`，以作废旧回执。等待时保留当前列表、搜索与选取，交由接入方决定成功后的数据更新方式。
 
 把手以箭头提示向下拖动，达到门槛后切换刷新图标，实际回执决定完成、警告或失败图标。`new UiPullRefresh(config, onRefresh, frame -> ...)` 可替换状态图标，`frame.icon()` 返回默认图标，返回 `null` 时只显示该状态的文字。
+
+## 原生 Screen 滑动确认
+
+在游戏内打开「开发者面板 → 控件」，翻到「数字滑块」后的「滑动确认」。可直接拖动圆钮，点右侧「重置」后再试。
+
+```java
+// 在 Screen.init() 注册。Bounds 来自 GraphicDisplayLayout。
+var slide = addRenderableWidget(new UiSlideConfirm(
+        this, new Bounds(x, y, 160, 24), preferences, this::submit));
+```
+
+高度至少为 20 个 GUI 单位，宽度至少为高度加 64。需要说明具体操作时，可在 `Bounds` 后传入本地化的 `Component` 作为初始标签。
+
+按住圆钮后，轨道填充跟随它的横向行程。到终点显示「松开确认」，松开时仍在终点才执行回调。提前松手或按 Esc 会回到起点，开启减少动效时直接归位。键盘可用 Tab 聚焦，按住右方向键到达终点后松键。
+
+回调执行时 `isCompleted()` 已为 `true`，文字立即显示「已完成」。圆钮停在终点，对勾从小到大出现，圆钮与填充渐变为成功色。高对比模式沿用高对比配色，减少动效时直接显示完成态。调用 `reset()` 可立即复位并开始下一次确认。
 
 ## Forge LDLib 1.x Widget
 

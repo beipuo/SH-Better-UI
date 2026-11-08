@@ -76,6 +76,8 @@ theme.box(graphics, x, y, width, height, GlassPalette.ROOT_EDGE, theme.panelBg);
 
 `SearchIndex<T>` indexes localized names, IDs, and aliases. Every search term must match, and terms can match different fields. `SearchField<T>` uses Minecraft's native `EditBox`. Use the arrow keys to select a suggestion, Tab or a click to accept it, Escape to close the list, and Ctrl+Z or Cmd+Z to undo completion.
 
+The index generates pinyin for consecutive Han characters in names and aliases. Search for `tieding`, `tie ding`, or `td` to find 铁锭 or 鐵錠. You can combine pinyin with Chinese characters or IDs in the same query. Literal name and ID matches rank first, and accepting a pinyin suggestion fills in the original name. Add an alias for alternate pronunciations.
+
 Forge compiles against JEI `15.49.0.200`. NeoForge compiles against JEI `19.69.0.456`. Use `JeiIntegration.isAvailable()` to check readiness and refresh the ingredient snapshot when `revision()` changes. `recipes(...)` queries visible recipes, and `open(...)` opens JEI's full recipe or uses view.
 
 `JeiSearchPanel` needs at least 144 × 132 GUI pixels. Allow 320 × 200 for a side-by-side layout. Register its `widgets()` on the host screen and use `JeiIntegration.setExtraAreas(this, panel::extraAreas)` to reserve space around it. Draw its background before the widgets and its overlays afterward. Call `tick()` from the screen and give the panel first chance to handle suggestion clicks, scrolling, and Escape. On NeoForge, pass the vertical scroll delta. Use `snapshot()` and `restore(...)` to preserve state on resize. General search also works without JEI.

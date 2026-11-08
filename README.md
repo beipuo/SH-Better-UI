@@ -156,7 +156,9 @@ cancelButton.setIcon(GraphicIcon.CLOSE);
 
 ### 搜索、预测与自动填充
 
-`client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的纯文字名称、任意数量的 ID 和别名建立快照。多词查询要求每个词都命中，词可落在不同字段。比对忽略大小写与多余空白。拼音全拼、首字母或业务同义词可以作为别名传入。
+`client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的纯文字名称、任意数量的 ID 和别名建立快照。多词查询要求每个词都命中，词可落在不同字段。比对忽略大小写与多余空白。
+
+索引会为名称和别名中的连续汉字生成拼音。输入 `tieding`、`tie ding` 或 `td` 都可以找到「铁锭」和「鐵錠」，也可和汉字或 ID 一起搜索。字面名称和 ID 优先出现在联想中，选中拼音候选时填入原名称。多音字采用默认读音，调用方可以用别名补充其他读音。
 
 - `search(query, scope)` 按来源顺序返回命中项目，空查询返回范围内全部项目。`suggest(query, scope, limit)` 依名称、ID 的精确／前缀／包含命中排序，最后列出别名或跨字段命中。自绘输入框可用 `Suggestion.suffixFor(query)` 取得可直接追加的灰字后缀。
 - `SearchField` 沿用原生 `EditBox`。空间足够时在右侧显示 16×16 放大镜，较窄或较矮的输入框把空间留给文字。输入变更会更新联想，光标在末端且没有选取文字时才显示灰字。上下键选择，`Tab` 或点击填充，`Esc` 收起联想并保留输入。`setOnSubmit` 接收 `Enter` 提交的当前查询，`Ctrl+Z`（Mac 为 `⌘Z`）或 `undoCompletion()` 恢复填充前的查询。
@@ -276,6 +278,47 @@ scrollTarget = target;
 ```
 
 由界面在换页后计算新页面的滚动范围、定位并更新现有转场。更换列表来源或重新开启滚动区时调用 `pageTurn.reset()`。
+
+### 点阵动画背景
+
+`client.gui.scaled.UiDotMatrix` 可用于整页或局部面板。每块背景持有一个实例，在宿主底板之后、前景控件之前调用 `render()`。`DotMatrixProfile.VIOLET` 提供黑底紫色方点和柔光，`setProfile()` 可在运行时换配色或调整动画。
+
+从主控面板进入「开发者面板 → 材质」，首项「点阵动画」默认演示彩虹渐变与随机淡出。基础设置可实时调节色相、效果、浮动概率和数量上限。标题右侧的「动效设置」可调节淡出概率、色板、流向和渐变周期。点击预览区或聚焦后按 Enter 可触发波纹。点「查看 Java 代码」打开抽屉，里面可以查看完整代码和复制示例。
+
+```java
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiDotMatrix;
+import java.util.List;
+
+private final UiDotMatrix dots = new UiDotMatrix(DotMatrixProfile.VIOLET
+        .withPalette(new DotMatrixProfile.Palette(0xFF030A11, 0xA02A6984, 0xF07AD5FF, 0.55f))
+        .withMotion(new DotMatrixProfile.Motion(DotMatrixProfile.Effect.WAVE, 2800, 0.12f, 24, 9f))
+        .withFade(new DotMatrixProfile.Fade(0.25f, 2200))
+        .withGradient(new DotMatrixProfile.Gradient(List.of(
+                new DotMatrixProfile.ColorStop(0f, 0xFFFF71AA),
+                new DotMatrixProfile.ColorStop(0.22f, 0xC079D5FF),
+                new DotMatrixProfile.ColorStop(0.66f, 0xFFB2FFB5)),
+                3600, (x, y, phase) -> phase - x * x - 0.35f * y)));
+
+// 在画面的背景绘制阶段调用
+Bounds area = new Bounds(0, 0, width, height);
+dots.render(graphics, area, mouseX, mouseY);
+
+// 宿主处理点击或键盘激活时，可从事件位置或已激活控件的中心触发
+// dots.pulse(area, x, y);
+```
+
+原生 `Screen` 在 Forge 1.20.1 可于 `render()` 先画底图和点阵，再由 `super.render()` 绘制控件。NeoForge 1.21.1 的 `super.render()` 会调用四参数的 `renderBackground()`，将底图和点阵画在该方法中即可。
+
+- `Palette` 使用 ARGB，依次设置底色、点色、高亮色和光晕强度。透明底色可露出已绘制的内容。
+- `Grid` 设置间距、方点大小、密度和随机种子。区域过大时自动放宽间距，使网格采样不超过 16,384 格。方点及光晕裁切在 `Bounds` 内。
+- `Motion` 设置效果、周期毫秒数、每轮每点浮动概率、同时浮动上限和最大上浮高度。概率、上限或上浮高度设为零即可停用浮动。可选常亮 `STEADY`、闪烁 `TWINKLE`、行波 `WAVE`，也可实现 `Effect.brightness()` 自行计算亮度。
+- `Fade` 单独设置随机淡出再浮现的概率（0–1）和周期毫秒数。`Fade.NONE` 关闭淡出。
+- `Gradient` 可使用 `Gradient.RAINBOW`，也可传入自定义 ARGB 色标。首个位置为 `0`，后续位置严格递增且小于 `1`。各段按色标位置插值，末色接回首色。渐变提供方点的 RGB，色标 Alpha 乘以原有透明度，仍可叠加亮度、浮动和互动。`Gradient.NONE` 使用原配色，`VIOLET` 默认关闭渐变与随机淡出。
+- 渐变方向可使用 `Flow.RIGHT`、`DOWN`、`DIAGONAL` 和 `OUTWARD`，也可实现 `Flow.position(x, y, phase)`。坐标和周期进度归一化，返回的位置按 1 循环。示例用横坐标的平方改变横向色带宽度，并叠加纵向偏移。
+- `Interaction` 设置悬停和波纹半径，各自设为零即可关闭。背景使用宿主给定的指针与点击坐标，沿用宿主的命中、焦点和事件回传。显式时钟的 `render()` 和 `pulse()` 须使用同一个单调毫秒时钟。
+- 减少动效时方点静止、随机淡出暂停，渐变冻结在起始相位。悬停高亮和固定范围的点击淡出仍可使用。高对比时使用纯色底板。模态覆层打开时，宿主可传入 `Double.NaN` 暂停悬停，并用 `clearPulse()` 清除波纹。
 
 ### 可打断动画
 

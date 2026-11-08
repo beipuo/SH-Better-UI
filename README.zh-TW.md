@@ -112,7 +112,9 @@ DarkModeTheme.button(graphics, x, y, width, height, state, true, () -> {
 
 ### 搜尋、預測與自動填充
 
-`client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的純文字名稱、任意數量的 ID 和別名建立快照。多詞查詢要求每個詞都命中，詞可落在不同欄位。比對忽略大小寫與多餘空白。拼音全拼、首字母或業務同義詞可以作為別名傳入。
+`client.gui.search.SearchIndex<T>` 和 `SearchField<T>` 由 Forge 1.20.1／NeoForge 1.21.1 共用。索引以已本地化的純文字名稱、任意數量的 ID 和別名建立快照。多詞查詢要求每個詞都命中，詞可落在不同欄位。比對忽略大小寫與多餘空白。
+
+索引會為名稱和別名中的連續漢字產生拼音。輸入 `tieding`、`tie ding` 或 `td` 都可以找到「鐵錠」和「铁锭」，也可和漢字或 ID 一起搜尋。字面名稱和 ID 優先出現在聯想中，選中拼音候選時填入原名稱。多音字採用預設讀音，呼叫端可以用別名補充其他讀音。
 
 - `search(query, scope)` 按來源順序回傳命中項目，空查詢回傳範圍內全部項目。`suggest(query, scope, limit)` 依名稱、ID 的精確／前綴／包含命中排序，最後列出別名或跨欄位命中。自繪輸入框可用 `Suggestion.suffixFor(query)` 取得可直接追加的灰字後綴。
 - `SearchField` 沿用原生 `EditBox`。輸入變更會更新聯想，游標在末端且沒有選取文字時才顯示灰字。上下鍵選擇，`Tab` 或點擊填充，`Esc` 收起聯想並保留輸入。`setOnSubmit` 接收 `Enter` 提交的當前查詢，`Ctrl+Z`（Mac 為 `⌘Z`）或 `undoCompletion()` 恢復填充前的查詢。
