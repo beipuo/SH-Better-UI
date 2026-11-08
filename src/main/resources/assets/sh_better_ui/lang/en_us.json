@@ -1,4 +1,12 @@
 {
+  "sh_better_ui.audio.ready": "System audio is off",
+  "sh_better_ui.audio.starting": "Connecting to system output audio…",
+  "sh_better_ui.audio.running": "Analyzing system output audio",
+  "sh_better_ui.audio.stopping": "Stopping audio analysis…",
+  "sh_better_ui.audio.closed": "Audio analysis is closed",
+  "sh_better_ui.audio.unsupported": "System output audio capture is unavailable on this platform",
+  "sh_better_ui.audio.failed": "System output audio is unavailable. Check the playback device and retry.",
+  "sh_better_ui.audio.tooltip": "Analyzes playing audio, including music, browsers, and the game. Never reads the microphone or saves or uploads audio.",
   "sh_better_ui.action.ready": "Ready",
   "sh_better_ui.control.selected": "Currently selected",
   "sh_better_ui.details.expand": "Expand details",

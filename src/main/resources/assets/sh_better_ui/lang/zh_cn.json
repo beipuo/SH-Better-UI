@@ -1,4 +1,12 @@
 {
+  "sh_better_ui.audio.ready": "系统音频尚未开启",
+  "sh_better_ui.audio.starting": "正在连接系统输出音频…",
+  "sh_better_ui.audio.running": "正在分析系统输出音频",
+  "sh_better_ui.audio.stopping": "正在停止音频分析…",
+  "sh_better_ui.audio.closed": "音频分析已关闭",
+  "sh_better_ui.audio.unsupported": "当前平台不支持系统输出音频采集",
+  "sh_better_ui.audio.failed": "系统输出音频不可用，请检查播放设备后重试",
+  "sh_better_ui.audio.tooltip": "仅分析设备正在播放的声音，包含音乐、浏览器和游戏声音。不读取麦克风，不保存或上传音频。",
   "sh_better_ui.action.ready": "就绪",
   "sh_better_ui.control.selected": "当前已选中",
   "sh_better_ui.details.expand": "展开详情",

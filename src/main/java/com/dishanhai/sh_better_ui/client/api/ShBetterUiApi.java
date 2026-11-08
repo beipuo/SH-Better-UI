@@ -13,6 +13,8 @@ public final class ShBetterUiApi {
     private static final MotionApi MOTION = new MotionApi();
     private static final PlatformUiApi PLATFORM = new PlatformUiApi();
 
+    private static final AudioApi AUDIO = new AudioApi();
+
     private ShBetterUiApi() {}
 
     public static SettingsApi settings() {
@@ -53,5 +55,9 @@ public final class ShBetterUiApi {
 
     public static PlatformUiApi platform() {
         return PLATFORM;
+    }
+
+    public static AudioApi audio() {
+        return AUDIO;
     }
 }

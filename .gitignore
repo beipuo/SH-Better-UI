@@ -13,7 +13,8 @@
 Thumbs.db
 __pycache__/
 /.learnings/
-/docs/
+/docs/*
+!/docs/music-rhythm.md
 /src_collection/
 TODO.md
 /neoforge/.gradle/
