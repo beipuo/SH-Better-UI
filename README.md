@@ -1,4 +1,4 @@
-# SH-Better-UI
+# SH-Better-UI（焕界 UI 库）
 
 **简体中文** · [繁體中文](README.zh-TW.md) · [English](README.en.md)
 
