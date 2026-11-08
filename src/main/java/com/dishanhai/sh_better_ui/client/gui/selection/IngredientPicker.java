@@ -47,7 +47,7 @@ public final class IngredientPicker {
         }
 
         public Request(Component title, IngredientCatalog catalog, int maxSelections) {
-            this(title, catalog, ingredient -> true, maxSelections, List.of(), UiPreferences.DEFAULT);
+            this(title, catalog, ingredient -> true, maxSelections, List.of(), UiPreferences.configured());
         }
 
         public static Request single(Component title, IngredientCatalog catalog) {

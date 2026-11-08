@@ -59,7 +59,7 @@ public final class UiToast {
     }
 
     public static void show(Kind kind, Component title, Component details, Effect effect) {
-        show(kind, title, details, effect, DEFAULT_HOLD_MS, UiPreferences.DEFAULT);
+        show(kind, title, details, effect, DEFAULT_HOLD_MS, UiPreferences.configured());
     }
 
     /**
@@ -129,7 +129,7 @@ public final class UiToast {
                     tint(contrast ? DarkModeTheme.TEXT : notice.kind.color, alpha),
                     tint(contrast ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE, alpha));
             notice.kind.icon.draw(graphics, PADDING, (layout.height - GraphicIcon.PIXELS) / 2, 1,
-                    tint(contrast ? DarkModeTheme.TEXT : notice.kind.color, alpha));
+                    tint(contrast ? DarkModeTheme.TEXT : notice.kind.color, alpha), notice.preferences);
             int y = (layout.height - (layout.title.size() + layout.details.size()) * font.lineHeight) / 2;
             for (FormattedCharSequence line : layout.title) {
                 graphics.drawString(font, line, TEXT_INSET, y, tint(DarkModeTheme.TEXT, alpha), false);

@@ -30,7 +30,7 @@ public final class GraphicDisplay {
     /** 使用 Screen 坐标绘制当前页并裁切超出的内容。设 rowColor 为 0 可省略行底色。 */
     public static void drawRows(GuiGraphics graphics, Font font, Result layout, List<Entry> entries,
                                 int iconScale, int textColor, int rowColor) {
-        drawRows(graphics, font, layout, entries, iconScale, textColor, rowColor, UiPreferences.DEFAULT);
+        drawRows(graphics, font, layout, entries, iconScale, textColor, rowColor, UiPreferences.configured());
     }
 
     /** 使用宿主画面的动效偏好绘制图标。 */

@@ -71,6 +71,44 @@ class UiButtonTest {
     }
 
     @Test
+    void modeIndicatorsUseTheConfirmedIndexIndependentlyOfButtonSelection() {
+        var button = new UiButton(0, 0, 100, 22, Component.translatable("gui.yes"), ignored -> {});
+        assertEquals(0, button.getModeIndicatorCount());
+        assertEquals(-1, button.getSelectedModeIndex());
+
+        button.setModeIndicators(3, 1);
+        button.setSelected(true);
+        button.onPress();
+        assertEquals(3, button.getModeIndicatorCount());
+        assertEquals(1, button.getSelectedModeIndex());
+        assertThrows(IllegalArgumentException.class, () -> button.setModeIndicators(3, 3));
+        assertEquals(1, button.getSelectedModeIndex());
+
+        button.clearModeIndicators();
+        assertEquals(0, button.getModeIndicatorCount());
+        assertEquals(-1, button.getSelectedModeIndex());
+        assertTrue(button.isSelected());
+    }
+
+    @Test
+    void modeIndicatorsRemainDistinctAndCenteredAtNarrowWidths() {
+        var button = new UiButton(10, 20, 20, 22, Component.translatable("gui.yes"), ignored -> {});
+        button.setModeIndicators(3, 0);
+        var narrow = button.modeIndicatorLayout();
+        assertNotNull(narrow);
+        assertTrue(narrow.barWidth() >= 1);
+        assertTrue(narrow.step() > narrow.barWidth());
+        assertEquals(40, narrow.firstX() * 2 + narrow.step() * 2 + narrow.barWidth(), 1);
+        assertEquals(40, narrow.bottomY());
+
+        button.setWidth(100);
+        var wide = button.modeIndicatorLayout();
+        assertNotNull(wide);
+        assertTrue(wide.barWidth() > narrow.barWidth());
+        assertEquals(120, wide.firstX() * 2 + wide.step() * 2 + wide.barWidth());
+    }
+
+    @Test
     void blurRadiusSupportsDisablingAndBoundsItsSamplingCost() {
         var button = new UiButton(0, 0, 24, 24, Component.translatable("gui.yes"),
                 ignored -> {}, UiPreferences.DEFAULT, false, UiStyle.LIQUID_GLASS);

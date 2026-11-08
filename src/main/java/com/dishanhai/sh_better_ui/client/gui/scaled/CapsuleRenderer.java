@@ -45,29 +45,49 @@ public final class CapsuleRenderer extends RenderType {
     }
 
     static void draw(GuiGraphics graphics, float x, float y, float width, float height,
-                     float radius, float stroke, float pixelsPerUnit, int edge, int fill, boolean writeDepth) {
+                     float radius, float stroke, float pixelsPerUnit, int edge, int fill, boolean writeDepth,
+                     float turn, float breath, float spread) {
         graphics.flush();
-        var pose = graphics.pose().last().pose();
         if (shader == null) {
-            var vertices = graphics.bufferSource().getBuffer(RenderType.gui());
             CapsuleMesh.emit(width, height, radius, stroke, pixelsPerUnit, edge, fill,
-                    (px, py, color) -> vertices.vertex(pose, x + px, y + py, 0f).color(color).endVertex());
+                    colorVertices(graphics, x, y));
         } else {
             shader.safeGetUniform("Size").set(width, height);
             shader.safeGetUniform("CornerRadius").set(radius);
             shader.safeGetUniform("Stroke").set(stroke);
             color("EdgeColor", edge);
             color("FillColor", fill);
+            var lighting = shader.getUniform("CardLight");
+            if (lighting != null) {
+                if (spread > 0f) {
+                    lighting.set(turn, breath, spread);
+                    quad(graphics, TYPE, x, y, -spread, height - 2f, width + spread, height + spread);
+                    graphics.flush();
+                }
+                lighting.set(turn, 0f, 0f);
+            }
             float margin = 1f / Math.max(0.01f, pixelsPerUnit);
-            float left = -margin, top = -margin, right = width + margin, bottom = height + margin;
-            var vertices = graphics.bufferSource().getBuffer(writeDepth ? DEPTH_TYPE : TYPE);
-            vertices.vertex(pose, x + left, y + top, 0f).uv(left, top).endVertex();
-            vertices.vertex(pose, x + left, y + bottom, 0f).uv(left, bottom).endVertex();
-            vertices.vertex(pose, x + right, y + bottom, 0f).uv(right, bottom).endVertex();
-            vertices.vertex(pose, x + right, y + top, 0f).uv(right, top).endVertex();
+            quad(graphics, writeDepth ? DEPTH_TYPE : TYPE, x, y, -margin, -margin, width + margin, height + margin);
         }
         // 每次提交后立即绘制，防止下一控件的 uniform 覆盖尚未提交的顶点。
         graphics.flush();
+    }
+
+    private static void quad(GuiGraphics graphics, RenderType type, float x, float y,
+                             float left, float top, float right, float bottom) {
+        var pose = graphics.pose().last().pose();
+        var vertices = graphics.bufferSource().getBuffer(type);
+        vertices.vertex(pose, x + left, y + top, 0f).uv(left, top).endVertex();
+        vertices.vertex(pose, x + left, y + bottom, 0f).uv(left, bottom).endVertex();
+        vertices.vertex(pose, x + right, y + bottom, 0f).uv(right, bottom).endVertex();
+        vertices.vertex(pose, x + right, y + top, 0f).uv(right, top).endVertex();
+    }
+
+    /** 写入当前 GUI 层的颜色四边形，提交由调用方负责。 */
+    static CapsuleMesh.VertexSink colorVertices(GuiGraphics graphics, float x, float y) {
+        var pose = graphics.pose().last().pose();
+        var vertices = graphics.bufferSource().getBuffer(RenderType.gui());
+        return (px, py, color) -> vertices.vertex(pose, x + px, y + py, 0f).color(color).endVertex();
     }
 
     private static void color(String name, int argb) {

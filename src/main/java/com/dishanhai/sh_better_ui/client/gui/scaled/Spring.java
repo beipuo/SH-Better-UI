@@ -20,6 +20,8 @@ public final class Spring {
     public static final Preset HOVER = new Preset(0.10, 1.0, 0.0015f, 0.02f);
     /** 浮层开关、开店、其他界面开场。 */
     public static final Preset PANEL = new Preset(0.20, 0.92, 0.0015f, 0.02f);
+    /** 胶囊与面板共用的过阻尼进度，从静止出发时不越过目标。 */
+    public static final Preset FLUID_MORPH = new Preset(0.16, 1.12, 0.00035f, 0.02f);
     /** 页签高亮块的 x、宽（像素量级）。 */
     public static final Preset INDICATOR = new Preset(0.18, 0.92, 0.05f, 1.0f);
     /** 网格、详情列滚动（像素量级）。 */
@@ -70,6 +72,18 @@ public final class Spring {
     public void setTarget(float newTarget, long nowMs) {
         if (!Float.isFinite(newTarget)) return;
         update(nowMs);
+        retarget(newTarget, nowMs);
+    }
+
+    /** 手势放开时，用测得的初速度接续当前位置。速度单位为 value/秒。 */
+    void setTarget(float newTarget, float initialVelocity, long nowMs) {
+        if (!Float.isFinite(newTarget) || !Float.isFinite(initialVelocity)) return;
+        update(nowMs);
+        this.velocity = initialVelocity;
+        retarget(newTarget, nowMs);
+    }
+
+    private void retarget(float newTarget, long nowMs) {
         if (this.settled) this.lastMs = nowMs;
         this.hasPending = false;
         this.target = newTarget;

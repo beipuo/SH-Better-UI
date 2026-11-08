@@ -32,7 +32,7 @@ public final class UiText {
     /** 按指定方向水平对齐、垂直居中。区域用于定位，换行和裁切由调用方处理。 */
     public static void draw(GuiGraphics graphics, Font font, Component text, Bounds area,
                             Horizontal horizontal, int color, boolean shadow) {
-        draw(graphics, font, text, area, horizontal, color, shadow, UiPreferences.DEFAULT);
+        draw(graphics, font, text, area, horizontal, color, shadow, UiPreferences.configured());
     }
 
     /** 绘制带格式效果的文字时沿用画面的高对比及减弱动态效果偏好。 */

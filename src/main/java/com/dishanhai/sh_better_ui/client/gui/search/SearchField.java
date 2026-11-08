@@ -57,7 +57,7 @@ public final class SearchField<T> extends EditBox {
     private boolean sampleBackground = true;
 
     public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index) {
-        this(font, x, y, width, height, index, UiStyle.DEFAULT, UiPreferences.DEFAULT);
+        this(font, x, y, width, height, index, UiStyle.DEFAULT, UiPreferences.configured());
     }
 
     public SearchField(Font font, int x, int y, int width, int height, SearchIndex<T> index,
@@ -289,7 +289,7 @@ public final class SearchField<T> extends EditBox {
                     ? (glass ? LiquidGlassTheme.TEXT : DarkModeTheme.TEXT)
                     : (glass ? LiquidGlassTheme.TEXT_MUTED : DarkModeTheme.TEXT_MUTED);
             GraphicIcon.SEARCH.draw(graphics, getX() + getWidth() - ICON_RIGHT_PADDING - GraphicIcon.PIXELS,
-                    getY() + (getHeight() - GraphicIcon.PIXELS) / 2, 1, color);
+                    getY() + (getHeight() - GraphicIcon.PIXELS) / 2, 1, color, preferences);
         }
     }
 

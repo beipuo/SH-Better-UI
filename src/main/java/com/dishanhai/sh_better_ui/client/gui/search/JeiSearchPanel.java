@@ -79,7 +79,7 @@ public final class JeiSearchPanel {
     private Consumer<? super Ingredient> onChoose;
 
     public JeiSearchPanel(Font font, int x, int y, int width, int height) {
-        this(font, x, y, width, height, UiPreferences.DEFAULT);
+        this(font, x, y, width, height, UiPreferences.configured());
     }
 
     public JeiSearchPanel(Font font, int x, int y, int width, int height, UiPreferences preferences) {

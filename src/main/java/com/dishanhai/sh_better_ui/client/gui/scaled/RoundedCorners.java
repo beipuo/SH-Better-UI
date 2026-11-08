@@ -30,6 +30,18 @@ public final class RoundedCorners {
 
     static void draw(GuiGraphics graphics, float x, float y, float width, float height,
                      float radius, float stroke, int edge, int fill, boolean writeDepth) {
+        draw(graphics, x, y, width, height, radius, stroke, edge, fill, writeDepth, -1f, 0f, 0f);
+    }
+
+    static void drawCard(GuiGraphics graphics, float x, float y, float width, float height,
+                         float radius, int edge, int fill, float turn, float breath) {
+        float spread = Math.min(1f, height / 26f) * (6f + 7f * breath);
+        draw(graphics, x, y, width, height, radius, 1f, edge, fill, true, turn, breath, spread);
+    }
+
+    private static void draw(GuiGraphics graphics, float x, float y, float width, float height,
+                             float radius, float stroke, int edge, int fill, boolean writeDepth,
+                             float turn, float breath, float spread) {
         if (!(width > 0f && height > 0f) || !Float.isFinite(width) || !Float.isFinite(height)
                 || Float.isNaN(radius) || Float.isNaN(stroke) || ((edge | fill) >>> 24) == 0) return;
         float corner = fit(width, height, radius);
@@ -38,6 +50,6 @@ public final class RoundedCorners {
         double scaleY = Math.hypot(pose.m10(), pose.m11());
         float pixelsPerUnit = (float) (Minecraft.getInstance().getWindow().getGuiScale() * Math.min(scaleX, scaleY));
         CapsuleRenderer.draw(graphics, x, y, width, height, corner, Math.max(0f, stroke),
-                pixelsPerUnit, edge, fill, writeDepth);
+                pixelsPerUnit, edge, fill, writeDepth, turn, breath, spread);
     }
 }

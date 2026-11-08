@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -27,6 +28,7 @@ import java.util.function.Supplier;
 public final class UiOverlayHost {
     private static final int Z = 450;
     private static final int MODAL_Z_STEP = 12;
+    private static final int SCRIM = 0x840F172A;
     private static final int PANEL_WIDTH = 300;
     private static final int GAP = 4;
     private static final int ICON_INSET = GraphicIcon.PIXELS + GAP;
@@ -72,6 +74,12 @@ public final class UiOverlayHost {
         return host != null && host.owner == screen ? host : null;
     }
 
+    static boolean hidesSource(UiButton button) {
+        UiOverlayHost host = active.get();
+        return host != null && host.modal != null && host.modal.source == button
+                && Minecraft.getInstance().screen == host.owner && host.sourceAvailable(button);
+    }
+
     /** 附加平台焦点桥接。仅在模态开关时调用，关闭参数表示原画面仍可接收焦点。 */
     public void setModalLifecycle(Runnable opened, Consumer<Boolean> closed) {
         modalOpened = Objects.requireNonNull(opened);
@@ -88,7 +96,7 @@ public final class UiOverlayHost {
 
     public void showNotice(Component title, Component details, GraphicIcon icon) {
         show(new Layer(title, Objects.requireNonNull(details), icon, this::dismissModal, List.of(),
-                List.of(new Action(CommonComponents.GUI_OK, this::dismissModal, null, GraphicIcon.SUCCESS))));
+                List.of(new Action(CommonComponents.GUI_OK, this::dismissModal, null, GraphicIcon.SUCCESS)), null));
     }
 
     public void showDialog(UiConfirmation.Prompt prompt, Runnable onConfirm) {
@@ -97,7 +105,19 @@ public final class UiOverlayHost {
 
     public void showDialog(UiConfirmation.Prompt prompt, Runnable onConfirm, GraphicIcon icon) {
         Objects.requireNonNull(onConfirm);
-        show(confirmation(prompt, this::dismissModal, onConfirm, icon));
+        show(confirmation(prompt, this::dismissModal, onConfirm, icon, null));
+    }
+
+    /** 从以画面坐标绘制的原生液态玻璃胶囊按钮展开，收合后归还源按钮焦点。 */
+    public void showDialogFrom(UiButton source, UiConfirmation.Prompt prompt, Runnable onConfirm) {
+        showDialogFrom(source, prompt, onConfirm, GraphicIcon.WARNING);
+    }
+
+    /** 可指定标题图标。源按钮不可用时采用普通对话框。 */
+    public void showDialogFrom(UiButton source, UiConfirmation.Prompt prompt, Runnable onConfirm, GraphicIcon icon) {
+        Objects.requireNonNull(source);
+        Objects.requireNonNull(onConfirm);
+        show(confirmation(prompt, this::dismissModal, onConfirm, icon, sourceAvailable(source) ? source : null));
     }
 
     public void showActions(Component title, List<Action> actions) {
@@ -106,7 +126,7 @@ public final class UiOverlayHost {
 
     public void showActions(Component title, List<Action> actions, GraphicIcon icon) {
         show(new Layer(title, null, icon, this::dismissModal, List.copyOf(actions),
-                List.of(new Action(CommonComponents.GUI_CANCEL, this::dismissModal, null, GraphicIcon.CLOSE))));
+                List.of(new Action(CommonComponents.GUI_CANCEL, this::dismissModal, null, GraphicIcon.CLOSE)), null));
     }
 
     /** 锚点使用画面坐标。暂时不可见时可返回 null，气泡不接收焦点或输入。 */
@@ -153,11 +173,19 @@ public final class UiOverlayHost {
         }
     }
 
-    private Layer confirmation(UiConfirmation.Prompt prompt, Runnable onCancel, Runnable onConfirm, GraphicIcon icon) {
+    private Layer confirmation(UiConfirmation.Prompt prompt, Runnable onCancel, Runnable onConfirm,
+                               GraphicIcon icon, UiButton source) {
         Objects.requireNonNull(prompt);
         return new Layer(prompt.title(), prompt.details(), icon, onCancel, List.of(), List.of(
                 new Action(prompt.confirm(), () -> finish(onConfirm), null, GraphicIcon.SUCCESS),
-                new Action(prompt.cancel(), onCancel, null, GraphicIcon.CLOSE)));
+                new Action(prompt.cancel(), onCancel, null, GraphicIcon.CLOSE)), source);
+    }
+
+    private boolean sourceAvailable(UiButton source) {
+        return source != null && source.isCapsule() && source.visible && source.active
+                && owner.width >= 14 && owner.height >= 14 && owner.children().contains(source)
+                && intersectsViewport(new Rect2i(source.getX(), source.getY(), source.getWidth(), source.getHeight()),
+                        owner.width, owner.height);
     }
 
     private boolean register() {
@@ -178,7 +206,10 @@ public final class UiOverlayHost {
         if (modal == null && owner.isDragging()) return;
         if (!register()) return;
         boolean opening = modal == null;
-        if (!opening && modal != layer) modal.buttons.get(modal.focused).setFocused(false);
+        if (!opening && modal != layer) {
+            modal.buttons.get(modal.focused).setFocused(false);
+            if (layer.source != null && modal.source == layer.source) layer.enter = modal.enter;
+        }
         modal = layer;
         layer.buttons.get(layer.focused).setFocused(true);
         layer.enter.setOpen(true, PageTransition.nowMs());
@@ -207,11 +238,24 @@ public final class UiOverlayHost {
 
     private void dismissModal() {
         if (modal == null) return;
+        if (Minecraft.getInstance().screen == owner && !preferences.reducedMotion() && sourceAvailable(modal.source)) {
+            if (!modal.closing()) {
+                modal.enter.setOpen(false, PageTransition.nowMs());
+                modal.buttons.get(modal.focused).setFocused(false);
+                modal.rendered = false;
+                pressed = null;
+            }
+            return;
+        }
+        completeDismissal();
+    }
+
+    private void completeDismissal() {
         boolean restore = Minecraft.getInstance().screen == owner;
         if (restore) settleFocus();
+        GuiEventListener target = restore && sourceAvailable(modal.source) ? modal.source : previousFocus;
         modal = null;
         pressed = null;
-        GuiEventListener target = previousFocus;
         previousFocus = null;
         settleHostFocus = false;
         if (restore && target != null && owner.children().contains(target)
@@ -231,35 +275,48 @@ public final class UiOverlayHost {
         if (modal != sheet) return;
         if (action.confirmation() == null) finish(action.onChoose());
         else {
-            Layer confirmation = confirmation(action.confirmation(), () -> show(sheet), action.onChoose(), GraphicIcon.WARNING);
+            Layer confirmation = confirmation(action.confirmation(), () -> show(sheet), action.onChoose(),
+                    GraphicIcon.WARNING, null);
             confirmation.underlay = sheet;
             show(confirmation);
         }
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (Minecraft.getInstance().screen != owner || (modal == null && bubble == null)) return;
+        if (Minecraft.getInstance().screen != owner) return;
+        Layer layer = modal;
+        boolean morph = layer != null && sourceAvailable(layer.source);
+        if (layer != null && layer.closing() && !morph) {
+            completeDismissal();
+            return;
+        }
+        if (layer == null && bubble == null) return;
         graphics.flush();
         graphics.pose().pushPose();
         try {
             graphics.pose().translate(0, 0, Z);
-            if (modal != null) {
+            if (layer != null) {
                 settleFocus();
                 long now = PageTransition.nowMs();
-                graphics.fill(0, 0, owner.width, owner.height, 0x840F172A);
-                Layer underlay = modal.underlay;
+                if (layer.source != null && !morph) layer.enter.finish();
+                float progress = layer.progress(now);
+                int scrim = morph ? GuiMotion.lerpColor(SCRIM & 0x00FFFFFF, SCRIM, progress) : SCRIM;
+                if ((scrim >>> 24) != 0) graphics.fill(0, 0, owner.width, owner.height, scrim);
+                Layer underlay = layer.underlay;
                 if (underlay != null) {
-                    underlay.render(graphics, Integer.MIN_VALUE, Integer.MIN_VALUE, partialTick, now);
+                    underlay.render(graphics, Integer.MIN_VALUE, Integer.MIN_VALUE, partialTick,
+                            now, underlay.progress(now), false);
                     graphics.flush();
                     graphics.pose().translate(0, 0, MODAL_Z_STEP);
                     graphics.fill(0, 0, owner.width, owner.height, 0x300F172A);
                 }
-                modal.render(graphics, mouseX, mouseY, partialTick, now);
+                layer.render(graphics, mouseX, mouseY, partialTick, now, progress, morph);
             } else renderBubble(graphics, bubble);
             graphics.flush();
         } finally {
             graphics.pose().popPose();
         }
+        if (layer != null && layer == modal && layer.closing() && !layer.enter.running()) completeDismissal();
     }
 
     private void renderBubble(GuiGraphics graphics, Bubble bubble) {
@@ -366,6 +423,7 @@ public final class UiOverlayHost {
         Layer layer = modal;
         if (layer == null) return capturedKeys.contains(key);
         boolean firstPress = capturedKeys.add(key);
+        if (layer.closing() || (layer.source != null && !layer.rendered && key != GLFW.GLFW_KEY_ESCAPE)) return true;
         switch (key) {
             case GLFW.GLFW_KEY_ESCAPE -> { if (firstPress) layer.cancel.run(); }
             case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER, GLFW.GLFW_KEY_SPACE -> {
@@ -437,7 +495,8 @@ public final class UiOverlayHost {
         private final int rowCount;
         private final List<UiButton> buttons = new ArrayList<>();
         private final List<Integer> rowTops = new ArrayList<>();
-        private final InterruptibleAnimation enter = new InterruptibleAnimation(Spring.PANEL);
+        private final UiButton source;
+        private InterruptibleAnimation enter;
         private Layer underlay;
         private List<FormattedCharSequence> titleLines;
         private List<FormattedCharSequence> detailLines;
@@ -457,13 +516,15 @@ public final class UiOverlayHost {
         private boolean rendered;
 
         private Layer(Component title, Component details, GraphicIcon icon, Runnable cancel,
-                      List<Action> rows, List<Action> footer) {
+                      List<Action> rows, List<Action> footer, UiButton source) {
             this.title = Objects.requireNonNull(title);
             this.details = details;
             this.icon = icon;
             this.cancel = cancel;
             this.sheet = details == null;
             this.rowCount = rows.size();
+            this.source = source;
+            this.enter = new InterruptibleAnimation(source == null ? Spring.PANEL : Spring.FLUID_MORPH);
             for (Action row : rows) buttons.add(button(row, () -> choose(this, row), false));
             for (int index = 0; index < footer.size(); index++) {
                 Action item = footer.get(index);
@@ -590,13 +651,61 @@ public final class UiOverlayHost {
             for (UiButton button : buttons) button.setY(button.getY() + delta);
         }
 
-        private void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, long now) {
-            float progress = GuiMotion.clamp01(enter.sample(now, preferences));
-            moveTo(entryOffset(progress, sheet));
+        private boolean closing() {
+            return source != null && enter.target() == 0f;
+        }
+
+        private float progress(long now) {
+            return GuiMotion.clamp01(enter.sample(now, preferences));
+        }
+
+        private void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, long now,
+                            float progress, boolean morph) {
+            moveTo(source == null ? entryOffset(progress, sheet) : 0);
             if (!layout()) return;
-            rendered = true;
-            LiquidGlassTheme.layeredPopover(graphics, panel.x(), panel.y(), panel.width(), panel.height(),
-                    preferences, 0.65f + 0.35f * progress);
+            rendered = !closing();
+            if (morph) {
+                var target = new GuiRect(panel.x(), panel.y(), panel.width(), panel.height());
+                FluidMorph frame = source.renderMorph(graphics, target, preferences, progress, now);
+                if (progress < 1f) {
+                    renderMorphContents(graphics, mouseX, mouseY, partialTick, frame, progress);
+                    return;
+                }
+            } else {
+                LiquidGlassTheme.layeredPopover(graphics, panel.x(), panel.y(), panel.width(), panel.height(),
+                        preferences, 0.65f + 0.35f * progress);
+            }
+            renderContents(graphics, rendered ? mouseX : Integer.MIN_VALUE,
+                    rendered ? mouseY : Integer.MIN_VALUE, partialTick);
+        }
+
+        private void renderMorphContents(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+                                         FluidMorph frame, float progress) {
+            rendered = false;
+            float opacity = GuiMotion.clamp01((progress - 0.76f) / 0.22f);
+            if (opacity <= 0f) return;
+            GuiRect rect = frame.rect();
+            // 内接矩形覆盖文本和按钮，过渡期间将尚未展开的部分裁掉。
+            float inset = frame.radius() * 0.3f;
+            int left = (int) Math.ceil(rect.getX() + inset);
+            int top = (int) Math.ceil(rect.getY() + inset);
+            int right = (int) Math.floor(rect.getX() + rect.getW() - inset);
+            int bottom = (int) Math.floor(rect.getY() + rect.getH() - inset);
+            if (right <= left || bottom <= top) return;
+            int padding = body.x() - panel.x();
+            rendered = !closing() && opacity >= 0.9f && left <= body.x() && right >= body.right()
+                    && top <= body.y() && bottom >= panel.bottom() - padding;
+            graphics.enableScissor(left, top, right, bottom);
+            try {
+                GuiRenderUtil.withAttentionContent(graphics, opacity, 0f,
+                        () -> renderContents(graphics, rendered ? mouseX : Integer.MIN_VALUE,
+                                rendered ? mouseY : Integer.MIN_VALUE, partialTick));
+            } finally {
+                graphics.disableScissor();
+            }
+        }
+
+        private void renderContents(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             if (body.height() > 0) {
                 graphics.enableScissor(body.x(), body.y(), body.right(), body.bottom());
                 try {

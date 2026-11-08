@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.ShBetterUi;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,8 +18,10 @@ import java.util.function.IntConsumer;
 public final class UiPullRefresh {
     private static final String TEXT_KEY = "sh_better_ui.pull_refresh.";
     private static final int PRIMARY_BUTTON = 0;
+    private static final int SPINNER_SIZE = 12;
     private static final long REFRESH_ACTION = 0;
     private static final AtomicInteger REQUEST_IDS = new AtomicInteger();
+    private static final Function<Frame, GraphicIcon> DEFAULT_FRAME_ICON = Frame::icon;
 
     /** 距离使用逻辑 GUI 单位，触发距离从按下位置开始计算。 */
     public record Config(float deadZone, float triggerDistance, float maxReveal, long timeoutMs) {
@@ -77,10 +80,10 @@ public final class UiPullRefresh {
     }
 
     public UiPullRefresh(Config config, IntConsumer onRefresh) {
-        this(config, onRefresh, Frame::icon);
+        this(config, onRefresh, DEFAULT_FRAME_ICON);
     }
 
-    /** 返回每帧的状态图标，返回 null 时只显示文字。 */
+    /** 自定义各状态的图标，包括等待时的显示。返回 null 时只显示文字。 */
     public UiPullRefresh(Config config, IntConsumer onRefresh, Function<Frame, GraphicIcon> frameIcon) {
         this.config = Objects.requireNonNull(config);
         this.onRefresh = Objects.requireNonNull(onRefresh);
@@ -204,7 +207,14 @@ public final class UiPullRefresh {
 
             int textX = x + 4;
             int lineHeight = font.lineHeight;
-            if (width >= GraphicIcon.PIXELS + 12 + 24 && height >= GraphicIcon.PIXELS + 2) {
+            if (frame.status() == ButtonFeedback.Status.PENDING && frameIcon == DEFAULT_FRAME_ICON) {
+                int size = Math.min(SPINNER_SIZE, Math.min(width, height) - 2);
+                boolean showLabel = width >= size + 12 + 24 && height >= lineHeight + 2;
+                int iconX = showLabel ? textX : x + (width - size) / 2;
+                UiLoading.spinner(graphics, new Bounds(iconX, y + (height - size) / 2, size, size),
+                        nowMs, preferences);
+                textX = showLabel ? textX + size + 4 : x + width;
+            } else if (width >= GraphicIcon.PIXELS + 12 + 24 && height >= GraphicIcon.PIXELS + 2) {
                 GraphicIcon icon = frameIcon.apply(frame);
                 if (icon != null) {
                     int iconY = y + contentTop(height, GraphicIcon.PIXELS, frame.reveal());
@@ -223,9 +233,6 @@ public final class UiPullRefresh {
             int barY = y + height - 2;
             if (frame.progress() > 0) {
                 graphics.fill(x + 1, barY, x + 1 + Math.round(barWidth * frame.progress()), barY + 1, highlight);
-            } else if (frame.status() == ButtonFeedback.Status.PENDING && !preferences.reducedMotion()) {
-                float phase = feedback.visual(REFRESH_ACTION, REFRESH_ACTION, true, nowMs, preferences).pendingPhase();
-                GuiRenderUtil.drawPendingSweep(graphics, x + 1, barY, barWidth, 1, phase, highlight);
             }
         } finally {
             graphics.disableScissor();

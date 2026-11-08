@@ -26,6 +26,7 @@ public final class DarkModeTheme {
     private static final int FOCUS_OFFSET = 2;
     private static final long CONTROL_MS = 200L;
     private static final long CARD_MS = 300L;
+    private static final long CARD_ROTATION_MS = 8_000L;
 
     private DarkModeTheme() {}
 
@@ -38,7 +39,10 @@ public final class DarkModeTheme {
                 highContrast ? CONTRAST_EDGE : BORDER, highContrast ? BACKGROUND : 0xF21E293B);
     }
 
-    /** 卡片背景与内容一起移动。消费端可用 State.cardOffset() 对齐卡片内的控件命中。 */
+    /**
+     * 卡片底板、描边和背光随内容移动。底部预留最多 13 个 GUI 单位可显示完整背光。
+     * 消费端可用 {@link State#cardOffset()} 对齐卡片内控件的命中位置。
+     */
     public static void card(GuiGraphics g, int x, int y, int width, int height, State state, Runnable content) {
         if (width <= 0 || height <= 0) return;
         g.pose().pushPose();
@@ -51,9 +55,17 @@ public final class DarkModeTheme {
                             0, 0, opacity(SHADOW, state.hover() * (4 - spread) / 12f));
                 }
             }
+            int fill = state.highContrast() ? SURFACE : GuiMotion.lerpColor(CARD_REST, SURFACE, state.hover());
+            if (state.enabled() && !state.highContrast()) {
+                float turn = state.reducedMotion() ? 0.12f
+                        : Math.floorMod(PageTransition.nowMs(), CARD_ROTATION_MS) / (float) CARD_ROTATION_MS;
+                // 每圈包含两个呼吸周期，相位回绕时亮度和扩散范围连续。
+                float breath = state.reducedMotion() ? 0.5f : (float) (0.5 - 0.5 * Math.cos(4.0 * Math.PI * turn));
+                RoundedCorners.drawCard(g, x, y, width, height, CARD_RADIUS, edge(state), fill, turn, breath);
+            } else {
+                rounded(g, x, y, width, height, CARD_RADIUS, 1, edge(state), fill);
+            }
             focus(g, x, y, width, height, CARD_RADIUS, state);
-            rounded(g, x, y, width, height, CARD_RADIUS, 1, edge(state),
-                    state.highContrast() ? SURFACE : GuiMotion.lerpColor(CARD_REST, SURFACE, state.hover()));
             content.run();
         } finally {
             g.pose().popPose();
@@ -69,6 +81,11 @@ public final class DarkModeTheme {
     /** 选中项持续保留底边标记，emphasis 是新选择的短暂强调强度。 */
     public static void button(GuiGraphics g, int x, int y, int width, int height,
                               State state, boolean primary, boolean selected, float emphasis, Runnable content) {
+        button(g, x, y, width, height, state, primary, selected, emphasis, true, content);
+    }
+
+    static void button(GuiGraphics g, int x, int y, int width, int height, State state,
+                       boolean primary, boolean selected, float emphasis, boolean selectionMarker, Runnable content) {
         if (width <= 0 || height <= 0) return;
         GuiRenderUtil.withButtonMotion(g, x, y, width, height, state.buttonScale(), 0f, () -> {
             if (state.enabled() && state.hover() > 0f) {
@@ -89,7 +106,7 @@ public final class DarkModeTheme {
                             opacity(SHADOW, 0.3f * state.press()), 0);
                 }
             }
-            if (selected && width > 4 && height > 3) {
+            if (selected && selectionMarker && width > 4 && height > 3) {
                 g.fill(x + 2, y + height - 3, x + width - 2, y + height - 1, state.focusColor());
             }
             content.run();
