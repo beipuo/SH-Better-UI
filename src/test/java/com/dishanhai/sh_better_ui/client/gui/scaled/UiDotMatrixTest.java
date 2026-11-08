@@ -72,6 +72,35 @@ class UiDotMatrixTest {
     }
 
     @Test
+    void pointerWaveStaysAroundTheCursorAndMovesWithIt() {
+        var style = PROFILE.withInteraction(new DotMatrixProfile.Interaction(0, 40))
+                .withPointerWave(new DotMatrixProfile.PointerWave(16, 4f));
+        var matrix = new UiDotMatrix(style);
+        var idle = frame(matrix, 0L);
+        double leftX = AREA.x() + 28d, rightX = AREA.x() + 84d, y = AREA.y() + 36d;
+        int centerDot = 4 * 15 + 3;
+        int crestDot = 4 * 15 + 5;
+
+        var left = frame(matrix, AREA, leftX, y, 0L, UiPreferences.DEFAULT);
+        assertEquals(idle.get(centerDot), left.get(centerDot));
+        assertEquals(idle.get(crestDot).top() - 4f, left.get(crestDot).top());
+        assertNotEquals(idle.get(crestDot).argb(), left.get(crestDot).argb());
+        assertEquals(left, frame(matrix, AREA, leftX, y, 1000L, UiPreferences.DEFAULT));
+
+        var right = frame(matrix, AREA, rightX, y, 1000L, UiPreferences.DEFAULT);
+        assertEquals(idle.get(crestDot), right.get(crestDot));
+        assertTrue(movedDots(idle, right) > 0);
+        assertEquals(idle, frame(matrix, AREA, AREA.right(), y, 1000L, UiPreferences.DEFAULT));
+        assertEquals(idle, frame(matrix, 1000L));
+
+        var reduced = frame(matrix, AREA, leftX, y, 1000L, REDUCED);
+        assertEquals(0, movedDots(idle, reduced));
+        assertNotEquals(idle.get(crestDot).argb(), reduced.get(crestDot).argb());
+        matrix.setProfile(style.withPointerWave(DotMatrixProfile.PointerWave.NONE));
+        assertEquals(idle, frame(matrix, AREA, leftX, y, 1000L, UiPreferences.DEFAULT));
+    }
+
+    @Test
     void rippleIgnoresOutsideClicksAndExpiresAfterLatestPulse() {
         UiDotMatrix matrix = new UiDotMatrix(PROFILE);
         List<Quad> idle = frame(matrix, 0L);

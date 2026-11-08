@@ -41,6 +41,16 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
         return new DotMatrixProfile(palette, grid, motion, value, fade, gradient);
     }
 
+    public DotMatrixProfile withPointerWave(PointerWave value) {
+        return withInteraction(new Interaction(interaction.hoverRadius(), interaction.rippleRadius(), value,
+                interaction.pointerLens()));
+    }
+
+    public DotMatrixProfile withPointerLens(PointerLens value) {
+        return withInteraction(new Interaction(interaction.hoverRadius(), interaction.rippleRadius(),
+                interaction.pointerWave(), value));
+    }
+
     public DotMatrixProfile withFade(Fade value) {
         return new DotMatrixProfile(palette, grid, motion, interaction, value, gradient);
     }
@@ -78,9 +88,46 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
     }
 
     /** 各半径为非负整数。设为零可分别关闭悬停高亮和点击波纹。 */
-    public record Interaction(int hoverRadius, int rippleRadius) {
+    public record Interaction(int hoverRadius, int rippleRadius, PointerWave pointerWave, PointerLens pointerLens) {
         public Interaction {
             if (hoverRadius < 0 || rippleRadius < 0) throw new IllegalArgumentException();
+            Objects.requireNonNull(pointerWave);
+            Objects.requireNonNull(pointerLens);
+        }
+
+        public Interaction(int hoverRadius, int rippleRadius, PointerWave pointerWave) {
+            this(hoverRadius, rippleRadius, pointerWave, PointerLens.NONE);
+        }
+
+        public Interaction(int hoverRadius, int rippleRadius) {
+            this(hoverRadius, rippleRadius, PointerWave.NONE);
+        }
+    }
+
+    /**
+     * 光标透镜。半径使用 GUI 单位，radius 为零关闭透镜，glowRadius 为零关闭柔光。
+     * 鼓胀强度 -1..1，负值向内收缩。
+     * twistDegrees 为扭转角度（-360..360），glowIntensity 取 0..2。
+     */
+    public record PointerLens(int radius, float bulgeStrength, float twistDegrees, int glowRadius,
+                              int glowArgb, float glowIntensity, boolean holdToZoom) {
+        public static final PointerLens NONE = new PointerLens(0, 0f, 0f, 0, 0, 0f, false);
+        public static final PointerLens DEFAULT = new PointerLens(96, 0.6f, 0f, 64, 0xFFFFFFFF, 0.8f, true);
+
+        public PointerLens {
+            if (radius < 0 || glowRadius < 0 || !(bulgeStrength >= -1f && bulgeStrength <= 1f)
+                    || !(twistDegrees >= -360f && twistDegrees <= 360f)
+                    || !(glowIntensity >= 0f && glowIntensity <= 2f)) throw new IllegalArgumentException();
+        }
+    }
+
+    /** 以光标为圆心的点阵波。半径为零时关闭，抬升为零时仅高亮。 */
+    public record PointerWave(int radius, float lift) {
+        public static final PointerWave NONE = new PointerWave(0, 0f);
+        public static final PointerWave DEFAULT = new PointerWave(18, 3.5f);
+
+        public PointerWave {
+            if (radius < 0 || !Float.isFinite(lift) || lift < 0f) throw new IllegalArgumentException();
         }
     }
 

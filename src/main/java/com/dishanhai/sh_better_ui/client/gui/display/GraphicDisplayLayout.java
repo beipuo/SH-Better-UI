@@ -35,8 +35,8 @@ public final class GraphicDisplayLayout {
 
         /** 左上边界可命中，右下边界及空矩形不可命中。 */
         public boolean contains(double mouseX, double mouseY) {
-            return width > 0 && height > 0 && mouseX >= x && mouseX < right()
-                    && mouseY >= y && mouseY < bottom();
+            return width > 0 && height > 0 && mouseX >= x && mouseX < (double) x + width
+                    && mouseY >= y && mouseY < (double) y + height;
         }
 
         private static Bounds empty() { return new Bounds(0, 0, 0, 0); }

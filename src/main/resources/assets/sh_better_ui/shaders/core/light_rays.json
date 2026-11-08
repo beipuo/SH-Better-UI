@@ -1,0 +1,21 @@
+{
+  "blend": { "func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha", "srcalpha": "one", "dstalpha": "1-srcalpha" },
+  "vertex": "sh_better_ui:icon_gradient_sweep",
+  "fragment": "sh_better_ui:light_rays",
+  "attributes": ["Position", "UV0"],
+  "samplers": [],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] },
+    { "name": "ColorModulator", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "Area", "type": "float", "count": 2, "values": [1, 1] },
+    { "name": "Beam", "type": "float", "count": 4, "values": [0, 0, 0, 1] },
+    { "name": "Cone", "type": "float", "count": 4, "values": [3, 1, 0.5, 1] },
+    { "name": "Material", "type": "float", "count": 4, "values": [0.35, 0.6, 0.25, 1] },
+    { "name": "Tint", "type": "float", "count": 4, "values": [1, 1, 1, 1] },
+    { "name": "Tone", "type": "float", "count": 4, "values": [1, 1, 0, 0] },
+    { "name": "Motion", "type": "float", "count": 4, "values": [0, 1, 0, 0] },
+    { "name": "Shadow", "type": "float", "count": 3, "values": [0, 0, 0] },
+    { "name": "PulseAges", "type": "float", "count": 4, "values": [-1, -1, -1, -1] }
+  ]
+}

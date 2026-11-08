@@ -12,8 +12,12 @@ import java.util.SplittableRandom;
 public final class UiDotMatrix {
     static final int MAX_GRID_CELLS = 16_384;
     private static final int RGB_MASK = 0x00FF_FFFF;
+    private static final float DIAGONAL = 0.70710677f;
+    private static final float[] CIRCLE_X = {1f, DIAGONAL, 0f, -DIAGONAL, -1f, -DIAGONAL, 0f, DIAGONAL, 1f};
+    private static final float[] CIRCLE_Y = {0f, DIAGONAL, 1f, DIAGONAL, 0f, -DIAGONAL, -1f, -DIAGONAL, 0f};
 
     private final ClickRipple click = new ClickRipple();
+    private final DotMatrixLens lens = new DotMatrixLens();
     private DotMatrixProfile profile;
     private int layoutWidth = -1;
     private int layoutHeight;
@@ -37,6 +41,7 @@ public final class UiDotMatrix {
         if (!this.profile.grid().equals(profile.grid())) layoutWidth = -1;
         if (!this.profile.motion().equals(profile.motion())) selectionDirty = true;
         if (profile.interaction().rippleRadius() == 0) click.clear();
+        if (!this.profile.interaction().pointerLens().equals(profile.interaction().pointerLens())) lens.reset();
         this.profile = profile;
     }
 
@@ -45,19 +50,36 @@ public final class UiDotMatrix {
         render(graphics, area, pointerX, pointerY, PageTransition.nowMs(), UiPreferences.configured());
     }
 
-    /** 指针与区域使用同一坐标系。传入 NaN 可在模态覆层打开时暂停悬停反馈。 */
+    /** 指针与区域使用同一坐标系。失焦或被模态覆层遮住时可传入 NaN，屏蔽指针反馈。 */
     public void render(GuiGraphics graphics, Bounds area, double pointerX, double pointerY,
                        long nowMs, UiPreferences preferences) {
-        if (area.width() == 0 || area.height() == 0) return;
+        render(graphics, area, pointerFrame(area, pointerX, pointerY), nowMs, preferences);
+    }
+
+    /**
+     * 每帧传入区域局部的指针快照。正常离开时传入 outside 帧让透镜回落，
+     * 失焦、模态遮挡或暂停时传 null 立即收起。按压只影响视觉，不消费输入。
+     */
+    public void render(GuiGraphics graphics, Bounds area, UiPointerTracker.Frame pointer,
+                       long nowMs, UiPreferences preferences) {
+        int width = area.width(), height = area.height();
+        if (width == 0 || height == 0) {
+            lens.reset();
+            return;
+        }
         graphics.flush();
         try {
             CapsuleMesh.VertexSink vertices = CapsuleRenderer.colorVertices(graphics, area.x(), area.y());
-            forEachQuad(area, pointerX, pointerY, nowMs, preferences, (left, top, right, bottom, argb) -> {
+            QuadSink quads = (left, top, right, bottom, argb) -> {
                 vertices.vertex(left, top, argb);
                 vertices.vertex(left, bottom, argb);
                 vertices.vertex(right, bottom, argb);
                 vertices.vertex(right, top, argb);
-            });
+            };
+            DotSink points = profile.interaction().pointerLens().radius() > 0
+                    ? (x, y, radius, feather, color) -> disc(vertices, width, height, x, y, radius, feather, color)
+                    : (x, y, radius, feather, color) -> square(quads, width, height, x, y, radius, color);
+            forEachDot(area, pointer, nowMs, preferences, quads, points);
         } finally {
             graphics.flush();
         }
@@ -85,20 +107,44 @@ public final class UiDotMatrix {
         void quad(float left, float top, float right, float bottom, int argb);
     }
 
+    @FunctionalInterface
+    interface DotSink {
+        void dot(float x, float y, float radius, float feather, int argb);
+    }
+
     void forEachQuad(Bounds area, double pointerX, double pointerY, long nowMs, UiPreferences preferences,
                      QuadSink sink) {
+        forEachDot(area, pointerFrame(area, pointerX, pointerY), nowMs, preferences, sink,
+                (x, y, radius, feather, color) -> square(sink, area.width(), area.height(), x, y, radius, color));
+    }
+
+    private static UiPointerTracker.Frame pointerFrame(Bounds area, double x, double y) {
+        if (!Double.isFinite(x) || !Double.isFinite(y)) return null;
+        return new UiPointerTracker.Frame((float) (x - area.x()), (float) (y - area.y()), area.contains(x, y),
+                false, false, false, false, 0L);
+    }
+
+    void forEachDot(Bounds area, UiPointerTracker.Frame pointer, long nowMs, UiPreferences preferences,
+                    QuadSink background, DotSink sink) {
         int width = area.width(), height = area.height();
-        if (width == 0 || height == 0) return;
+        if (width == 0 || height == 0) {
+            lens.reset();
+            return;
+        }
         DotMatrixProfile style = profile;
         DotMatrixProfile.Palette palette = style.palette();
         if (preferences.highContrast()) {
             click.clear();
-            sink.quad(0, 0, width, height, DarkModeTheme.BACKGROUND);
+            lens.reset();
+            background.quad(0, 0, width, height, DarkModeTheme.BACKGROUND);
             return;
         }
-        if ((palette.backgroundArgb() >>> 24) != 0) sink.quad(0, 0, width, height, palette.backgroundArgb());
+        if ((palette.backgroundArgb() >>> 24) != 0) background.quad(0, 0, width, height, palette.backgroundArgb());
         if (style.grid().density() == 0f) return;
-        if (layoutWidth != width || layoutHeight != height) rebuildGrid(width, height, style.grid());
+        if (layoutWidth != width || layoutHeight != height) {
+            lens.reset();
+            rebuildGrid(width, height, style.grid());
+        }
 
         DotMatrixProfile.Motion motion = style.motion();
         DotMatrixProfile.Interaction interaction = style.interaction();
@@ -116,9 +162,18 @@ public final class UiDotMatrix {
         float gradientPhase = hasGradient && !reducedMotion
                 ? Math.floorMod(nowMs, gradient.periodMs()) / (float) gradient.periodMs() : 0f;
 
-        double localX = pointerX - area.x(), localY = pointerY - area.y();
-        boolean hovering = interaction.hoverRadius() > 0 && localX >= 0d && localX < width
-                && localY >= 0d && localY < height;
+        boolean pointerInside = pointer != null && pointer.inside()
+                && pointer.x() >= 0f && pointer.x() < width && pointer.y() >= 0f && pointer.y() < height;
+        float localX = pointerInside ? pointer.x() : 0f, localY = pointerInside ? pointer.y() : 0f;
+        DotMatrixProfile.PointerLens lensProfile = interaction.pointerLens();
+        DotMatrixLens.Frame lensFrame = lens.advance(lensProfile,
+                pointer != null && pointer.inside() && !pointerInside ? null : pointer, nowMs, reducedMotion);
+        boolean hovering = pointerInside && interaction.hoverRadius() > 0;
+        DotMatrixProfile.PointerWave pointerWave = interaction.pointerWave();
+        int waveRadius = pointerWave.radius();
+        double waveBand = Math.clamp(style.grid().spacing() * 0.75d, waveRadius * 0.3d, waveRadius * 0.75d);
+        boolean followPointer = pointerInside && waveRadius > 0;
+        float waveLift = reducedMotion ? 0f : pointerWave.lift();
         ClickRipple.Frame pulse = click.sample(nowMs, reducedMotion);
         float pulseX = pulse.originX() * width, pulseY = pulse.originY() * height;
         float half = style.grid().dotSize() * 0.5f;
@@ -126,16 +181,27 @@ public final class UiDotMatrix {
         float glowHalf = half + Math.max(0.65f, half * 0.55f);
         for (int index = 0; index < dots.length; index++) {
             Dot dot = dots[index];
+            float wave = followPointer ? ringLight(dot.x() - localX, dot.y() - localY, waveRadius, waveBand) : 0f;
             float opacity = canFade ? visibility(dot, fadeCycle, fadePhase, fade.probability()) : 1f;
+            opacity = Math.max(opacity, wave);
             if (opacity == 0f) continue;
             float lift = canFloat && floating[index] ? lift(phase, dot.variation()) : 0f;
             float drift = lift * motion.floatDistance();
             float x = dot.x() + drift * (dot.variation() - 0.5f) * 0.8f;
-            float y = dot.y() - drift;
+            float y = dot.y() - drift - wave * waveLift;
+            float size = half;
+            float pool = 0f;
+            DotMatrixLens.Sample warped = lensFrame.sample(x, y);
+            if (warped != null) {
+                x = warped.x();
+                y = warped.y();
+                size *= warped.scale();
+                pool = GuiMotion.clamp01(warped.glow());
+            }
             float anchorX = Math.min(1f, dot.x() / width), anchorY = Math.min(1f, dot.y() / height);
             float animated = reducedMotion ? 0f : motion.effect().brightness(
                     anchorX, anchorY, phase, dot.variation());
-            float light = 0.27f * dot.variation() + lift * 0.32f;
+            float light = 0.27f * dot.variation() + lift * 0.32f + 0.85f * wave;
             if (Float.isFinite(animated)) light += GuiMotion.clamp01(animated);
             if (hovering) light += 0.64f * localLight(x - localX, y - localY, interaction.hoverRadius());
             if (pulse.opacity() > 0f) {
@@ -144,9 +210,14 @@ public final class UiDotMatrix {
 
             int color = hasGradient ? gradientColor(palette, gradient.sample(anchorX, anchorY, gradientPhase), light)
                     : GuiMotion.lerpColor(palette.dotArgb(), palette.highlightArgb(), light);
+            if (pool > 0f) {
+                int glowColor = (lensProfile.glowArgb() & RGB_MASK) | 0xFF000000;
+                color = GuiMotion.lerpColor(color, glowColor, pool * 0.8f);
+            }
             if (opacity < 1f) color = scaleAlpha(color, opacity);
-            if (glowAlpha > 0f) square(sink, width, height, x, y, glowHalf, scaleAlpha(color, glowAlpha));
-            square(sink, width, height, x, y, half, color);
+            if (pool > 0f) sink.dot(x, y, size + 2f, 1.6f, scaleAlpha(color, pool * 0.42f));
+            if (glowAlpha > 0f) sink.dot(x, y, glowHalf + size - half, 0.3f, scaleAlpha(color, glowAlpha));
+            sink.dot(x, y, size, 0.3f, color);
         }
     }
 
@@ -251,7 +322,10 @@ public final class UiDotMatrix {
     private static float rippleLight(double dx, double dy, int radius, ClickRipple.Frame pulse) {
         if (pulse.uniform()) return localLight(dx, dy, radius * 0.38d);
         double band = Math.clamp(radius * 0.15d, 1d, 10d);
-        double crest = pulse.radiusProgress() * radius;
+        return ringLight(dx, dy, pulse.radiusProgress() * radius, band);
+    }
+
+    private static float ringLight(double dx, double dy, double crest, double band) {
         double distanceSquared = dx * dx + dy * dy;
         double outer = crest + band;
         if (distanceSquared >= outer * outer) return 0f;
@@ -264,6 +338,32 @@ public final class UiDotMatrix {
         float left = Math.max(0f, x - half), top = Math.max(0f, y - half);
         float right = Math.min(width, x + half), bottom = Math.min(height, y + half);
         if (left < right && top < bottom) sink.quad(left, top, right, bottom, argb);
+    }
+
+    static void disc(CapsuleMesh.VertexSink sink, int width, int height, float x, float y,
+                     float radius, float feather, int argb) {
+        if ((argb >>> 24) == 0) return;
+        float edge = Math.min(feather, radius * 0.65f);
+        float inner = radius - edge, outer = radius + edge;
+        if (x + outer <= 0 || x - outer >= width || y + outer <= 0 || y - outer >= height) return;
+        int clear = argb & RGB_MASK;
+        float centerX = Math.clamp(x, 0f, width), centerY = Math.clamp(y, 0f, height);
+        for (int i = 0; i < CIRCLE_X.length - 1; i++) {
+            float ax = Math.clamp(x + CIRCLE_X[i] * inner, 0f, width);
+            float ay = Math.clamp(y + CIRCLE_Y[i] * inner, 0f, height);
+            float bx = Math.clamp(x + CIRCLE_X[i + 1] * inner, 0f, width);
+            float by = Math.clamp(y + CIRCLE_Y[i + 1] * inner, 0f, height);
+            sink.vertex(ax, ay, argb);
+            sink.vertex(centerX, centerY, argb);
+            sink.vertex(bx, by, argb);
+            sink.vertex(bx, by, argb);
+            sink.vertex(Math.clamp(x + CIRCLE_X[i] * outer, 0f, width),
+                    Math.clamp(y + CIRCLE_Y[i] * outer, 0f, height), clear);
+            sink.vertex(ax, ay, argb);
+            sink.vertex(bx, by, argb);
+            sink.vertex(Math.clamp(x + CIRCLE_X[i + 1] * outer, 0f, width),
+                    Math.clamp(y + CIRCLE_Y[i + 1] * outer, 0f, height), clear);
+        }
     }
 
     private record Dot(float x, float y, float variation, long fadeKey) {}

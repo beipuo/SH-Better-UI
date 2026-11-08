@@ -54,6 +54,9 @@ public final class VisualRevealRenderer extends RenderType {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent event) throws IOException {
+        LaserFlowRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
+        LightRaysRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
+        AntigravityRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
         PatternWavesRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
         ShapeWavesRenderer.registerShaders(event.getResourceProvider(), event::registerShader);
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
@@ -180,10 +183,20 @@ public final class VisualRevealRenderer extends RenderType {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
     }
 
-    static void quad(GuiGraphics graphics, RenderType type, int x, int y, int width, int height, Matrix4f pose) {
+    /** 山海：跨平台的粒子顶点写入；由调用方统一提交批次。 */
+    static void particleVertex(com.mojang.blaze3d.vertex.VertexConsumer vertices, Matrix4f pose,
+                               float x, float y, float u, float v, int argb) {
+        vertices.vertex(pose, x, y, 0f).uv(u, v).color(argb >> 16 & 255, argb >> 8 & 255, argb & 255, argb >>> 24).endVertex();
+    }
+
+    static ShaderInstance handoffShader() {
+        return shader;
+    }
+
+    static void quad(GuiGraphics graphics, RenderType type, float x, float y, float width, float height, Matrix4f pose) {
         var vertices = graphics.bufferSource().getBuffer(type);
-        float right = (float) x + width;
-        float bottom = (float) y + height;
+        float right = x + width;
+        float bottom = y + height;
         vertices.vertex(pose, x, y, 0f).uv(0f, 0f).endVertex();
         vertices.vertex(pose, x, bottom, 0f).uv(0f, 1f).endVertex();
         vertices.vertex(pose, right, bottom, 0f).uv(1f, 1f).endVertex();

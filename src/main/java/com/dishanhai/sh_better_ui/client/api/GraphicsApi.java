@@ -15,9 +15,20 @@ import com.dishanhai.sh_better_ui.client.gui.display.UiLayout.Horizontal;
 import com.dishanhai.sh_better_ui.client.gui.display.UiLayout.Size;
 import com.dishanhai.sh_better_ui.client.gui.display.UiLayout.Vertical;
 import com.dishanhai.sh_better_ui.client.gui.display.UiText;
+import com.dishanhai.sh_better_ui.client.gui.scaled.Antigravity;
+import com.dishanhai.sh_better_ui.client.gui.scaled.AntigravityProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.LaserFlow;
+import com.dishanhai.sh_better_ui.client.gui.scaled.LaserFlowProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRain;
+import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRainEffect;
+import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRainProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.LightRays;
+import com.dishanhai.sh_better_ui.client.gui.scaled.LightRaysProfile;
 import com.dishanhai.sh_better_ui.client.gui.scaled.NetworkTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.NetworkToggle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiDotMatrix;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import com.dishanhai.sh_better_ui.client.gui.text.UiTextEffects;
@@ -64,6 +75,32 @@ public final class GraphicsApi {
     public GraphicIconShader iconShader(ResourceLocation id,
                                         BiConsumer<ShaderInstance, GraphicIconShader.Frame> uniforms) {
         return new GraphicIconShader(id, uniforms);
+    }
+
+    /** 每个区域保留独立粒子场，配置与指针可单独复用。 */
+    public Antigravity antigravity() { return new Antigravity(); }
+
+    public Antigravity antigravity(AntigravityProfile profile) { return new Antigravity(profile); }
+
+    /** 为每个区域创建独立点阵。光标透镜通过 DotMatrixProfile 配置。 */
+    public UiDotMatrix dotMatrix(DotMatrixProfile profile) { return new UiDotMatrix(profile); }
+
+    /** 为一个 GUI 背景区域创建光束实例。 */
+    public LightRays lightRays() { return new LightRays(); }
+
+    public LightRays lightRays(LightRaysProfile profile) { return new LightRays(profile); }
+
+    /** 为一个 GUI 区域创建激光流实例。 */
+    public LaserFlow laserFlow() { return new LaserFlow(); }
+
+    public LaserFlow laserFlow(LaserFlowProfile profile) { return new LaserFlow(profile); }
+
+    /** 为一个背景区域创建默认代码雨。 */
+    public CodeRain codeRain() { return new CodeRain(); }
+
+    /** 创建代码雨或 ASCII 字符场，可按顺序叠加扩展效果。 */
+    public CodeRain codeRain(CodeRainProfile profile, CodeRainEffect... effects) {
+        return new CodeRain(profile, effects);
     }
 
     /** 为每个视图创建独立实例，移除视图时在渲染线程关闭。 */
