@@ -51,6 +51,13 @@ class NetworkIconTest {
     }
 
     @Test
+    void compactHudIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.COMPACT_SIGNAL, GraphicIcon.COMPACT_CLOCK, GraphicIcon.COMPACT_CALENDAR,
+                GraphicIcon.COMPACT_WORLD, GraphicIcon.COMPACT_BIOME, GraphicIcon.COMPACT_LOCATION,
+                GraphicIcon.COMPACT_CHUNK, GraphicIcon.COMPACT_TORCH));
+    }
+
+    @Test
     void severityAndMaintenanceIconsAreTransparentSixteenPixelTextures() throws IOException {
         assertIconTextures(List.of(GraphicIcon.WARNING, GraphicIcon.CRITICAL_WARNING, GraphicIcon.CANCEL,
                 GraphicIcon.CRITICAL_CANCEL, GraphicIcon.REPAIR, GraphicIcon.RESET, GraphicIcon.DISABLE,

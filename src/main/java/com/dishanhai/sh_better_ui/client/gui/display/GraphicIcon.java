@@ -246,6 +246,14 @@ public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, Gr
     public static final GraphicIcon TICK = builtIn("tick");
     public static final GraphicIcon TPS = builtIn("tps");
     public static final GraphicIcon MSPT = builtIn("mspt");
+    public static final GraphicIcon COMPACT_SIGNAL = builtIn("compact_signal");
+    public static final GraphicIcon COMPACT_CLOCK = builtIn("compact_clock");
+    public static final GraphicIcon COMPACT_CALENDAR = builtIn("compact_calendar");
+    public static final GraphicIcon COMPACT_WORLD = builtIn("compact_world");
+    public static final GraphicIcon COMPACT_BIOME = builtIn("compact_biome");
+    public static final GraphicIcon COMPACT_LOCATION = builtIn("compact_location");
+    public static final GraphicIcon COMPACT_CHUNK = builtIn("compact_chunk");
+    public static final GraphicIcon COMPACT_TORCH = builtIn("compact_torch");
     public static final GraphicIcon JEI = builtIn("jei");
 
     public GraphicIcon {
