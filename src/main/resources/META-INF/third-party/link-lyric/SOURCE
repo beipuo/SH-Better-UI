@@ -1,0 +1,6 @@
+Link-Lyric by beipuo and contributors
+https://github.com/beipuo/Link-Lyric/tree/1a7cd274c3e7afbb33c08c66414ec0def944643b
+
+Adapted for SH-Better-UI by dishanhai. Java packages, resource names,
+loader integration, and public APIs were adapted. The Apache-2.0 files
+listed in NOTICE are under client/lyrics/common/hud/effect.

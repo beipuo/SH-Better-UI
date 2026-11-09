@@ -15,6 +15,7 @@ __pycache__/
 /.learnings/
 /docs/*
 !/docs/music-rhythm.md
+!/docs/lyrics.md
 /src_collection/
 TODO.md
 /neoforge/.gradle/

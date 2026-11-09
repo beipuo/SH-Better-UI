@@ -1,0 +1,61 @@
+// Adapted by dishanhai from Link-Lyric (beipuo).
+// Source: https://github.com/beipuo/Link-Lyric/tree/1a7cd274c3e7afbb33c08c66414ec0def944643b
+// See META-INF/third-party/link-lyric for licenses and upstream notices.
+package com.dishanhai.sh_better_ui.client.lyrics.common.font;
+
+/**
+ * 一张已烘焙的字形位图，可直接上传进字形图集。
+ *
+ * <p>平面边界沿用原版 {@code SheetGlyphInfo} 的坐标系：相对行首的笔位，
+ * 基线位于 9 像素设计空间的 y = 7 处。保持这个约定意味着步进与字形位置
+ * 和原版渲染器完全一致，测量代码（光标位置、换行）无需改动。
+ *
+ * <h2>为什要把度量与位图分开</h2>
+ *
+ * <p>测量文本要遍历每个字符，这一步绝不能触发栅格化，
+ * 否则一次排版就变成上千次轮廓遍历。步进因此通过
+ * {@code SdfGlyphBaker} 的独立度量路径取得，位图走这里。
+ *
+ * @param data         单通道位图，{@code width * height} 字节、行主序；null 表示空白字形
+ * @param width        位图宽（图集像素）
+ * @param height       位图高（图集像素）
+ * @param left         四边形左边缘（设计空间）
+ * @param top          四边形上边缘（设计空间）
+ * @param right        四边形右边缘（设计空间）
+ * @param bottom       四边形下边缘（设计空间）
+ * @param advance   笔位步进（设计空间）
+ * @param glowSpace 轮廓外还能走多远（设计空间），即图集留白
+ *
+ * <p>曾有 {@code boldOffset}、{@code shadowOffset} 两个字段，恒为 1f、
+ * 且没有任何消费者：伪粗体已因 9px 字形重影被移除，阴影偏移由
+ * {@code SdfRenderType.shadowOffset()} 单独提供。留着它们只会让人
+ * 以为阴影偏移是从字形度量里取的，实际不是。
+ */
+public record RawGlyph(byte[] data, int width, int height,
+                       float left, float top, float right, float bottom,
+                       float advance, float glowSpace) {
+
+    public static RawGlyph of(byte[] data, int width, int height,
+                              float left, float top, float right, float bottom,
+                              float advance) {
+        return new RawGlyph(data, width, height, left, top, right, bottom,
+                advance, 0f);
+    }
+
+    /** 带留白信息的版本。 */
+    public static RawGlyph of(byte[] data, int width, int height,
+                              float left, float top, float right, float bottom,
+                              float advance, float glowSpace) {
+        return new RawGlyph(data, width, height, left, top, right, bottom,
+                advance, glowSpace);
+    }
+
+    /** 只有步进、没有位图的字形，用于空格与空白字符。 */
+    public static RawGlyph space(float advance) {
+        return new RawGlyph(null, 0, 0, 0f, 0f, 0f, 0f, advance, 0f);
+    }
+
+    public boolean hasBitmap() {
+        return data != null && width > 0 && height > 0;
+    }
+}

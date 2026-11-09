@@ -301,6 +301,12 @@ final class TextPalettes {
         flowing = next;
     }
 
+    static void removeFlowingPalette(Palette palette) {
+        flowing = Arrays.stream(flowing).filter(stops -> stops != palette.rgb()).toArray(int[][]::new);
+        recentOrder = null;
+        previousOrder = null;
+    }
+
     private static Map<String, Palette> builtIns() {
         Map<String, Palette> palettes = new LinkedHashMap<>();
         add(palettes, "ultimate", ULTIMATE_RAINBOW_RGB, false, Mode.CYCLE, false);
@@ -465,19 +471,20 @@ final class TextPalettes {
         palettes.put(alias, palettes.get(canonical));
     }
 
-    static int color(Palette palette, int index, int length, long time) {
+    static int color(Palette palette, int index, int length, long time, UiTextEffects.Timing timing) {
         int[] rgb = palette.rgb();
-        long interval = interval(palette.body(), length);
+        int directionIndex = timing.reversed() ? -index : index;
+        long interval = timing.millisPerStep() == 0 ? interval(palette.body(), length) : timing.millisPerStep();
         return switch (palette.mode()) {
-            case ALL -> sampleAll(index, time);
-            case RANDOM -> sampleRandom(randomFrame(time), index, length);
-            case FULL_RANDOM -> sampleFullRandom(index, time);
+            case ALL -> sampleAll(directionIndex, timing.metaTime(time));
+            case RANDOM -> sampleRandom(randomFrame(timing.metaTime(time)), directionIndex, length);
+            case FULL_RANDOM -> sampleFullRandom(index, timing.metaTime(time));
             case STATIC -> rgb[rgb.length / 2];
             case BREATHE -> rgb[(int) (Math.floorMod(time, interval * rgb.length) / interval)];
             case SCAN -> scan(rgb, index, length, time);
             case TWINKLE -> twinkle(rgb, index, interval * (palette.body() ? 3 : 4), time);
             case DISTORT -> rgb[Math.floorMod(Math.floorDiv(time + index * 137L, 50L), rgb.length)];
-            case CYCLE, WOBBLE -> sampleTimed(rgb, index, interval, time);
+            case CYCLE, WOBBLE -> sampleTimed(rgb, directionIndex, interval, time);
         };
     }
 

@@ -6,6 +6,8 @@ import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -13,6 +15,51 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** 山海：验证内联兼容、注册隔离与元色板的行为。 */
 class UiTextEffectsTest {
+    @Test
+    void parsesMultipleLegacySpansAndRestoresTheOuterStyle() {
+        Component parsed = UiTextEffects.parse("A {fire}B <ice>C</> D{/} &$全-§cE&r F {{golden}}G{{/}}");
+        List<String> runs = new ArrayList<>();
+        parsed.visit((style, text) -> {
+            if (!text.isEmpty()) runs.add(text + ":" + (UiTextEffects.format(style) != null));
+            return java.util.Optional.empty();
+        }, Style.EMPTY);
+        assertEquals("A B C D E F G", parsed.getString());
+        assertEquals(List.of("A :false", "B :true", "C:true", " D:true", " :false", "E:true",
+                " F :false", "G:true"), runs);
+        var frame = UiFormattedText.colorize(parsed.getVisualOrderText(), 0xffffffff, 0,
+                com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences.DEFAULT);
+        frame.accept((index, style, codePoint) -> {
+            if (codePoint == 'E') assertEquals(0xff5555, style.getColor().getValue());
+            return true;
+        });
+    }
+
+    @Test
+    void guideMeKeepsDifferentEffectsOnIdenticalWrappedText() {
+        var layout = new GuideMeTextEffects.Layout(UiTextEffects.parse("{fire}同{/} {ice}同{/}"));
+        assertEquals("同 同", layout.text());
+        var firstText = new String("同");
+        var secondText = new String("同");
+        layout.prepareRun(firstText);
+        var first = GuideMeTextEffects.takeRun(firstText);
+        layout.prepareRun(secondText);
+        var second = GuideMeTextEffects.takeRun(secondText);
+        assertNotNull(first);
+        assertNotNull(second);
+        var argument = GuideMeTextEffects.beginDraw(secondText, second);
+        try {
+            assertSame(first, GuideMeTextEffects.applyTo(first));
+            var base = Component.literal(argument).withStyle(Style.EMPTY.withBold(true));
+            var styled = GuideMeTextEffects.applyTo(base);
+            assertEquals("同", styled.getString());
+            assertTrue(styled.getStyle().isBold());
+            assertNotEquals(first.getSiblings().getFirst().getStyle().getInsertion(),
+                    styled.getSiblings().getFirst().getStyle().getInsertion());
+        } finally {
+            GuideMeTextEffects.endDraw();
+        }
+    }
+
     @Test
     void preservesPlainTextAndKeepsFormattingWithinTheEffectSpan() {
         Style original = Style.EMPTY.withBold(true).withColor(0x123456);
@@ -75,6 +122,27 @@ class UiTextEffectsTest {
         assertThrows(IllegalArgumentException.class, () -> UiTextEffects.registerPalette(id, 0xFF0000));
         assertThrows(IllegalArgumentException.class,
                 () -> UiTextEffects.registerPalette(ResourceLocation.tryParse("sh_better_ui:golden"), 0));
+    }
+
+    @Test
+    void registersAnimationVariantsAndRemovesOnlyExternalStyles() {
+        var base = ResourceLocation.tryParse("test_ui:variants");
+        var ids = UiTextEffects.registerPaletteVariants(base, false, new int[]{0xff0000, 0x00ff00},
+                UiTextEffects.PaletteAnimation.STATIC, UiTextEffects.PaletteAnimation.WOBBLE);
+        try {
+            assertEquals(2, ids.size());
+            assertTrue(UiTextEffects.styleNames().contains(ids.getFirst().toString()));
+            assertEquals(0x00ff00, UiTextEffects.paletteColor(ids.getFirst().toString(), 0, 1, 0,
+                    UiTextEffects.Timing.DEFAULT));
+            assertThrows(IllegalArgumentException.class, () -> UiTextEffects.registerPaletteVariants(
+                    base, false, new int[]{0x112233}, UiTextEffects.PaletteAnimation.SCAN,
+                    UiTextEffects.PaletteAnimation.STATIC));
+            assertFalse(UiTextEffects.styleNames().contains(base + "_scan"));
+        } finally {
+            ids.forEach(UiTextEffects::unregister);
+        }
+        assertFalse(UiTextEffects.styleNames().contains(ids.getFirst().toString()));
+        assertFalse(UiTextEffects.unregister(ResourceLocation.tryParse("sh_better_ui:rainbow")));
     }
 
     @Test

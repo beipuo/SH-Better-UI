@@ -9,6 +9,10 @@ displayName="SH-Better-UI"
 logoFile="cover.png"
 authors="dishanhai"
 description="Shared glass UI, blur and animation library."
+[[mixins]]
+config="sh_better_ui.text.mixins.json"
+[[mixins]]
+config="sh_better_ui.text_compat.mixins.json"
 [[dependencies.sh_better_ui]]
 modId="neoforge"
 type="required"

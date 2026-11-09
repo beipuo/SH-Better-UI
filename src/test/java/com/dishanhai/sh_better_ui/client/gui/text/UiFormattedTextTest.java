@@ -12,12 +12,28 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 山海：验证混合视觉序列、Unicode 码点及偏好回退。 */
 class UiFormattedTextTest {
+    @Test
+    void continuousLinesMatchOneVisualRunWithTheSameClockAndDirection() {
+        Style marked = Style.EMPTY.withInsertion("fcs:rainbow");
+        var timing = new UiTextEffects.Timing(137, true);
+        var continuous = UiFormattedText.colorizeLines(List.of(
+                FormattedCharSequence.forward("山🌊", marked), FormattedCharSequence.forward("海", marked)),
+                0xffffffff, 137, UiPreferences.DEFAULT, timing);
+        var single = collect(UiFormattedText.colorize(FormattedCharSequence.forward("山🌊海", marked),
+                0xffffffff, 137, UiPreferences.DEFAULT, timing));
+        assertEquals(single.subList(0, 2), collect(continuous.getFirst()));
+        assertEquals(single.subList(2, 3), collect(continuous.getLast()));
+        assertNotEquals(single, collect(UiFormattedText.colorize(FormattedCharSequence.forward("山🌊海", marked),
+                0xffffffff, 137, UiPreferences.DEFAULT, new UiTextEffects.Timing(137, false))));
+    }
+
     @Test
     void effectsStayInsideTheMarkedRunAndKeepUnicodeAndNativeStyle() {
         var effect = ResourceLocation.tryParse("test:formatted_text_unicode");
@@ -58,6 +74,30 @@ class UiFormattedTextTest {
         Style style = collect(frame).getFirst().style();
         assertEquals(0xaabbcc, style.getColor().getValue());
         assertNull(style.getInsertion());
+    }
+
+    @Test
+    void lyricColorsFollowVisualOrderAndKeepNativeStyle() {
+        var style = Style.EMPTY.withBold(true).withItalic(true).withInsertion("keep");
+        FormattedCharSequence visual = sink -> sink.accept(5, style, 0x1f30a)
+                && sink.accept(2, Style.EMPTY, '山') && sink.accept(0, Style.EMPTY, '海');
+        var colored = UiFormattedText.colorizeLyric(visual, .5f, 0xffffff, 0x000000);
+        var glyphs = collect(colored);
+
+        assertEquals(List.of(0x1f30a, (int) '山', (int) '海'),
+                glyphs.stream().map(StyledGlyph::codePoint).toList());
+        assertEquals(List.of(0xffffff, 0x808080, 0), glyphs.stream()
+                .map(glyph -> glyph.style().getColor().getValue()).toList());
+        assertEquals(style.withColor(0xffffff), glyphs.getFirst().style());
+        var indices = new ArrayList<Integer>();
+        colored.accept((index, ignored, point) -> indices.add(index));
+        assertEquals(List.of(5, 2, 0), indices);
+        assertFalse(colored.accept((index, ignored, point) -> false));
+
+        var timed = UiFormattedText.colorizeLyric(visual, index -> index == 1 ? 2 : Double.NaN,
+                0xff0000, 0x0000ff);
+        assertEquals(List.of(0x0000ff, 0xff0000, 0x0000ff), collect(timed).stream()
+                .map(glyph -> glyph.style().getColor().getValue()).toList());
     }
 
     private static List<StyledGlyph> collect(FormattedCharSequence text) {

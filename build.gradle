@@ -52,6 +52,8 @@ minecraft {
     runs {
         client {
             workingDirectory file('run/client')
+            args '--mixin', 'sh_better_ui.text.mixins.json',
+                    '--mixin', 'sh_better_ui.text_compat.mixins.json'
             mods { sh_better_ui { source sourceSets.main } }
         }
         server {
@@ -78,7 +80,8 @@ jar {
                         'Specification-Version': '1',
                         'Implementation-Title': mod_name,
                         'Implementation-Version': mod_version,
-                        'Implementation-Vendor': mod_authors)
+                        'Implementation-Vendor': mod_authors,
+                        'MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json')
     finalizedBy 'reobfJar'
 }
 
@@ -87,6 +90,7 @@ tasks.register('devJar', Jar) {
     dependsOn classes
     archiveClassifier = 'dev'
     from sourceSets.main.output
+    manifest.attributes('MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json')
 }
 tasks.register('releaseJar', Copy) {
     dependsOn 'reobfJar'
@@ -102,6 +106,7 @@ tasks.register('verifyLibraryJar') {
         def zip = new java.util.zip.ZipFile(artifact)
         try {
             def required = ['META-INF/mods.toml', 'pack.mcmeta', 'kubejs.plugins.txt',
+                            'sh_better_ui.text.mixins.json', 'sh_better_ui.text_compat.mixins.json',
                             'com/dishanhai/sh_better_ui/ShBetterUi.class',
                             'com/dishanhai/sh_better_ui/client/UiClient.class',
                             'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',

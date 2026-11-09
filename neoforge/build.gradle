@@ -28,6 +28,8 @@ repositories {
 def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/UiClient.java',
         'com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java',
+        'com/dishanhai/sh_better_ui/client/lyrics/LyricOptionsScreen.java',
+        'com/dishanhai/sh_better_ui/client/lyrics/render/LyricGlyphPlatform.java',
         'com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java',
         'com/dishanhai/sh_better_ui/client/blur/GaussBlur.java',
         'com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java',
@@ -108,7 +110,7 @@ tasks.register('verifyLibraryJar') {
              'com/dishanhai/sh_better_ui/client/api/PlatformUiApi.class',
              'com/dishanhai/sh_better_ui/client/api/PlatformUiApi$LdLib.class',
              'com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.class',
-             'kubejs.plugins.txt',
+             'kubejs.plugins.txt', 'sh_better_ui.text.mixins.json', 'sh_better_ui.text_compat.mixins.json',
              'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
              'com/dishanhai/sh_better_ui/compat/ldlib2/LdLib2UiBridge.class',
              'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh'].each {
