@@ -11,7 +11,7 @@ public final class ScrollPageTurn {
     public static double dragOffset(double scrollOffset, double pointerDeltaY, double maxScroll) {
         if (!Double.isFinite(scrollOffset) || !Double.isFinite(pointerDeltaY)
                 || !Double.isFinite(maxScroll) || maxScroll < 0) return scrollOffset;
-        return Math.clamp(scrollOffset - pointerDeltaY, 0.0, maxScroll);
+        return UiMath.clamp(scrollOffset - pointerDeltaY, 0.0, maxScroll);
     }
 
     /**

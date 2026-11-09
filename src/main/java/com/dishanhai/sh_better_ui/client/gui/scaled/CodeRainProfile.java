@@ -19,15 +19,15 @@ public record CodeRainProfile(Mode mode, String characters, int cellSize, float 
                         || codePoint >= 0xD800 && codePoint <= 0xDFFF)) {
             throw new IllegalArgumentException("Expected 1 to 128 renderable code points");
         }
-        cellSize = Math.clamp(cellSize, 6, 128);
+        cellSize = UiMath.clamp(cellSize, 6, 128);
         density = range(density, 0, 1);
         speed = range(speed, 0, 64);
-        trailLength = Math.clamp(trailLength, 1, 128);
+        trailLength = UiMath.clamp(trailLength, 1, 128);
     }
 
     static float range(float value, float min, float max) {
         if (!Float.isFinite(value)) throw new IllegalArgumentException("Non-finite code rain parameter");
-        return Math.clamp(value, min, max);
+        return UiMath.clamp(value, min, max);
     }
 
     public static Builder builder() { return new Builder(); }

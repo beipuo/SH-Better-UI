@@ -254,7 +254,7 @@ public final class UiPullRefresh {
         if (direction == Direction.UNDECIDED && Math.max(x, Math.abs(y)) > config.deadZone()) {
             direction = y > x ? Direction.DOWN : Direction.REJECTED;
         }
-        progress = direction == Direction.DOWN ? (float) Math.clamp(
+        progress = direction == Direction.DOWN ? (float) UiMath.clamp(
                 (y - config.deadZone()) / (config.triggerDistance() - config.deadZone()), 0, 1) : 0;
         reveal.snapTo(progress * config.maxReveal());
     }

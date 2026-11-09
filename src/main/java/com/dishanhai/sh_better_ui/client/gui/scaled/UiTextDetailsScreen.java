@@ -192,7 +192,7 @@ final class UiTextDetailsScreen extends Screen {
     private void drawLines(GuiGraphics graphics, List<FormattedCharSequence> lines, int x, int y, int color) {
         int step = lineStep();
         int start = Math.max(0, Math.floorDiv(viewTop - y, step));
-        int end = Math.min(lines.size(), Math.ceilDiv(viewBottom - y, step));
+        int end = Math.min(lines.size(), UiMath.ceilDiv(viewBottom - y, step));
         for (int i = start; i < end; i++) {
             UiFormattedText.draw(graphics, font, lines.get(i), x, y + i * step, color, false, preferences);
         }
@@ -278,7 +278,7 @@ final class UiTextDetailsScreen extends Screen {
     private boolean hasTrack() { return textRight < innerRight && viewHeight() > 12 && maxScroll() > 0; }
 
     private int thumbHeight() {
-        return Math.clamp(Math.round((float) viewHeight() * viewHeight() / contentHeight), 12, viewHeight() - 1);
+        return UiMath.clamp(Math.round((float) viewHeight() * viewHeight() / contentHeight), 12, viewHeight() - 1);
     }
 
     private int thumbTop() {
@@ -287,11 +287,11 @@ final class UiTextDetailsScreen extends Screen {
 
     private void scrollThumb(double mouseY) {
         double fraction = (mouseY - viewTop - dragOffset) / (viewHeight() - thumbHeight());
-        scrollTo((int) Math.round(maxScroll() * Math.clamp(fraction, 0, 1)));
+        scrollTo((int) Math.round(maxScroll() * UiMath.clamp(fraction, 0, 1)));
     }
 
     private boolean scrollTo(int offset) {
-        int next = Math.clamp(offset, 0, maxScroll());
+        int next = UiMath.clamp(offset, 0, maxScroll());
         if (next == scroll) return false;
         scroll = next;
         return true;

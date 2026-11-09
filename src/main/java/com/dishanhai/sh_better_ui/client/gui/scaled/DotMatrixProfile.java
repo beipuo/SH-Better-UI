@@ -161,7 +161,7 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
         public Gradient {
             stops = List.copyOf(stops);
             Objects.requireNonNull(flow);
-            if (periodMs <= 0 || (!stops.isEmpty() && stops.getFirst().position() != 0f)) {
+            if (periodMs <= 0 || (!stops.isEmpty() && stops.get(0).position() != 0f)) {
                 throw new IllegalArgumentException();
             }
             for (int i = 1; i < stops.size(); i++) {
@@ -180,7 +180,7 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
             }
             ColorStop from = stops.get(low);
             boolean wrap = high == stops.size();
-            ColorStop to = wrap ? stops.getFirst() : stops.get(high);
+            ColorStop to = wrap ? stops.get(0) : stops.get(high);
             float end = wrap ? 1f : to.position();
             return GuiMotion.lerpColor(from.argb(), to.argb(), (float) ((position - from.position())
                     / (end - from.position())));

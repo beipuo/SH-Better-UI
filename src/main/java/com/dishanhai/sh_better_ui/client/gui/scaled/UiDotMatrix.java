@@ -180,7 +180,7 @@ public final class UiDotMatrix {
         boolean hovering = pointerInside && interaction.hoverRadius() > 0;
         DotMatrixProfile.PointerWave pointerWave = interaction.pointerWave();
         int waveRadius = pointerWave.radius();
-        double waveBand = Math.clamp(style.grid().spacing() * 0.75d, waveRadius * 0.3d, waveRadius * 0.75d);
+        double waveBand = UiMath.clamp(style.grid().spacing() * 0.75d, waveRadius * 0.3d, waveRadius * 0.75d);
         boolean followPointer = pointerInside && waveRadius > 0;
         float waveLift = reducedMotion ? 0f : pointerWave.lift();
         ClickRipple.Frame pulse = click.sample(nowMs, reducedMotion);
@@ -232,7 +232,7 @@ public final class UiDotMatrix {
 
     private void rebuildGrid(int width, int height, DotMatrixProfile.Grid grid) {
         int step = gridStep(width, height, grid.spacing());
-        int columns = Math.ceilDiv(width, step), rows = Math.ceilDiv(height, step);
+        int columns = UiMath.ceilDiv(width, step), rows = UiMath.ceilDiv(height, step);
         ArrayList<Dot> cells = new ArrayList<>();
         SplittableRandom layoutRandom = new SplittableRandom(grid.seed());
         for (int row = 0; row < rows; row++) {
@@ -261,7 +261,7 @@ public final class UiDotMatrix {
         int min = spacing, max = Math.max(spacing, Math.max(width, height));
         while (min < max) {
             int step = min + (max - min) / 2;
-            long cells = (long) Math.ceilDiv(width, step) * Math.ceilDiv(height, step);
+            long cells = (long) UiMath.ceilDiv(width, step) * UiMath.ceilDiv(height, step);
             if (cells > MAX_GRID_CELLS) min = step + 1;
             else max = step;
         }
@@ -330,7 +330,7 @@ public final class UiDotMatrix {
 
     private static float rippleLight(double dx, double dy, int radius, ClickRipple.Frame pulse) {
         if (pulse.uniform()) return localLight(dx, dy, radius * 0.38d);
-        double band = Math.clamp(radius * 0.15d, 1d, 10d);
+        double band = UiMath.clamp(radius * 0.15d, 1d, 10d);
         return ringLight(dx, dy, pulse.radiusProgress() * radius, band);
     }
 
@@ -356,22 +356,22 @@ public final class UiDotMatrix {
         float inner = radius - edge, outer = radius + edge;
         if (x + outer <= 0 || x - outer >= width || y + outer <= 0 || y - outer >= height) return;
         int clear = argb & RGB_MASK;
-        float centerX = Math.clamp(x, 0f, width), centerY = Math.clamp(y, 0f, height);
+        float centerX = UiMath.clamp(x, 0f, width), centerY = UiMath.clamp(y, 0f, height);
         for (int i = 0; i < CIRCLE_X.length - 1; i++) {
-            float ax = Math.clamp(x + CIRCLE_X[i] * inner, 0f, width);
-            float ay = Math.clamp(y + CIRCLE_Y[i] * inner, 0f, height);
-            float bx = Math.clamp(x + CIRCLE_X[i + 1] * inner, 0f, width);
-            float by = Math.clamp(y + CIRCLE_Y[i + 1] * inner, 0f, height);
+            float ax = UiMath.clamp(x + CIRCLE_X[i] * inner, 0f, width);
+            float ay = UiMath.clamp(y + CIRCLE_Y[i] * inner, 0f, height);
+            float bx = UiMath.clamp(x + CIRCLE_X[i + 1] * inner, 0f, width);
+            float by = UiMath.clamp(y + CIRCLE_Y[i + 1] * inner, 0f, height);
             sink.vertex(ax, ay, argb);
             sink.vertex(centerX, centerY, argb);
             sink.vertex(bx, by, argb);
             sink.vertex(bx, by, argb);
-            sink.vertex(Math.clamp(x + CIRCLE_X[i] * outer, 0f, width),
-                    Math.clamp(y + CIRCLE_Y[i] * outer, 0f, height), clear);
+            sink.vertex(UiMath.clamp(x + CIRCLE_X[i] * outer, 0f, width),
+                    UiMath.clamp(y + CIRCLE_Y[i] * outer, 0f, height), clear);
             sink.vertex(ax, ay, argb);
             sink.vertex(bx, by, argb);
-            sink.vertex(Math.clamp(x + CIRCLE_X[i + 1] * outer, 0f, width),
-                    Math.clamp(y + CIRCLE_Y[i + 1] * outer, 0f, height), clear);
+            sink.vertex(UiMath.clamp(x + CIRCLE_X[i + 1] * outer, 0f, width),
+                    UiMath.clamp(y + CIRCLE_Y[i + 1] * outer, 0f, height), clear);
         }
     }
 

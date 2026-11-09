@@ -135,7 +135,7 @@ final class OrientedBox {
         int right = (int) Math.ceil(union[RIGHT]);
         int top = (int) Math.floor(union[TOP]);
         int bottom = (int) Math.ceil(union[BOTTOM]);
-        int textX = Math.round(lines.getFirst().x());
+        int textX = Math.round(lines.get(0).x());
         return new LyricPlacement(top, bottom - top, bottom, anchorX, anchorY,
                 left, right, right - left, maxWidth, padX, LyricGeometry.LIFT_HEADROOM + 1, 0, textX, lines);
     }

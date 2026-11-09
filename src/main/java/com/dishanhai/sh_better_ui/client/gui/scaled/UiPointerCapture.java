@@ -68,7 +68,8 @@ public final class UiPointerCapture {
         if (pressHandlers.isEmpty() || blocked(owner)) return false;
         pressHandlers.removeIf(reference -> reference.get() == null);
         var snapshot = List.copyOf(pressHandlers);
-        for (var reference : snapshot.reversed()) {
+        for (int i = snapshot.size() - 1; i >= 0; i--) {
+            var reference = snapshot.get(i);
             PressRegistration registration = reference.get();
             if (registration != null && !registration.closed && registration.owner == owner
                     && registration.handler.press(x, y, button)) return true;

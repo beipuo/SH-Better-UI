@@ -79,7 +79,7 @@ final class AntigravityField {
 
     void advance(AntigravityProfile profile, UiPointerTracker.Frame pointer, float dt, boolean reducedMotion) {
         if (x.length == 0) return;
-        dt = Float.isFinite(dt) ? Math.clamp(dt, 0, 1f / 30) : 0;
+        dt = Float.isFinite(dt) ? UiMath.clamp(dt, 0, 1f / 30) : 0;
         if (reducedMotion) {
             // 减少动效完全停止时间、光标漂移、蓄力及弹簧，只保留静态粒子环。
             cursorX = targetX = width * .5f;
@@ -134,7 +134,7 @@ final class AntigravityField {
             float hy = homeY[i] + (float) Math.sin(time * .7f + phase[i]) * unit * .12f * profile.waveAmplitude();
             float dx = hx - cx, dy = hy - cy;
             float distance = (float) Math.hypot(dx, dy);
-            float capture = 1 - Math.clamp((distance - (magnet - edge)) / (edge * 2), 0, 1);
+            float capture = 1 - UiMath.clamp((distance - (magnet - edge)) / (edge * 2), 0, 1);
             float ease = capture * capture * (3 - 2 * capture);
             float turn = orbit[i];
             if (!settle) {
@@ -157,7 +157,7 @@ final class AntigravityField {
             }
             float omega = introClock < delay[i] * .9f ? 0 : omegaBase * agility[i];
             float damping = 1.64f * omega, stiffness = omega * omega;
-            int steps = Math.clamp((int) Math.ceil(omega * dt * 2), 1, 4);
+            int steps = UiMath.clamp((int) Math.ceil(omega * dt * 2), 1, 4);
             float h = dt / steps;
             for (int step = 0; step < steps; step++) {
                 vx[i] += ((tx - x[i]) * stiffness - vx[i] * damping) * h;
@@ -171,7 +171,7 @@ final class AntigravityField {
     /** 主动爆散只改变速度；宿主负责过滤减少动效和非交互输入。 */
     void burst(AntigravityProfile profile, float strength) {
         if (!Float.isFinite(strength)) return;
-        strength = Math.clamp(strength, 0, 2);
+        strength = UiMath.clamp(strength, 0, 2);
         float unit = height / WORLD_HEIGHT;
         float reach = Math.max(1, Math.max(profile.magnetRadius(), profile.ringRadius()) * unit * 1.8f);
         for (int i = 0; i < x.length; i++) {

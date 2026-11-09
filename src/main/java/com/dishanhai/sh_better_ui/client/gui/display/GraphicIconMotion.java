@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.display;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 /** 山海：在原图标位置内循环播放的几何动效。 */
 public enum GraphicIconMotion {
     SPIN(1600),
@@ -25,7 +26,7 @@ public enum GraphicIconMotion {
         double phase = Math.floorMod(timeMillis, periodMillis) / (double) periodMillis;
         return switch (this) {
             case SPIN -> new Frame(0f, SPIN_SCALE, (float) (phase * 360));
-            case FLOAT -> new Frame((float) (Math.sin(phase * Math.TAU) * size / 8), 0.75f, 0f);
+            case FLOAT -> new Frame((float) (Math.sin(phase * UiMath.TAU) * size / 8), 0.75f, 0f);
             case BOUNCE -> {
                 double flight = Math.min(1.0, phase / 0.82);
                 double height = 4 * flight * (1 - flight);

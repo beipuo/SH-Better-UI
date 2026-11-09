@@ -114,7 +114,9 @@ final class ShapeWavesRenderer extends RenderType {
         var key = new MaskKey(profile.text(), profile.fontFamily(), profile.fontWeight());
         Mask mask = MASKS.computeIfAbsent(key, ShapeWavesRenderer::createMask);
         if (MASKS.size() > MAX_CACHED_MASKS) {
-            Mask removed = MASKS.pollFirstEntry().getValue();
+            var entries = MASKS.values().iterator();
+            Mask removed = entries.next();
+            entries.remove();
             if (removed.texture != null) removed.texture.close();
         }
         return mask;

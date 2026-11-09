@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.layout;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.layout.AlignmentLayout.*;
 import com.dishanhai.sh_better_ui.client.gui.layout.VisualAlignment.*;
 
@@ -226,7 +227,7 @@ final class AlignmentSolver {
     }
 
     private static double inside(double start, double size, double min, double max) {
-        return Math.clamp(start, min, Math.max(min, max - size)) - start;
+        return UiMath.clamp(start, min, Math.max(min, max - size)) - start;
     }
 
     private static AlignmentPlacement placement(Node node, Reference state) {
@@ -241,10 +242,8 @@ final class AlignmentSolver {
     private static String parentName(Node node) { return node.parent == null ? "screen" : node.parent.name; }
 
     private static String targetName(Node node, Target target) {
-        return switch (target) {
-            case NodeTarget explicit -> explicit.node().name;
-            case FixedTarget fixed -> fixed.rect().toString();
-            case ParentTarget value -> value == ParentTarget.SCREEN ? "screen" : parentName(node);
-        };
+        if (target instanceof NodeTarget explicit) return explicit.node().name;
+        if (target instanceof FixedTarget fixed) return fixed.rect().toString();
+        return target == ParentTarget.SCREEN ? "screen" : parentName(node);
     }
 }

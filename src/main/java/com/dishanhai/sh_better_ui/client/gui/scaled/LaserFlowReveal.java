@@ -14,6 +14,6 @@ public record LaserFlowReveal(ResourceLocation texture, float radius, float opac
             throw new IllegalArgumentException("Non-finite laser reveal parameter");
         }
         radius = Math.max(0, radius);
-        opacity = Math.clamp(opacity, 0, 1);
+        opacity = UiMath.clamp(opacity, 0, 1);
     }
 }

@@ -73,7 +73,7 @@ public final class LightRays {
         }
 
         long now = PageTransition.nowMs();
-        float dt = lastFrameMs == Long.MIN_VALUE ? 0 : Math.clamp((now - lastFrameMs) / 1000f, 0, .05f);
+        float dt = lastFrameMs == Long.MIN_VALUE ? 0 : UiMath.clamp((now - lastFrameMs) / 1000f, 0, .05f);
         lastFrameMs = now;
         motionAllowed = !preferences.reducedMotion();
         if (motionAllowed) {

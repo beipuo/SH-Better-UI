@@ -158,7 +158,7 @@ public final class UiLocalModal {
         try {
             while (!sessions.isEmpty()) {
                 try {
-                    finish(sessions.getLast(), true);
+                    finish(sessions.get(sessions.size() - 1), true);
                 } catch (RuntimeException | Error error) {
                     if (failure == null) failure = error;
                     else if (failure != error) failure.addSuppressed(error);
@@ -261,7 +261,7 @@ public final class UiLocalModal {
         var session = forSource(focused);
         if (key == GLFW.GLFW_KEY_ESCAPE && !sessions.isEmpty()) {
             swallowedKeys.add(key);
-            (session == null ? sessions.getLast() : session).cancel();
+            (session == null ? sessions.get(sessions.size() - 1) : session).cancel();
             return true;
         }
         if (session != null) {
@@ -360,8 +360,8 @@ public final class UiLocalModal {
     }
 
     private Bounds clipToScreen(Bounds viewport) {
-        int x = Math.clamp(viewport.x(), 0, owner.width);
-        int y = Math.clamp(viewport.y(), 0, owner.height);
+        int x = UiMath.clamp(viewport.x(), 0, owner.width);
+        int y = UiMath.clamp(viewport.y(), 0, owner.height);
         return new Bounds(x, y, Math.max(0, Math.min(owner.width, viewport.right()) - x),
                 Math.max(0, Math.min(owner.height, viewport.bottom()) - y));
     }

@@ -131,7 +131,7 @@ public final class UiLoading {
                 * Math.min(Math.hypot(pose.m00(), pose.m01()), Math.hypot(pose.m10(), pose.m11()));
         float stroke = Math.max(1f, diameter / 6f);
         float feather = (float) Math.min(stroke * 0.5f, 1.0 / Math.max(0.01, scale));
-        int segments = 4 * Math.clamp((int) Math.ceil(Math.sqrt(radius * scale / 0.32)), 6, 48);
+        int segments = 4 * UiMath.clamp((int) Math.ceil(Math.sqrt(radius * scale / 0.32)), 6, 48);
         var ring = new Ring(radius, radius - stroke, feather, segments);
         double end = (double) arc.start() + arc.sweep();
 

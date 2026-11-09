@@ -183,7 +183,7 @@ public final class UiToast {
         private Active(Notice notice, long startedAt, double durationMultiplier) {
             this.notice = notice;
             this.startedAt = startedAt;
-            this.holdMs = Math.clamp(Math.round(notice.holdMs * durationMultiplier), 1L, MAX_HOLD_MS);
+            this.holdMs = UiMath.clamp(Math.round(notice.holdMs * durationMultiplier), 1L, MAX_HOLD_MS);
         }
 
         private long totalMs() {

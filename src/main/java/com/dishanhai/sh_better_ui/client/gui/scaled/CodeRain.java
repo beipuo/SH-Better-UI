@@ -117,7 +117,7 @@ public final class CodeRain {
         long now = PageTransition.nowMs();
         boolean reduced = preferences.reducedMotion();
         if (!reduced && !wasReduced && lastFrameMs != Long.MIN_VALUE) {
-            seconds += Math.clamp((now - lastFrameMs) / 1000.0, 0, .05);
+            seconds += UiMath.clamp((now - lastFrameMs) / 1000.0, 0, .05);
         }
         wasReduced = reduced;
         lastFrameMs = now;
@@ -184,7 +184,7 @@ public final class CodeRain {
                     dotCount++;
                     continue;
                 }
-                int index = Math.clamp(cell.glyphIndex, 0, glyphs.length - 1);
+                int index = UiMath.clamp(cell.glyphIndex, 0, glyphs.length - 1);
                 var glyph = glyphs[index];
                 float x = cell.x / scale - glyphWidths[index] * .5f;
                 float y = cell.y / scale - font.lineHeight * .5f;

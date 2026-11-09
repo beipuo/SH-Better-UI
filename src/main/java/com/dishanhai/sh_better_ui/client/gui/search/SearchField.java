@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
@@ -250,7 +251,7 @@ public final class SearchField<T> extends EditBox {
     }
 
     private void moveSelection(int delta) {
-        selected = Math.clamp(selected + delta, 0, suggestions.size() - 1);
+        selected = UiMath.clamp(selected + delta, 0, suggestions.size() - 1);
     }
 
     /** 返回当前联想清单在宿主画面上的占用范围。 */
@@ -373,7 +374,7 @@ public final class SearchField<T> extends EditBox {
             int minY = TOOLTIP_PADDING;
             int maxY = Math.max(minY, screenHeight - TOOLTIP_PADDING - height);
             int y = below <= maxY || maxY - below >= above - height - minY ? below : above - height;
-            return new Vector2i(anchor.getX() + TOOLTIP_PADDING, Math.clamp(y, minY, maxY));
+            return new Vector2i(anchor.getX() + TOOLTIP_PADDING, UiMath.clamp(y, minY, maxY));
         };
     }
 
@@ -464,7 +465,7 @@ public final class SearchField<T> extends EditBox {
         int rows = Math.min(suggestions.size(), placeBelow ? belowRows : aboveRows);
         if (rows == 0) return null;
 
-        firstVisible = Math.clamp(firstVisible, Math.max(0, selected - rows + 1), selected);
+        firstVisible = UiMath.clamp(firstVisible, Math.max(0, selected - rows + 1), selected);
         firstVisible = Math.min(firstVisible, suggestions.size() - rows);
         return new Dropdown(placeBelow ? below : above - rows * rowHeight, rows, rowHeight);
     }

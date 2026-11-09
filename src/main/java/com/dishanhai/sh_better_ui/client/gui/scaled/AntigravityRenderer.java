@@ -83,7 +83,7 @@ final class AntigravityRenderer extends RenderType {
             float halfY = capsule ? size * .17f * (.55f + .45f * ring) : halfX;
             float u = switch (p.colorMode()) {
                 case CONIC -> (float) (Math.atan2(dy, dx) / (Math.PI * 2)) + f.hue + (f.colorSeed[i] - .5f) * .06f;
-                case RADIAL -> Math.clamp(distance / Math.max(ringRadius * 2.4f, .001f), 0, 1) + (f.colorSeed[i] - .5f) * .06f;
+                case RADIAL -> UiMath.clamp(distance / Math.max(ringRadius * 2.4f, .001f), 0, 1) + (f.colorSeed[i] - .5f) * .06f;
                 case RANDOM -> (float) Math.min(p.colors().size() - 1, (int) (f.colorSeed[i] * p.colors().size()))
                         / Math.max(p.colors().size() - 1, 1);
             };

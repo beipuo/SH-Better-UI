@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.display;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -124,6 +125,6 @@ public final class GraphicDisplayLayout {
 
     private static int columnCount(int width, Grid grid) {
         long fitting = ((long) width + GAP) / ((long) grid.minColumnWidth() + GAP);
-        return Math.clamp(fitting, 1, grid.maxColumns());
+        return UiMath.clamp(fitting, 1, grid.maxColumns());
     }
 }

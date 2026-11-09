@@ -9,6 +9,6 @@ public record LaserFlowSurface(Bounds bounds, float radius) {
     public LaserFlowSurface {
         Objects.requireNonNull(bounds);
         if (!Float.isFinite(radius)) throw new IllegalArgumentException("Non-finite laser surface radius");
-        radius = Math.clamp(radius, 0, Math.min(bounds.width(), bounds.height()) * .5f);
+        radius = UiMath.clamp(radius, 0, Math.min(bounds.width(), bounds.height()) * .5f);
     }
 }

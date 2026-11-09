@@ -35,12 +35,12 @@ public record AntigravityProfile(
     public enum Shape { CAPSULE, SPHERE, BOX, TETRAHEDRON }
 
     public AntigravityProfile {
-        count = Math.clamp(count, 1, MAX_PARTICLES);
+        count = UiMath.clamp(count, 1, MAX_PARTICLES);
         colors = List.copyOf(colors);
         if (colors.isEmpty() || colors.size() > 256) throw new IllegalArgumentException("Palette needs 1..256 colors");
         Objects.requireNonNull(colorMode);
         Objects.requireNonNull(particleShape);
-        waveCount = Math.clamp(waveCount, 0, 64);
+        waveCount = UiMath.clamp(waveCount, 0, 64);
         colorSpeed = range(colorSpeed, -10f, 10f);
         particleSize = range(particleSize, 0f, 10f);
         particleVariance = range(particleVariance, 0f, 1f);
@@ -59,7 +59,7 @@ public record AntigravityProfile(
 
     private static float range(float value, float min, float max) {
         if (!Float.isFinite(value)) throw new IllegalArgumentException("Non-finite antigravity parameter");
-        return Math.clamp(value, min, max);
+        return UiMath.clamp(value, min, max);
     }
 
     public static Builder builder() { return new Builder(); }

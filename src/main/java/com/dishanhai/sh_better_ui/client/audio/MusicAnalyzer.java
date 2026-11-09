@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.audio;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -28,7 +29,7 @@ public final class MusicAnalyzer {
     public MusicAnalyzer() {
         double sum = 0;
         for (int i = 0; i < WINDOW_SIZE; i++) {
-            window[i] = .5 - .5 * Math.cos(Math.TAU * i / (WINDOW_SIZE - 1));
+            window[i] = .5 - .5 * Math.cos(UiMath.TAU * i / (WINDOW_SIZE - 1));
             sum += window[i] * window[i];
         }
         windowPower = sum / WINDOW_SIZE;
@@ -62,7 +63,7 @@ public final class MusicAnalyzer {
         for (int offset = 0; offset < interleaved.length; offset += channels) {
             for (int channel = 0; channel < channels; channel++) {
                 float value = interleaved[offset + channel];
-                samples[channel][count] = Float.isFinite(value) ? Math.clamp(value, -1f, 1f) : 0;
+                samples[channel][count] = Float.isFinite(value) ? Math.max(-1f, Math.min(1f, value)) : 0;
             }
             count++;
             if (count == WINDOW_SIZE) {
@@ -147,7 +148,7 @@ public final class MusicAnalyzer {
             }
         }
         for (int length = 2; length <= WINDOW_SIZE; length <<= 1) {
-            double angle = -Math.TAU / length;
+            double angle = -UiMath.TAU / length;
             double stepReal = Math.cos(angle), stepImaginary = Math.sin(angle);
             for (int start = 0; start < WINDOW_SIZE; start += length) {
                 double factorReal = 1, factorImaginary = 0;

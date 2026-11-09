@@ -31,7 +31,7 @@ public record LaserFlowProfile(float beamPosition, float surfaceLevel, int color
 
     private static float range(float value, float min, float max) {
         if (!Float.isFinite(value)) throw new IllegalArgumentException("Non-finite laser flow parameter");
-        return Math.clamp(value, min, max);
+        return UiMath.clamp(value, min, max);
     }
 
     public static final class Builder {

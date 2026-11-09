@@ -58,7 +58,7 @@ public record LightRaysProfile(Origin raysOrigin, int raysColor, float raysSpeed
 
     private static float range(float value, float min, float max) {
         if (!Float.isFinite(value)) throw new IllegalArgumentException("Non-finite light rays parameter");
-        return Math.clamp(value, min, max);
+        return UiMath.clamp(value, min, max);
     }
 
     public static final class Builder {

@@ -19,7 +19,7 @@ final class CapsuleMesh {
         if (stroke == 0f) edge = fill;
         if (hasInterior) feather = Math.min(feather, Math.min(stroke, halfSide - stroke) * 0.5f);
         // 依据屏幕半径增加弧段，让常用 GUI 比例的弦高误差小于一个物理像素。
-        int arcSegments = Math.clamp((int) Math.ceil(Math.sqrt(radius * scale / 0.32)), 6, 48);
+        int arcSegments = UiMath.clamp((int) Math.ceil(Math.sqrt(radius * scale / 0.32)), 6, 48);
         Point start = new Point(width - radius, radius, 0f, -1f, 1, -1);
         Point previous = start;
         int clearEdge = edge & 0x00FFFFFF;

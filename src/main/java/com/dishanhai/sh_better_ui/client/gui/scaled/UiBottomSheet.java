@@ -158,7 +158,7 @@ public final class UiBottomSheet {
             float destination = anchors[targetAnchor];
             if (reducedMotion || (destination == 0f && height.value() <= 0f)) height.snap(destination);
         } else if (reducedMotion) {
-            height.snap(Math.clamp(height.value(), anchors[0], anchors[anchors.length - 1]));
+            height.snap(UiMath.clamp(height.value(), anchors[0], anchors[anchors.length - 1]));
         }
 
         double visibleHeight = visibleHeight(viewport.height());
@@ -173,7 +173,7 @@ public final class UiBottomSheet {
         int handleTop = panel.y() + Math.min(3, pixels - handleHeight);
         Bounds handle = new Bounds(panel.x() + (panel.width() - handleWidth) / 2, handleTop,
                 handleWidth, handleHeight);
-        int contentTop = Math.clamp(handle.bottom() + 2, viewport.y(), viewport.bottom());
+        int contentTop = UiMath.clamp(handle.bottom() + 2, viewport.y(), viewport.bottom());
         Bounds content = new Bounds(panel.x(), contentTop, panel.width(), panel.bottom() - contentTop);
         int preview = dragging ? projectedAnchor(recentVelocity(nowMs) / dragViewportHeight) : targetAnchor;
         sampledHeight = height.value();
@@ -257,7 +257,7 @@ public final class UiBottomSheet {
             double current = height.value();
             double lower = Math.min(current, anchors[0] - allowance);
             double upper = Math.max(current, anchors[anchors.length - 1] + allowance);
-            height.snap((float) Math.clamp(current - delta.y() / dragViewportHeight, lower, upper));
+            height.snap((float) UiMath.clamp(current - delta.y() / dragViewportHeight, lower, upper));
         }
         long elapsed = nowMs - lastMotionMs;
         double displacement = lastMotionY - y;
@@ -265,7 +265,7 @@ public final class UiBottomSheet {
         if (elapsed >= VELOCITY_WINDOW_MS) {
             velocity = 0;
         } else {
-            double instant = Math.clamp(displacement * 1000.0 / elapsed,
+            double instant = UiMath.clamp(displacement * 1000.0 / elapsed,
                     -MAX_POINTER_SPEED, MAX_POINTER_SPEED);
             // 快速反向时采用新趋势，同时过滤小于 2 GUI 像素的单次抖动。
             if (velocity == 0 || (instant * velocity < 0 && Math.abs(displacement) >= 2.0)) {
@@ -279,12 +279,12 @@ public final class UiBottomSheet {
     }
 
     private double recentVelocity(long nowMs) {
-        long idle = Math.clamp(nowMs - lastMotionMs, 0L, VELOCITY_WINDOW_MS);
+        long idle = UiMath.clamp(nowMs - lastMotionMs, 0L, VELOCITY_WINDOW_MS);
         return velocity * (1.0 - (double) idle / VELOCITY_WINDOW_MS);
     }
 
     private int projectedAnchor(double velocity) {
-        double position = Math.clamp(height.value(), anchors[0], anchors[anchors.length - 1]);
+        double position = UiMath.clamp(height.value(), anchors[0], anchors[anchors.length - 1]);
         double projected = position + velocity * PROJECTION_SECONDS;
         int closest = 0;
         double best = Math.abs(anchors[0] - projected);
@@ -300,7 +300,7 @@ public final class UiBottomSheet {
 
     private double visibleHeight(int viewportHeight) {
         double raw = (double) height.value() * viewportHeight;
-        double boundary = Math.clamp(raw, (double) anchors[0] * viewportHeight,
+        double boundary = UiMath.clamp(raw, (double) anchors[0] * viewportHeight,
                 (double) anchors[anchors.length - 1] * viewportHeight);
         double excess = raw - boundary;
         return boundary + RUBBER_BAND_LIMIT * excess / (RUBBER_BAND_LIMIT + Math.abs(excess));

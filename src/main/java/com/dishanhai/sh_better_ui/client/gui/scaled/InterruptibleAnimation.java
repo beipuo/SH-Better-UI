@@ -231,7 +231,7 @@ public final class InterruptibleAnimation implements AutoCloseable {
         if (blend == null) {
             spring.update(nowMs);
         } else {
-            double progress = Math.clamp(((double) nowMs - blend.startMs()) / blend.durationMs(), blendProgress, 1d);
+            double progress = UiMath.clamp(((double) nowMs - blend.startMs()) / blend.durationMs(), blendProgress, 1d);
             blendProgress = progress;
             double eased = blend.curve() == BlendCurve.LINEAR ? progress : progress * progress * (3d - 2d * progress);
             if (progress >= 1d) {
@@ -253,7 +253,7 @@ public final class InterruptibleAnimation implements AutoCloseable {
     private static float blendVelocity(Blend blend, double progress) {
         double slope = blend.curve() == BlendCurve.LINEAR ? 1d : 6d * progress * (1d - progress);
         double speed = ((double) blend.to() - blend.from()) * slope * 1000d / blend.durationMs();
-        return (float) Math.clamp(speed, -Float.MAX_VALUE, Float.MAX_VALUE);
+        return (float) UiMath.clamp(speed, -Float.MAX_VALUE, Float.MAX_VALUE);
     }
 
     private boolean hasQueued() {

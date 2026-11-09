@@ -20,7 +20,7 @@ public record ViewportTransform(double x, double y, double scale) {
         if (!Double.isFinite(anchorX) || !Double.isFinite(anchorY) || !Double.isFinite(factor) || factor <= 0) {
             return this;
         }
-        double nextScale = Math.clamp(scale * factor, minScale, maxScale);
+        double nextScale = UiMath.clamp(scale * factor, minScale, maxScale);
         if (nextScale == scale) return this;
         return new ViewportTransform(anchorX - contentX(anchorX) * nextScale,
                 anchorY - contentY(anchorY) * nextScale, nextScale);

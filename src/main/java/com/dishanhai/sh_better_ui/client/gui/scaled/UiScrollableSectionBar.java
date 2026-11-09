@@ -177,7 +177,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         // 向右找第一个尾部越界的标签；向左找最近一个起点在视口之前的标签。
         int index = forward ? (int) Math.floor((edge - tabWidth) / stride) + 1
                 : (int) Math.ceil(edge / stride) - 1;
-        focused = Math.clamp(index, 0, buttons.size() - 1);
+        focused = UiMath.clamp(index, 0, buttons.size() - 1);
         double start = (double) focused * stride;
         scrollTo(forward ? start + tabWidth - viewportWidth() : start);
         syncFocus();

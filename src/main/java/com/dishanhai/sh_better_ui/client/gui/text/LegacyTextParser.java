@@ -99,9 +99,9 @@ final class LegacyTextParser {
         }
         append(parts, raw, start, raw.length(), style, active);
         if (parts.isEmpty()) return Component.empty().setStyle(base);
-        if (parts.size() == 1) return parts.getFirst();
-        MutableComponent root = parts.getFirst().getStyle().equals(base)
-                ? parts.removeFirst() : Component.empty().setStyle(base);
+        if (parts.size() == 1) return parts.get(0);
+        MutableComponent root = parts.get(0).getStyle().equals(base)
+                ? parts.remove(0) : Component.empty().setStyle(base);
         parts.forEach(root::append);
         return root;
     }

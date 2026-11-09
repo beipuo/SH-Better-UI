@@ -135,10 +135,10 @@ public final class SearchIndex<T> {
                                 Predicate<String> acceptsCompletion) {
         SearchQuery prepared = SearchQuery.of(query);
         if (limit <= 0 || prepared.tokens().isEmpty()) return List.of();
-        if (prepared.tokens().getLast().kind() != SearchQuery.Kind.TEXT) {
+        if (prepared.tokens().get(prepared.tokens().size() - 1).kind() != SearchQuery.Kind.TEXT) {
             return suggestFilters(prepared, scope, limit, acceptsCompletion);
         }
-        String text = prepared.hasFilters() ? prepared.tokens().getLast().text() : prepared.text();
+        String text = prepared.hasFilters() ? prepared.tokens().get(prepared.tokens().size() - 1).text() : prepared.text();
 
         List<List<Suggestion<T>>> ranked = new ArrayList<>(RANK_COUNT);
         for (int i = 0; i < RANK_COUNT; i++) ranked.add(new ArrayList<>());
@@ -182,7 +182,7 @@ public final class SearchIndex<T> {
 
     private List<Suggestion<T>> suggestFilters(SearchQuery query, Predicate<? super T> scope, int limit,
                                                Predicate<String> acceptsCompletion) {
-        var token = query.tokens().getLast();
+        var token = query.tokens().get(query.tokens().size() - 1);
         var preceding = query.tokens().subList(0, query.tokens().size() - 1);
         var unique = new LinkedHashMap<String, RankedSuggestion<T>>();
         boolean mod = token.kind() == SearchQuery.Kind.MOD;

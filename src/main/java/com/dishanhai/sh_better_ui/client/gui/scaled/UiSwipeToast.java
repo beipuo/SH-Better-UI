@@ -165,7 +165,9 @@ public final class UiSwipeToast extends AbstractWidget {
     /** 平台事件入口：浮层只接收落在可见区域内的按下，并让模态框先处理。 */
     public static boolean handleOverlayPress(Screen screen, double x, double y, int button) {
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return false;
-        for (var child : screen.children().reversed()) {
+        var children = screen.children();
+        for (int i = children.size() - 1; i >= 0; i--) {
+            var child = children.get(i);
             if (child instanceof UiSwipeToast toast && toast.placement == Placement.BOTTOM_RIGHT
                     && toast.mouseClicked(x, y, button)) {
                 screen.setFocused(toast);
@@ -255,7 +257,7 @@ public final class UiSwipeToast extends AbstractWidget {
 
     private void settleBack(float velocity, long now) {
         if (preferences.reducedMotion()) settle.snap(0f);
-        else settle.setTarget(0f, Math.clamp(velocity, -1200f, 1200f), now);
+        else settle.setTarget(0f, UiMath.clamp(velocity, -1200f, 1200f), now);
     }
 
     private float dragOffset(SwipeGesture.Sample sample) {
@@ -430,7 +432,7 @@ public final class UiSwipeToast extends AbstractWidget {
 
     private Layout layout(Font font, int width, int maxHeight) {
         int close = options.closeButton() ? BUTTON_SIZE + GAP : 0;
-        int action = content.action() != null ? Math.clamp(font.width(content.action().label()) + 12, 20, 96) : 0;
+        int action = content.action() != null ? UiMath.clamp(font.width(content.action().label()) + 12, 20, 96) : 0;
         int available = width - 2 * PADDING - close;
         if (action > 0) action = Math.min(action, available - MIN_TEXT - GAP);
         if (available < MIN_TEXT || (content.action() != null && action < 16)) return null;

@@ -35,7 +35,7 @@ public final class UiExpansionController {
             if (elapsed >= duration) return 1f;
             if (elapsed <= 0) return 0f;
             double result = easing.applyAsDouble((double) elapsed / duration);
-            return Double.isFinite(result) ? (float) Math.clamp(result, 0d, 1d) : (float) elapsed / duration;
+            return Double.isFinite(result) ? (float) UiMath.clamp(result, 0d, 1d) : (float) elapsed / duration;
         }
     }
 
@@ -222,10 +222,10 @@ public final class UiExpansionController {
                 || !Float.isFinite(outline.getW()) || !Float.isFinite(outline.getH())) {
             throw new IllegalArgumentException("Non-finite expansion outline");
         }
-        float width = Math.clamp(outline.getW(), 0, limit.width());
-        float height = Math.clamp(outline.getH(), 0, limit.height());
-        float x = Math.clamp(outline.getX(), limit.x(), limit.right() - width);
-        float y = Math.clamp(outline.getY(), limit.y(), limit.bottom() - height);
+        float width = UiMath.clamp(outline.getW(), 0, limit.width());
+        float height = UiMath.clamp(outline.getH(), 0, limit.height());
+        float x = UiMath.clamp(outline.getX(), limit.x(), limit.right() - width);
+        float y = UiMath.clamp(outline.getY(), limit.y(), limit.bottom() - height);
         if (x == outline.getX() && y == outline.getY() && width == outline.getW() && height == outline.getH()) {
             return outline;
         }
@@ -235,8 +235,8 @@ public final class UiExpansionController {
     static Bounds fit(Bounds bounds, Bounds limit) {
         int width = Math.min(bounds.width(), limit.width());
         int height = Math.min(bounds.height(), limit.height());
-        return new Bounds(Math.clamp(bounds.x(), limit.x(), limit.right() - width),
-                Math.clamp(bounds.y(), limit.y(), limit.bottom() - height), width, height);
+        return new Bounds(UiMath.clamp(bounds.x(), limit.x(), limit.right() - width),
+                UiMath.clamp(bounds.y(), limit.y(), limit.bottom() - height), width, height);
     }
 
     static boolean contains(GuiRect outline, float radius, double x, double y) {
@@ -244,8 +244,8 @@ public final class UiExpansionController {
         double bottom = (double) outline.getY() + outline.getH();
         if (!(x >= outline.getX() && x < right && y >= outline.getY() && y < bottom)) return false;
         double r = RoundedCorners.fit(outline.getW(), outline.getH(), radius);
-        double dx = x - Math.clamp(x, outline.getX() + r, right - r);
-        double dy = y - Math.clamp(y, outline.getY() + r, bottom - r);
+        double dx = x - UiMath.clamp(x, outline.getX() + r, right - r);
+        double dy = y - UiMath.clamp(y, outline.getY() + r, bottom - r);
         return dx * dx + dy * dy <= r * r;
     }
 

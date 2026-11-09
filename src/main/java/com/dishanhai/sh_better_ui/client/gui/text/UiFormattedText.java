@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.text;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.lyrics.common.style.ColorMath;
@@ -123,7 +124,7 @@ public final class UiFormattedText {
     public static FormattedCharSequence reveal(FormattedCharSequence text, int revealed, int obfuscatedTail,
                                                 long timeMillis, UiPreferences preferences) {
         var glyphs = collectGlyphs(text);
-        int visible = Math.clamp(revealed, 0, glyphs.size());
+        int visible = UiMath.clamp(revealed, 0, glyphs.size());
         int tail = Math.min(visible, Math.max(0, obfuscatedTail));
         long phase = Math.floorDiv(timeMillis, 200);
         for (int i = visible - tail; i < glyphs.size(); i++) {

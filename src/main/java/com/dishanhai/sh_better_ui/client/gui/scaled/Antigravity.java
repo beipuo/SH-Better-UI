@@ -68,7 +68,7 @@ public final class Antigravity {
         }
         Objects.requireNonNull(preferences);
         long now = PageTransition.nowMs();
-        float dt = lastFrameMs == Long.MIN_VALUE ? 0 : Math.clamp((now - lastFrameMs) / 1000f, 0, 1f / 30);
+        float dt = lastFrameMs == Long.MIN_VALUE ? 0 : UiMath.clamp((now - lastFrameMs) / 1000f, 0, 1f / 30);
         lastFrameMs = now;
         motionAllowed = !paused && !preferences.reducedMotion() && !preferences.highContrast()
                 && profile.opacity() > 0 && bounds.width() > 0 && bounds.height() > 0;

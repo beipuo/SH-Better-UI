@@ -140,25 +140,21 @@ public final class NetworkScreen extends Screen {
         for (int i = 0; i < layout.rows().size(); i++) {
             Row row = tab.rows().get(layout.firstRow() + i);
             Bounds area = layout.rows().get(i);
-            switch (row) {
-                case Edit edit -> {
-                    int labelWidth = editLabelWidth(area);
-                    var input = NetworkTheme.editBox(font, new Bounds(area.x() + labelWidth, area.y(),
-                            area.width() - labelWidth, area.height()), edit.label(), preferences);
-                    edit.configure().accept(input);
-                    addRenderableWidget(input);
-                }
-                case Toggle toggle -> {
-                    var widget = new NetworkToggle(area, toggle.label(), toggle.value().getAsBoolean(), preferences,
-                            ignored -> {
-                                if (toggle.enabled().getAsBoolean()) {
-                                    toggle.onChange().accept(!toggle.value().getAsBoolean());
-                                }
-                            });
-                    widget.active = toggle.enabled().getAsBoolean();
-                    toggles.add(new ToggleBinding(toggle, addRenderableWidget(widget)));
-                }
-                default -> { }
+            if (row instanceof Edit edit) {
+                int labelWidth = editLabelWidth(area);
+                var input = NetworkTheme.editBox(font, new Bounds(area.x() + labelWidth, area.y(),
+                        area.width() - labelWidth, area.height()), edit.label(), preferences);
+                edit.configure().accept(input);
+                addRenderableWidget(input);
+            } else if (row instanceof Toggle toggle) {
+                var widget = new NetworkToggle(area, toggle.label(), toggle.value().getAsBoolean(), preferences,
+                        ignored -> {
+                            if (toggle.enabled().getAsBoolean()) {
+                                toggle.onChange().accept(!toggle.value().getAsBoolean());
+                            }
+                        });
+                widget.active = toggle.enabled().getAsBoolean();
+                toggles.add(new ToggleBinding(toggle, addRenderableWidget(widget)));
             }
         }
         if (layout.pageCount() > 1) {
@@ -172,12 +168,9 @@ public final class NetworkScreen extends Screen {
     }
 
     private static NetworkLayout.RowKind kind(Row row) {
-        return switch (row) {
-            case Field ignored -> NetworkLayout.RowKind.FIELD;
-            case Edit ignored -> NetworkLayout.RowKind.FIELD;
-            case Status ignored -> NetworkLayout.RowKind.STATUS;
-            case Toggle ignored -> NetworkLayout.RowKind.TOGGLE;
-        };
+        if (row instanceof Status) return NetworkLayout.RowKind.STATUS;
+        if (row instanceof Toggle) return NetworkLayout.RowKind.TOGGLE;
+        return NetworkLayout.RowKind.FIELD;
     }
 
     private int editLabelWidth(Bounds area) {
@@ -247,28 +240,23 @@ public final class NetworkScreen extends Screen {
             Row row = tab.rows().get(layout.firstRow() + i);
             Bounds area = layout.rows().get(i);
             boolean hovered = area.contains(mouseX, mouseY);
-            switch (row) {
-                case Field field -> {
-                    Component label = field.label().copy()
-                            .withStyle(style -> style.withColor(NetworkTheme.labelColor(preferences)));
-                    Component text = Component.translatable("sh_better_ui.network.field", label, field.value().get());
-                    NetworkTheme.drawField(graphics, font, area, text, preferences);
-                    if (hovered && font.width(text) > area.width() - 10) tip = text;
+            if (row instanceof Field field) {
+                Component label = field.label().copy()
+                        .withStyle(style -> style.withColor(NetworkTheme.labelColor(preferences)));
+                Component text = Component.translatable("sh_better_ui.network.field", label, field.value().get());
+                NetworkTheme.drawField(graphics, font, area, text, preferences);
+                if (hovered && font.width(text) > area.width() - 10) tip = text;
+            } else if (row instanceof Edit edit) {
+                var labelArea = new Bounds(area.x(), area.y(), editLabelWidth(area) - GAP, area.height());
+                NetworkTheme.drawField(graphics, font, labelArea, edit.label(), preferences);
+                if (labelArea.contains(mouseX, mouseY) && font.width(edit.label()) > labelArea.width() - 10) {
+                    tip = edit.label();
                 }
-                case Edit edit -> {
-                    var labelArea = new Bounds(area.x(), area.y(), editLabelWidth(area) - GAP, area.height());
-                    NetworkTheme.drawField(graphics, font, labelArea, edit.label(), preferences);
-                    if (labelArea.contains(mouseX, mouseY) && font.width(edit.label()) > labelArea.width() - 10) {
-                        tip = edit.label();
-                    }
-                }
-                case Status status -> {
-                    var entry = status.value().get();
-                    var statusLayout = GraphicDisplayLayout.arrange(area, 1, area.height(), false);
-                    GraphicDisplay.drawRows(graphics, font, statusLayout, List.of(entry), 1, DarkModeTheme.textColor(), 0);
-                    if (hovered) tip = entry.label();
-                }
-                case Toggle ignored -> { }
+            } else if (row instanceof Status status) {
+                var entry = status.value().get();
+                var statusLayout = GraphicDisplayLayout.arrange(area, 1, area.height(), false);
+                GraphicDisplay.drawRows(graphics, font, statusLayout, List.of(entry), 1, DarkModeTheme.textColor(), 0);
+                if (hovered) tip = entry.label();
             }
         }
         if (layout.pageCount() > 1) {

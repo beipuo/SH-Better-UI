@@ -78,7 +78,7 @@ public final class UiFullscreenPreview extends Screen {
             var splitter = font.getSplitter();
             var lines = splitter.splitLines(getTitle(), headingWidth, Style.EMPTY);
             if (lines.size() > 1) lines = UiTextDetails.truncate(splitter, lines, headingWidth, 1);
-            if (!lines.isEmpty()) heading = Language.getInstance().getVisualOrder(lines.getFirst());
+            if (!lines.isEmpty()) heading = Language.getInstance().getVisualOrder(lines.get(0));
         }
 
         viewport = new Bounds(0, barHeight, width, height - barHeight);

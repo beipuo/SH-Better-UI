@@ -50,10 +50,10 @@ public final class UiFrameHandoff {
             return false;
         }
 
-        int left = Math.clamp((int) Math.floor(area.x() * scale), 0, target.viewWidth);
-        int top = Math.clamp((int) Math.floor(area.y() * scale), 0, target.viewHeight);
-        int right = Math.clamp((int) Math.ceil(area.right() * scale), 0, target.viewWidth);
-        int bottom = Math.clamp((int) Math.ceil(area.bottom() * scale), 0, target.viewHeight);
+        int left = UiMath.clamp((int) Math.floor(area.x() * scale), 0, target.viewWidth);
+        int top = UiMath.clamp((int) Math.floor(area.y() * scale), 0, target.viewHeight);
+        int right = UiMath.clamp((int) Math.ceil(area.right() * scale), 0, target.viewWidth);
+        int bottom = UiMath.clamp((int) Math.ceil(area.bottom() * scale), 0, target.viewHeight);
         if (right <= left || bottom <= top) {
             clear();
             return false;

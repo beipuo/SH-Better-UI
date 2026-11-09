@@ -44,7 +44,7 @@ public final class MusicRhythm {
         // A count can advance during a dropped frame. Draw one fresh pulse, never a backlog.
         float accent = intensity(.65f * audio.bass() + .35f * audio.rms(), 5f);
         if (newBeat && audio.beat() >= .32f && accent >= .24f
-                && (onsets.isEmpty() || (double) nowMs - onsets.getLast().timeMs() >= MIN_PULSE_GAP_MS)) {
+                && (onsets.isEmpty() || (double) nowMs - onsets.get(onsets.size() - 1).timeMs() >= MIN_PULSE_GAP_MS)) {
             onsets.add(new Onset(nowMs, accent * audio.beat()));
         }
         initialized = true;

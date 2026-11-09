@@ -195,7 +195,7 @@ public final class IngredientPicker {
         // NeoForge 在 init 后也会调用此方法。
         protected void setInitialFocus() {
             if (cancel != null && getFocused() == null) {
-                setInitialFocus(panel != null && available ? panel.widgets().getFirst() : cancel);
+                setInitialFocus(panel != null && available ? panel.widgets().get(0) : cancel);
             }
         }
 

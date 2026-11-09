@@ -441,7 +441,7 @@ public final class UiSlideConfirm extends AbstractWidget {
         }
 
         private double keyProgress(long now) {
-            return Math.clamp((now - keyStart) / (local == null ? KEY_TRAVEL_MS : (double) local.keyTravelMs()), 0d, 1d);
+            return UiMath.clamp((now - keyStart) / (local == null ? KEY_TRAVEL_MS : (double) local.keyTravelMs()), 0d, 1d);
         }
 
         private double position(Track track, double x) {
@@ -449,7 +449,7 @@ public final class UiSlideConfirm extends AbstractWidget {
             int travel = track.travel();
             // 终点由指针坐标判定。回弹中的新手势须有向右位移。
             if (x >= startX + travel && pointer.offsetX() > 0d) return 1d;
-            return Math.clamp((x - startX) / travel, 0d, BEFORE_END);
+            return UiMath.clamp((x - startX) / travel, 0d, BEFORE_END);
         }
 
         private boolean settle(double progress, boolean allowConfirm, long now) {

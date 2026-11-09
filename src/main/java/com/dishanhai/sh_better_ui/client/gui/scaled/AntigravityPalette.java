@@ -102,6 +102,6 @@ final class AntigravityPalette {
     }
 
     private static double cube(double value) { return value * value * value; }
-    private static double clamp(double value) { return Math.clamp(value, 0, 1); }
+    private static double clamp(double value) { return UiMath.clamp(value, 0, 1); }
     private static double mix(double from, double to, double amount) { return from + (to - from) * amount; }
 }

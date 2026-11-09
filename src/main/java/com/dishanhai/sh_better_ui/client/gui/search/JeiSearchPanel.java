@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.search;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiRenderUtil;
 import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
@@ -99,7 +100,7 @@ public final class JeiSearchPanel {
         int innerX = x + PAD;
         int innerWidth = width - 2 * PAD;
         int controlsY = y + PAD;
-        int filterWidth = Math.clamp(innerWidth / 3, 54, 112);
+        int filterWidth = UiMath.clamp(innerWidth / 3, 54, 112);
         int searchWidth = innerWidth - filterWidth - GAP;
         search = new SearchField<>(font, innerX, controlsY, searchWidth, CONTROL_HEIGHT, index);
         search.setMessage(text("search"));
@@ -116,7 +117,7 @@ public final class JeiSearchPanel {
             list = new Bounds(innerX, bodyY, listWidth, bodyHeight);
             detail = new Bounds(list.right() + GAP, bodyY, innerWidth - listWidth - GAP, bodyHeight);
         } else {
-            int rows = Math.clamp((bodyHeight - 70) / ROW_HEIGHT, 1, 4);
+            int rows = UiMath.clamp((bodyHeight - 70) / ROW_HEIGHT, 1, 4);
             list = new Bounds(innerX, bodyY, innerWidth, rows * ROW_HEIGHT);
             detail = new Bounds(innerX, list.bottom() + GAP, innerWidth, bodyHeight - list.height() - GAP);
         }
@@ -148,7 +149,7 @@ public final class JeiSearchPanel {
         search.setOnSubmit(ignored -> {
             if (!results.isEmpty()) {
                 firstResult = 0;
-                select(results.getFirst().value());
+                select(results.get(0).value());
                 updateControls();
             }
         });
@@ -401,7 +402,7 @@ public final class JeiSearchPanel {
 
     private void refreshRecipe() {
         List<Recipe> recipes = selected == null ? List.of() : JeiIntegration.recipes(selected, direction, 1);
-        recipe = recipes.isEmpty() ? null : recipes.getFirst();
+        recipe = recipes.isEmpty() ? null : recipes.get(0);
         layout = recipe == null ? null : recipe.layout().orElse(null);
     }
 
@@ -420,7 +421,7 @@ public final class JeiSearchPanel {
     }
 
     private boolean scroll(int amount) {
-        int next = Math.clamp(firstResult + amount, 0, maxScroll());
+        int next = UiMath.clamp(firstResult + amount, 0, maxScroll());
         if (firstResult == next) return false;
         firstResult = next;
         updateControls();

@@ -190,7 +190,7 @@ public final class UiConfirmation {
 
         private boolean scroll(int delta) {
             if (titleLines == null) return false;
-            int next = Math.clamp(scrollLine + delta, 0, maxScrollLine());
+            int next = UiMath.clamp(scrollLine + delta, 0, maxScrollLine());
             if (next == scrollLine) return false;
             scrollLine = next;
             return true;

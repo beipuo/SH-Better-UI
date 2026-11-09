@@ -97,7 +97,7 @@ public final class UiButton extends Button {
 
     /** 仅移动图标，单位为 GUI 像素。绘制时限制在按钮内；文字、焦点和点击范围保持原位。 */
     public void setIconOffsetY(int offset) {
-        iconOffsetY = Math.clamp(offset, -2, 2);
+        iconOffsetY = UiMath.clamp(offset, -2, 2);
     }
 
     @Override
@@ -339,7 +339,7 @@ public final class UiButton extends Button {
         int padding = (height - GraphicIcon.PIXELS) / 2;
         int travel = Math.max(0, padding - 1);
         int offset = preferences.reducedMotion() || preferences.highContrast() ? 0
-                : Math.clamp(iconOffsetY, -travel, travel);
+                : UiMath.clamp(iconOffsetY, -travel, travel);
         icon.draw(graphics, x, y + padding + offset, 1, color, preferences);
     }
 

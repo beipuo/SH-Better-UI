@@ -67,7 +67,7 @@ final class LaserFlowRenderer extends RenderType {
                 top = (float) panel.y() - bounds.y();
                 surfaceHeight = panel.height();
                 corner = surface.radius();
-                float offset = beamX - Math.clamp(beamX, left + corner, right - corner);
+                float offset = beamX - UiMath.clamp(beamX, left + corner, right - corner);
                 impactY = top + corner - (float) Math.sqrt(Math.max(0, corner * corner - offset * offset));
             }
         }

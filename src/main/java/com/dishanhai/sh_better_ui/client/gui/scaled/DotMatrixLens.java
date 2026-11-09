@@ -29,7 +29,7 @@ final class DotMatrixLens {
         }
         if (!ready && !inside) return Frame.NONE;
 
-        float dt = ready ? (float) Math.clamp((now - (double) lastMs) / 1000d, 0d, 0.05d) : 0f;
+        float dt = ready ? (float) UiMath.clamp((now - (double) lastMs) / 1000d, 0d, 0.05d) : 0f;
         lastMs = now;
         if (inside) {
             if (presence < 0.01f) {
@@ -59,7 +59,7 @@ final class DotMatrixLens {
 
     private static Frame frame(PointerLens profile, float x, float y, float presence, float zoom, boolean reduced) {
         float bulge = profile.bulgeStrength();
-        float strength = Math.clamp(bulge * (bulge >= 0f ? 1.2f : 0.7f) * (1f + zoom * 0.6f), -0.85f, 1.45f);
+        float strength = UiMath.clamp(bulge * (bulge >= 0f ? 1.2f : 0.7f) * (1f + zoom * 0.6f), -0.85f, 1.45f);
         return new Frame(x, y, profile.radius() * (1d + zoom * 0.12d), reduced ? 0f : strength * presence,
                 reduced ? 0d : Math.toRadians(profile.twistDegrees()) * (1d + zoom * 0.6d) * presence,
                 profile.glowRadius() * (1d + zoom * 0.1d),

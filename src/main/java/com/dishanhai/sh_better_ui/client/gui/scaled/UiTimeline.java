@@ -24,7 +24,7 @@ public final class UiTimeline {
             if (fromFrame >= toFrame || !Float.isFinite(fromValue) || !Float.isFinite(toValue)) {
                 throw new IllegalArgumentException();
             }
-            double progress = Math.clamp(((double) index - fromFrame) / ((double) toFrame - fromFrame), 0d, 1d);
+            double progress = UiMath.clamp(((double) index - fromFrame) / ((double) toFrame - fromFrame), 0d, 1d);
             return (float) (fromValue + ((double) toValue - fromValue) * progress);
         }
     }
@@ -78,7 +78,7 @@ public final class UiTimeline {
 
     /** 跳到指定帧并暂停；超界取端点，末帧标记为结束。 */
     public void seek(int index) {
-        position = Math.clamp(index, 0, durationFrames - 1);
+        position = UiMath.clamp(index, 0, durationFrames - 1);
         state = position == durationFrames - 1 ? State.ENDED : State.PAUSED;
     }
 

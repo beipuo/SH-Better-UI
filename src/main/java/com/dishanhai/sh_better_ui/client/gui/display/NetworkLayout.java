@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.display;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 
 import java.util.ArrayList;
@@ -51,7 +52,7 @@ public final class NetworkLayout {
         int innerWidth = panelWidth - 2 * SIDE_PADDING;
         int tabsPerLine = (innerWidth + TAB_GAP) / (TAB_SIZE + TAB_GAP);
         int buttonCount = tabCount + (hasAction ? 1 : 0);
-        int tabLines = Math.ceilDiv(buttonCount, tabsPerLine);
+        int tabLines = UiMath.ceilDiv(buttonCount, tabsPerLine);
         int tabsHeight = tabLines * (TAB_SIZE + TAB_GAP) - TAB_GAP;
         int panelHeight = Math.min(PANEL_SIZE, screenHeight - 2 * MARGIN - tabsHeight - PANEL_GAP);
         long titleHeight = Math.max(20, rowHeight(RowKind.FIELD, lineHeight));
@@ -74,7 +75,7 @@ public final class NetworkLayout {
         }
 
         int pageCount = starts.size() - 1;
-        int page = Math.clamp(pageIndex, 0, pageCount - 1);
+        int page = UiMath.clamp(pageIndex, 0, pageCount - 1);
         int firstRow = starts.get(page);
         int x = (screenWidth - panelWidth) / 2;
         int top = (screenHeight - panelHeight - tabsHeight - PANEL_GAP) / 2;

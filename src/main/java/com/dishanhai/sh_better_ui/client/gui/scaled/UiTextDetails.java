@@ -129,7 +129,7 @@ public final class UiTextDetails {
         // 保留逻辑顺序及样式，合并省略号之后再走 Minecraft 的视觉顺序转换。
         var marker = splitter.headByWidth(CommonComponents.ELLIPSIS, width, Style.EMPTY);
         int available = width - (int) Math.ceil(splitter.stringWidth(marker));
-        var last = splitter.headByWidth(visible.getLast(), available, Style.EMPTY);
+        var last = splitter.headByWidth(visible.get(visible.size() - 1), available, Style.EMPTY);
         visible.set(limit - 1, FormattedText.composite(last, marker));
         return visible;
     }

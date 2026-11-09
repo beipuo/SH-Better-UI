@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.layout;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.gui.layout.AlignmentLayout.View;
 import com.dishanhai.sh_better_ui.client.gui.layout.PixelAlignment.Snap;
 import com.dishanhai.sh_better_ui.client.gui.layout.VisualAlignment.Bounds;
@@ -92,7 +93,7 @@ record AlignmentPlacement(AlignmentFrame frame, Transform layout, Transform worl
     private static Rect clipped(Rect rect, Rect clip) { return clip == null ? rect : rect.intersect(clip); }
 
     private static Anchor constrain(Anchor center, Rect clip) {
-        return clip == null ? center : new Anchor(Math.clamp(center.x(), clip.x(), clip.right()),
-                Math.clamp(center.y(), clip.y(), clip.bottom()));
+        return clip == null ? center : new Anchor(UiMath.clamp(center.x(), clip.x(), clip.right()),
+                UiMath.clamp(center.y(), clip.y(), clip.bottom()));
     }
 }

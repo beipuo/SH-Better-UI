@@ -58,7 +58,7 @@ public final class UiSlider extends AbstractSliderButton {
 
     /** 同步到最近的一档。等距时取较大值，超出范围时取端点。此方法不触发回调。 */
     public void setValue(int value) {
-        syncValue(quantize(Math.clamp((long) value - min, 0L, range)));
+        syncValue(quantize(UiMath.clamp((long) value - min, 0L, range)));
     }
 
     public void setPreferences(UiPreferences preferences) {

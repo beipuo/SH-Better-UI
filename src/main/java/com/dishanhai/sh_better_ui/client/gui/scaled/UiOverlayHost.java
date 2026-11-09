@@ -395,13 +395,13 @@ public final class UiOverlayHost {
     }
 
     static Bounds placeBubble(Rect2i anchor, int viewportWidth, int viewportHeight, int width, int height) {
-        int x = Math.clamp(anchor.getX(), GAP, viewportWidth - GAP - width);
+        int x = UiMath.clamp(anchor.getX(), GAP, viewportWidth - GAP - width);
         long above = (long) anchor.getY() - GAP;
         long below = (long) anchor.getY() + anchor.getHeight() + GAP;
         long spaceBelow = viewportHeight - GAP - below;
         long spaceAbove = above - GAP;
         long y = spaceBelow >= height || spaceBelow >= spaceAbove ? below : above - height;
-        return new Bounds(x, (int) Math.clamp(y, GAP, viewportHeight - GAP - height), width, height);
+        return new Bounds(x, (int) UiMath.clamp(y, GAP, viewportHeight - GAP - height), width, height);
     }
 
     public boolean mouseClicked(double x, double y, int button) {
@@ -630,7 +630,7 @@ public final class UiOverlayHost {
         }
 
         private void scrollBy(int delta) {
-            scroll = Math.clamp(scroll + delta, 0, Math.max(0, contentHeight - body.height()));
+            scroll = UiMath.clamp(scroll + delta, 0, Math.max(0, contentHeight - body.height()));
             for (int i = 0; i < rowCount; i++) {
                 UiButton button = buttons.get(i);
                 position(button, body.x(), body.y() + rowTops.get(i) - scroll, body.width(), button.getHeight());
