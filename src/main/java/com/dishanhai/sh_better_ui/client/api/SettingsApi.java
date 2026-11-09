@@ -6,8 +6,15 @@ import com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
+import com.dishanhai.sh_better_ui.config.ThemeSettings;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
+import com.google.gson.JsonObject;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+
+import java.util.List;
+import java.util.function.Supplier;
 
 /** 山海：客户端设置快照、保存和内置面板入口。 */
 public final class SettingsApi {
@@ -26,12 +33,25 @@ public final class SettingsApi {
     }
 
     public GlassBackdropSettings backdrop() {
-        return GlassBackdropSettings.current();
+        return ThemeEffects.glass();
     }
 
     public boolean save(ClientUiSettings settings) {
         return ShBetterUi.saveClientUiSettings(settings);
     }
+
+    public ThemeSettings theme() {
+        return current().theme();
+    }
+
+    public boolean saveTheme(ThemeSettings theme) {
+        ThemeEffects.validate(theme.effects());
+        return save(current().withTheme(theme));
+    }
+
+    public java.util.Set<String> themeGroups() { return ThemeEffects.groups(); }
+
+    public JsonObject themeTemplate(String group) { return ThemeEffects.template(group); }
 
     public boolean saveBackdrop(GlassBackdropSettings settings) {
         return ShBetterUi.saveGlassBackdrop(settings);
@@ -48,5 +68,25 @@ public final class SettingsApi {
 
     public DeveloperPanelScreen developerPanel(Screen parent, UiPreferences preferences) {
         return new DeveloperPanelScreen(parent, preferences);
+    }
+
+    /** 返回已登记的控件与材质示例，顺序与图库一致。内置示例保留原有短 ID。 */
+    public List<String> developerSampleIds() {
+        return DeveloperPanelScreen.sampleIds();
+    }
+
+    public Screen developerSampleFullscreen(Screen parent, String sampleId) {
+        return developerSampleFullscreen(parent, sampleId, preferences());
+    }
+
+    public Screen developerSampleFullscreen(Screen parent, String sampleId, UiPreferences preferences) {
+        GuiEventListener focused = parent == null ? null : parent.getFocused();
+        return developerSampleFullscreen(parent, sampleId, preferences, () -> focused);
+    }
+
+    /** 构建可交互的全屏示例。父页重建后，returnFocus 提供新的焦点入口。 */
+    public Screen developerSampleFullscreen(Screen parent, String sampleId, UiPreferences preferences,
+                                            Supplier<? extends GuiEventListener> returnFocus) {
+        return DeveloperPanelScreen.fullscreenSample(parent, sampleId, preferences, returnFocus);
     }
 }

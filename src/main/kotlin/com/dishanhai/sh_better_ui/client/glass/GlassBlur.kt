@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.glass
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects
+
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners
@@ -130,7 +132,7 @@ object GlassBlur {
     @JvmOverloads
     fun tryBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
                     radiusVirtual: Float, cornerRadius: Float = 0f): Boolean =
-        tryBackdrop(graphics, rect, strength, style, radiusVirtual, cornerRadius, GlassBackdropSettings.current())
+        tryBackdrop(graphics, rect, strength, style, radiusVirtual, cornerRadius, ThemeEffects.glass())
 
     /** 山海：使用独立设置快照预览玻璃取样。 */
     @JvmStatic
@@ -144,7 +146,7 @@ object GlassBlur {
 
     private fun sampleBackdrop(graphics: GuiGraphics, rect: GuiRect, strength: Float, style: GlassStyle,
                                radiusVirtual: Float, cornerRadius: Float, legacyRadius: Boolean,
-                               settings: GlassBackdropSettings = GlassBackdropSettings.current()): Boolean {
+                               settings: GlassBackdropSettings = ThemeEffects.glass()): Boolean {
         if (rect.isEmpty) return false
         val pose = graphics.pose().last().pose()
         if (pose.m01() != 0f || pose.m10() != 0f) return false

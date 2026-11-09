@@ -147,7 +147,7 @@ public final class UiConfirmation {
             if (titleLines == null) return;
             if (headingInset > 0 && scrollLine == 0) {
                 icon.draw(graphics, headingX, textTop(), 1,
-                        preferences.highContrast() ? DarkModeTheme.TEXT : LiquidGlassTheme.ACCENT, preferences);
+                        preferences.highContrast() ? DarkModeTheme.textColor() : LiquidGlassTheme.accentColor(), preferences);
             }
             int rows = Math.min(visibleLines(), titleLines.size() + 1 + detailLines.size() - scrollLine);
             for (int row = 0; row < rows; row++) {
@@ -157,7 +157,7 @@ public final class UiConfirmation {
                 var line = heading ? titleLines.get(index) : detailLines.get(index - titleLines.size() - 1);
                 int x = heading && headingInset > 0 ? headingX + headingInset : (width - font.width(line)) / 2;
                 graphics.drawString(font, line, x,
-                        textTop() + row * lineHeight(), heading ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_SECONDARY,
+                        textTop() + row * lineHeight(), heading ? DarkModeTheme.textColor() : DarkModeTheme.secondaryTextColor(),
                         false);
             }
             confirmButton.render(graphics, mouseX, mouseY, partialTick);

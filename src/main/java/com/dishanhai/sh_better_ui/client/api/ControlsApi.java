@@ -11,9 +11,12 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiScrollableSectionBar;
 import com.dishanhai.sh_better_ui.config.TabScrollSettings;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiStepper;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiStepperState;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTextDetails;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiUnderlinedTabs;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -64,6 +67,32 @@ public final class ControlsApi {
             List<UiSectionBar.Section> sections, int selectedIndex, IntConsumer onSelect,
             TabScrollSettings settings, int tabWidth) {
         return new UiScrollableSectionBar(area, preferences, sections, selectedIndex, onSelect, settings, tabWidth);
+    }
+
+    public UiUnderlinedTabs underlinedTabs(Bounds area, IntConsumer onSelect) {
+        return underlinedTabs(area, List.of(defaultTab("overview"), defaultTab("billing"), defaultTab("settings")),
+                0, onSelect);
+    }
+
+    public UiUnderlinedTabs underlinedTabs(Bounds area, List<UiUnderlinedTabs.Tab> tabs,
+                                          int selectedIndex, IntConsumer onSelect) {
+        return new UiUnderlinedTabs(area, tabs, selectedIndex, onSelect);
+    }
+
+    private static UiUnderlinedTabs.Tab defaultTab(String key) {
+        String prefix = "sh_better_ui.control.underlined_tabs." + key;
+        return new UiUnderlinedTabs.Tab(Component.translatable(prefix), Component.translatable(prefix + ".panel"));
+    }
+
+    public UiStepper stepper(Bounds area, int currentIndex, IntConsumer onSelect) {
+        String prefix = "sh_better_ui.control.stepper.";
+        return stepper(area, List.of(Component.translatable(prefix + "cart"), Component.translatable(prefix + "address"),
+                Component.translatable(prefix + "payment"), Component.translatable(prefix + "review")),
+                new UiStepperState(4, currentIndex), onSelect);
+    }
+
+    public UiStepper stepper(Bounds area, List<Component> labels, UiStepperState progress, IntConsumer onSelect) {
+        return new UiStepper(area, labels, progress, onSelect);
     }
 
     public UiDisclosure disclosure(boolean expanded) {

@@ -39,6 +39,10 @@ public final class UiToast {
         private final GraphicIcon icon;
         private final int color;
 
+        private int currentColor() {
+            return this == INFO ? DarkModeTheme.accentColor() : color;
+        }
+
         Kind(GraphicIcon icon, int color) {
             this.icon = icon;
             this.color = color;
@@ -126,17 +130,17 @@ public final class UiToast {
             graphics.pose().translate(-width / 2f, -layout.height / 2f, 0f);
             boolean contrast = notice.preferences.highContrast();
             DarkModeTheme.rounded(graphics, 0, 0, width, layout.height, 6, 1,
-                    tint(contrast ? DarkModeTheme.TEXT : notice.kind.color, alpha),
-                    tint(contrast ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE, alpha));
+                    tint(contrast ? DarkModeTheme.textColor() : notice.kind.currentColor(), alpha),
+                    tint(contrast ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor(), alpha));
             notice.kind.icon.draw(graphics, PADDING, (layout.height - GraphicIcon.PIXELS) / 2, 1,
-                    tint(contrast ? DarkModeTheme.TEXT : notice.kind.color, alpha), notice.preferences);
+                    tint(contrast ? DarkModeTheme.textColor() : notice.kind.currentColor(), alpha), notice.preferences);
             int y = (layout.height - (layout.title.size() + layout.details.size()) * font.lineHeight) / 2;
             for (FormattedCharSequence line : layout.title) {
-                graphics.drawString(font, line, TEXT_INSET, y, tint(DarkModeTheme.TEXT, alpha), false);
+                graphics.drawString(font, line, TEXT_INSET, y, tint(DarkModeTheme.textColor(), alpha), false);
                 y += font.lineHeight;
             }
             for (FormattedCharSequence line : layout.details) {
-                graphics.drawString(font, line, TEXT_INSET, y, tint(DarkModeTheme.TEXT_SECONDARY, alpha), false);
+                graphics.drawString(font, line, TEXT_INSET, y, tint(DarkModeTheme.secondaryTextColor(), alpha), false);
                 y += font.lineHeight;
             }
         } finally {

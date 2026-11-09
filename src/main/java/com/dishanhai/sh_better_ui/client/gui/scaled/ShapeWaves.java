@@ -20,14 +20,20 @@ public final class ShapeWaves {
     private long lastFrameMs = Long.MIN_VALUE;
     private long introStartedAt = Long.MIN_VALUE;
 
-    public ShapeWaves() { this(ShapeWavesProfile.DEFAULT); }
+    private boolean themed;
+
+    public ShapeWaves() {
+        this(ShapeWavesProfile.DEFAULT);
+        themed = true;
+    }
 
     public ShapeWaves(ShapeWavesProfile profile) { setProfile(profile); }
 
     public ShapeWavesProfile profile() { return profile; }
 
     /** 切换样式后接续当前波面。 */
-    public void setProfile(ShapeWavesProfile profile) { this.profile = Objects.requireNonNull(profile); }
+    public void setProfile(ShapeWavesProfile profile) {
+        themed = false; this.profile = Objects.requireNonNull(profile); }
 
     /** 暂停波面的变化和漂移，入场与鼠标涟漪继续播放。 */
     public void setPaused(boolean paused) { this.paused = paused; }
@@ -60,6 +66,11 @@ public final class ShapeWaves {
      * 返回 true 表示波面已绘制，false 表示使用底色回退或区域为空。
      */
     public boolean draw(GuiGraphics graphics, Bounds bounds, UiMouseState mouse, UiPreferences preferences) {
+        if (themed) {
+            var resolved = ThemeEffects.profile("shapeWaves", ShapeWavesProfile.DEFAULT);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         long now = PageTransition.nowMs();
         float elapsed = lastFrameMs == Long.MIN_VALUE ? 0 : Math.min(100, Math.max(0, now - lastFrameMs)) * .001f;
         lastFrameMs = now;

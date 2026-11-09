@@ -196,9 +196,9 @@ public final class UiBottomSheet {
                 if (spread < 1f) {
                     float radius = GuiMotion.lerp(Math.min(panel.width(), panel.height()) * 0.5f, 6f, spread);
                     RoundedCorners.draw(graphics, panel.x(), panel.y(), panel.width(), panel.height(), radius, 1f,
-                            preferences.highContrast() ? DarkModeTheme.TEXT
-                                    : GuiMotion.lerpColor(LiquidGlassTheme.ACCENT, DarkModeTheme.BORDER, spread),
-                            preferences.highContrast() ? DarkModeTheme.BACKGROUND : 0xF21E293B);
+                            preferences.highContrast() ? DarkModeTheme.textColor()
+                                    : GuiMotion.lerpColor(LiquidGlassTheme.accentColor(), DarkModeTheme.borderColor(), spread),
+                            preferences.highContrast() ? DarkModeTheme.backgroundColor() : UiTheme.current().surface(0xF21E293B));
                 } else {
                     DarkModeTheme.modalPanel(graphics, panel.x(), panel.y(), panel.width(), panel.height(),
                             preferences.highContrast());
@@ -221,7 +221,7 @@ public final class UiBottomSheet {
                 if (snapY != panel.y()) {
                     int y = Math.min(snapY, viewport.bottom() - 1);
                     graphics.fill(handle.x(), y, handle.right(), y + 1,
-                            preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.ACCENT);
+                            preferences.highContrast() ? DarkModeTheme.textColor() : DarkModeTheme.accentColor());
                 }
             }
         } finally {

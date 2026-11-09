@@ -3,6 +3,7 @@ package com.dishanhai.sh_better_ui.compat.ldlib
 import com.dishanhai.sh_better_ui.client.glass.GlassPalette
 import com.dishanhai.sh_better_ui.client.glass.GlassSurface
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion
+import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring
 import com.lowdragmc.lowdraglib.gui.texture.IGuiTexture
 import net.minecraft.client.gui.GuiGraphics
@@ -40,7 +41,7 @@ class GlassPanelTexture private constructor(private val style: Style) : IGuiText
             Style.CLEAR_PANEL -> GlassSurface.panel(graphics, left, top, width, height)
             Style.SMOKE_PANEL -> GlassSurface.smokePanel(graphics, left, top, width, height)
             Style.CLEAR_BUTTON, Style.CLEAR_BUTTON_OVERLAY, Style.SMOKE_BUTTON_OVERLAY -> {
-                val now = System.currentTimeMillis()
+                val now = PageTransition.nowMs()
                 val over = mouseX >= left && mouseX < left + width && mouseY >= top && mouseY < top + height
                 hover.setTarget(if (over) 1f else 0f, now)
                 hover.update(now)
@@ -54,7 +55,7 @@ class GlassPanelTexture private constructor(private val style: Style) : IGuiText
     }
 
     private fun button(g: GuiGraphics, mouseX: Int, mouseY: Int, x: Int, y: Int, w: Int, h: Int) {
-        val now = System.currentTimeMillis()
+        val now = PageTransition.nowMs()
         val over = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h
         hover.setTarget(if (over) 1f else 0f, now)
         hover.update(now)

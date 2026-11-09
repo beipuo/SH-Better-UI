@@ -16,6 +16,7 @@ public final class VisualReveal {
     /** 在画好内容后调用，坐标使用当前 GUI pose。返回是否执行了后处理。 */
     public static boolean blurRegion(GuiGraphics graphics, int x, int y, int width, int height,
                                      RevealProfile profile) {
+        if (profile == RevealProfile.DEFAULT) profile = ThemeEffects.profile("reveal", profile);
         return GlassBlur.revealRegion(graphics, new GuiRect(x, y, width, height),
                 profile.maxRadius(), profile.fullBlurUntil(), profile.sharpFrom());
     }
@@ -24,7 +25,8 @@ public final class VisualReveal {
     public static void drawTexture(GuiGraphics graphics, ResourceLocation texture,
                                    int x, int y, int width, int height, RevealProfile profile) {
         if (width <= 0 || height <= 0) return;
-        GlassBackdropSettings settings = GlassBackdropSettings.current();
+        if (profile == RevealProfile.DEFAULT) profile = ThemeEffects.profile("reveal", profile);
+        GlassBackdropSettings settings = ThemeEffects.glass();
         float radius = settings.enabled() && settings.strength() > 0.01f
                 ? profile.maxRadius() * settings.blurRadiusScale() * settings.strength() : 0f;
         VisualRevealRenderer.drawTexture(graphics, texture, x, y, width, height, profile, radius);

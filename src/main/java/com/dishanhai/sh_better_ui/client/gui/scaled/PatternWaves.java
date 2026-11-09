@@ -17,14 +17,20 @@ public final class PatternWaves {
     private float phase;
     private float intro;
 
-    public PatternWaves() { this(PatternWavesProfile.Preset.SILK.profile()); }
+    private boolean themed;
+
+    public PatternWaves() {
+        this(PatternWavesProfile.Preset.SILK.profile());
+        themed = true;
+    }
 
     public PatternWaves(PatternWavesProfile profile) { setProfile(profile); }
 
     public PatternWavesProfile profile() { return profile; }
 
     /** 切换配置时沿用波面时间。 */
-    public void setProfile(PatternWavesProfile profile) { this.profile = Objects.requireNonNull(profile); }
+    public void setProfile(PatternWavesProfile profile) {
+        themed = false; this.profile = Objects.requireNonNull(profile); }
 
     /** 冻结背景波面，鼠标涟漪继续播放。 */
     public void setPaused(boolean paused) { this.paused = paused; }
@@ -45,6 +51,11 @@ public final class PatternWaves {
 
     /** 传入共享鼠标快照。模态层或自定义裁切挡住此区域时传 null。 */
     public void draw(GuiGraphics graphics, Bounds bounds, UiMouseState mouse, UiPreferences preferences) {
+        if (themed) {
+            var resolved = ThemeEffects.profile("patternWaves", PatternWavesProfile.Preset.SILK.profile());
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         long now = PageTransition.nowMs();
         long elapsed = lastFrameMs == Long.MIN_VALUE ? 0 : Math.min(50, Math.max(0, now - lastFrameMs));
         lastFrameMs = now;

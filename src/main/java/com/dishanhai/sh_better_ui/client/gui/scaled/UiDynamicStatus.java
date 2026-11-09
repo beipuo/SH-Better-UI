@@ -78,7 +78,7 @@ public final class UiDynamicStatus {
         var layout = GraphicDisplayLayout.arrange(area, 1, area.height(), false, SINGLE_COLUMN);
         int tint = preferences.highContrast() ? 0xFFFFFFFF : iconColor(snapshot.status());
         var entry = new GraphicDisplay.Entry(icon(snapshot.status()), snapshot.text(), tint);
-        GraphicDisplay.drawRows(graphics, font, layout, List.of(entry), 1, LiquidGlassTheme.TEXT, 0, preferences);
+        GraphicDisplay.drawRows(graphics, font, layout, List.of(entry), 1, LiquidGlassTheme.textColor(), 0, preferences);
     }
 
     /** 等待图标沿用库的旋转动效，减少动效时使用静止图标。 */
@@ -96,8 +96,8 @@ public final class UiDynamicStatus {
 
     private static int iconColor(Status status) {
         return switch (status) {
-            case READY, CANCELLED -> LiquidGlassTheme.TEXT_MUTED;
-            case PENDING -> LiquidGlassTheme.ACCENT;
+            case READY, CANCELLED -> LiquidGlassTheme.mutedTextColor();
+            case PENDING -> LiquidGlassTheme.accentColor();
             case SUCCEEDED -> DarkModeTheme.SUCCESS;
             case PARTIAL, TIMED_OUT -> 0xFFFBBF24;
             case FAILED -> 0xFFF87171;

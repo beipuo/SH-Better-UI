@@ -265,7 +265,7 @@ public final class UiButton extends Button {
                                     DarkModeTheme.State state, int textColor) {
         int accent = switch (style) {
             case DEFAULT -> state.focusColor();
-            case LIQUID_GLASS -> LiquidGlassTheme.ACCENT;
+            case LIQUID_GLASS -> LiquidGlassTheme.accentColor();
             case NETWORK -> NetworkTheme.outline(true);
         };
         int selectedColor = state.enabled() && !state.highContrast() ? accent : textColor;

@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.glass;
 
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
@@ -24,8 +25,9 @@ public final class GlassSurface {
         if (w < 3 || h < 3) return;
         GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.CLEAR, CLEAR_BLUR_RADIUS);
         GlassColors colors = GlassColors.CLEAR;
-        plate(g, x, y, w, h, colors.PANEL_FILL, colors.ROOT_EDGE,
-                colors.DISPLAY_EDGE, colors.LIT);
+        var material = ThemeEffects.material("clearGlass");
+        plate(g, x, y, w, h, material.fill(colors.PANEL_FILL), material.edge(colors.ROOT_EDGE),
+                material.edge(colors.DISPLAY_EDGE), material.accent(colors.LIT));
     }
 
     /** 按钮与页签；hover 为 0..1，可直接接入现有弹簧动画。 */
@@ -37,13 +39,14 @@ public final class GlassSurface {
     public static void control(GuiGraphics g, int x, int y, int w, int h, float hover, boolean sampleBackground) {
         if (w < 3 || h < 3) return;
         GlassColors colors = GlassColors.CLEAR;
+        var material = ThemeEffects.material("clearGlass");
         float t = GuiMotion.clamp01(hover);
         if (sampleBackground) GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f,
                 GlassStyle.CLEAR, CONTROL_BLUR_RADIUS);
         plate(g, x, y, w, h,
-                clearControlFill(t, sampleBackground),
-                GuiMotion.lerpColor(colors.BUTTON_EDGE, colors.ROOT_EDGE, t),
-                colors.DISPLAY_EDGE, colors.LIT);
+                material.fill(clearControlFill(t, sampleBackground)),
+                material.edge(GuiMotion.lerpColor(colors.BUTTON_EDGE, colors.ROOT_EDGE, t)),
+                material.edge(colors.DISPLAY_EDGE), material.accent(colors.LIT));
     }
 
     /** 山海：烟灰面板采用密采样毛玻璃，保留微量提亮与柔和边缘光。 */
@@ -51,18 +54,20 @@ public final class GlassSurface {
         if (w < 3 || h < 3) return;
         GlassBlur.backdrop(g, new GuiRect(x, y, w, h), 1f, GlassStyle.FROSTED, SMOKE_BLUR_RADIUS);
         GlassColors colors = GlassColors.SMOKE;
-        plate(g, x, y, w, h, colors.PANEL_FILL, colors.ROOT_EDGE,
-                colors.DISPLAY_EDGE, colors.LIT);
+        var material = ThemeEffects.material("smokeGlass");
+        plate(g, x, y, w, h, material.fill(colors.PANEL_FILL), material.edge(colors.ROOT_EDGE),
+                material.edge(colors.DISPLAY_EDGE), material.accent(colors.LIT));
     }
 
     /** 烟灰根板内的控件不重复模糊；沿用按钮弹簧的 hover 值。 */
     public static void smokeControl(GuiGraphics g, int x, int y, int w, int h, float hover) {
         if (w < 3 || h < 3) return;
         GlassColors colors = GlassColors.SMOKE;
+        var material = ThemeEffects.material("smokeGlass");
         float t = GuiMotion.clamp01(hover);
         plate(g, x, y, w, h,
-                GuiMotion.lerpColor(colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER, t),
-                colors.BUTTON_EDGE, colors.DISPLAY_EDGE, colors.LIT);
+                material.fill(GuiMotion.lerpColor(colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER, t)),
+                material.edge(colors.BUTTON_EDGE), material.edge(colors.DISPLAY_EDGE), material.accent(colors.LIT));
     }
 
     /** 山海：先画低强度字形柔光，再画原文字；在玻璃底板之后调用，不对文字做背景模糊。 */

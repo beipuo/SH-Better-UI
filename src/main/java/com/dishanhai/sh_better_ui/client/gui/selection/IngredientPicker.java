@@ -373,18 +373,18 @@ public final class IngredientPicker {
         public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
             graphics.drawString(font, font.plainSubstrByWidth(title.getString(), Math.max(1, width - 2 * MARGIN)),
-                    MARGIN, MARGIN, DarkModeTheme.TEXT, false);
+                    MARGIN, MARGIN, DarkModeTheme.textColor(), false);
             if (compact) {
                 int y = MARGIN + font.lineHeight + GAP;
                 for (var line : font.split(text("too_small"), Math.max(1, width - 2 * MARGIN))) {
                     if (y + font.lineHeight > height - CONTROL_HEIGHT - 2 * MARGIN) break;
-                    graphics.drawString(font, line, MARGIN, y, DarkModeTheme.TEXT_SECONDARY, false);
+                    graphics.drawString(font, line, MARGIN, y, DarkModeTheme.secondaryTextColor(), false);
                     y += font.lineHeight + 2;
                 }
             } else {
                 panel.renderBackground(graphics);
                 graphics.drawString(font, font.plainSubstrByWidth(summary().getString(), width - 2 * MARGIN),
-                        MARGIN, countY, DarkModeTheme.TEXT_SECONDARY, false);
+                        MARGIN, countY, DarkModeTheme.secondaryTextColor(), false);
             }
             boolean overSuggestions = getFocused() instanceof SearchField<?> search
                     && search.isOverSuggestions(mouseX, mouseY, height);

@@ -98,6 +98,8 @@ public final class GraphicsApi {
     /** 为一个背景区域创建默认代码雨。 */
     public CodeRain codeRain() { return new CodeRain(); }
 
+    public CodeRain asciiField() { return CodeRain.ascii(); }
+
     /** 创建代码雨或 ASCII 字符场，可按顺序叠加扩展效果。 */
     public CodeRain codeRain(CodeRainProfile profile, CodeRainEffect... effects) {
         return new CodeRain(profile, effects);

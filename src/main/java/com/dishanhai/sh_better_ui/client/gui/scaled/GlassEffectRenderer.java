@@ -21,7 +21,9 @@ public final class GlassEffectRenderer {
     /** 控件内部的局部亮纹；每个控件使用独立 ClickRipple，可同时绘制多个。 */
     public static void drawRipple(GuiGraphics g, int x, int y, int w, int h, ClickRipple ripple,
                                   long nowMs, boolean reducedMotion, int argb) {
-        drawRipple(g::fill, x, y, w, h, ripple, nowMs, reducedMotion, argb);
+        var effect = ThemeEffects.local("clickRipple");
+        if (effect.enabled()) drawRipple(g::fill, x, y, w, h, ripple, nowMs, reducedMotion,
+                effect.tint(argb));
     }
 
     static void drawRipple(Fill fill, int x, int y, int w, int h, ClickRipple ripple,
@@ -63,7 +65,9 @@ public final class GlassEffectRenderer {
     /** 沿矩形四边运行的 1 GUI 像素流光；每帧最多 128 个矩形，不新增模糊采样。 */
     public static void drawFlowBorder(GuiGraphics g, int x, int y, int w, int h,
                                       long nowMs, boolean reducedMotion, int argb) {
-        drawFlowBorder(g::fill, x, y, w, h, nowMs, reducedMotion, argb);
+        var effect = ThemeEffects.local("flowBorder");
+        if (effect.enabled()) drawFlowBorder(g::fill, x, y, w, h, Math.round(nowMs * (double) effect.speed()),
+                reducedMotion, effect.tint(argb));
     }
 
     static void drawFlowBorder(Fill fill, int x, int y, int w, int h,
@@ -104,7 +108,9 @@ public final class GlassEffectRenderer {
     /** 控件外侧 3 GUI 像素柔光；focusAmount 可接已有 hover 弹簧，0 时不绘制。 */
     public static void drawBreathingGlow(GuiGraphics g, int x, int y, int w, int h, float focusAmount,
                                          long nowMs, boolean reducedMotion, int argb) {
-        drawBreathingGlow(g::fill, x, y, w, h, focusAmount, nowMs, reducedMotion, argb);
+        var effect = ThemeEffects.local("breathingGlow");
+        if (effect.enabled()) drawBreathingGlow(g::fill, x, y, w, h, focusAmount * effect.strength(),
+                Math.round(nowMs * (double) effect.speed()), reducedMotion, effect.ink(argb));
     }
 
     static void drawBreathingGlow(Fill fill, int x, int y, int w, int h, float focusAmount,

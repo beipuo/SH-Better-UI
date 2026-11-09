@@ -36,7 +36,7 @@ public final class NetworkTheme {
         graphics.enableScissor(area.x() + PADDING, area.y() + 2, area.right() - PADDING, area.bottom() - 2);
         try {
             graphics.drawString(font, text, area.x() + PADDING,
-                    area.y() + (area.height() - font.lineHeight) / 2, DarkModeTheme.TEXT, false);
+                    area.y() + (area.height() - font.lineHeight) / 2, ThemeEffects.material("network").text(DarkModeTheme.textColor()), false);
         } finally {
             graphics.disableScissor();
         }
@@ -61,6 +61,20 @@ public final class NetworkTheme {
         return new EditBox(font, area.x(), area.y(), area.width(), area.height(), name) {
             private boolean bordered = true;
             private boolean drawingText;
+            private boolean defaultTextColor = true;
+            private boolean defaultDisabledColor = true;
+
+            @Override
+            public void setTextColor(int color) {
+                defaultTextColor = false;
+                super.setTextColor(color);
+            }
+
+            @Override
+            public void setTextColorUneditable(int color) {
+                defaultDisabledColor = false;
+                super.setTextColorUneditable(color);
+            }
 
             @Override
             public void setBordered(boolean bordered) {
@@ -79,6 +93,9 @@ public final class NetworkTheme {
                     super.renderWidget(graphics, mouseX, mouseY, partialTick);
                     return;
                 }
+                if (defaultTextColor) super.setTextColor(UiTheme.current().text(0xFFE0E0E0));
+                if (defaultDisabledColor) super.setTextColorUneditable(
+                        UiTheme.current().secondaryText(0xFF707070, 0.38f));
                 fieldFrame(graphics, getX(), getY(), getWidth(), getHeight(), preferences, isFocused());
                 graphics.pose().pushPose();
                 try {
@@ -100,35 +117,37 @@ public final class NetworkTheme {
                                    UiPreferences preferences, boolean focused) {
         boolean contrast = preferences.highContrast();
         DarkModeTheme.rounded(graphics, x, y, width, height, 4, focused ? 2 : 1,
-                focused ? FOCUS : outline(contrast), surface(contrast, FIELD));
+                focused ? UiTheme.current().accent(FOCUS) : outline(contrast), surface(contrast, FIELD));
     }
 
     static void drawTab(GuiGraphics graphics, int x, int y, int width, int height,
                         DarkModeTheme.State state, boolean selected) {
         boolean focused = state.focused();
-        int edge = focused ? FOCUS : controlText(state, selected);
+        int edge = focused ? UiTheme.current().accent(FOCUS) : controlText(state, selected);
         int fill = surface(state.highContrast(), selected ? 0xE51B3549 : FIELD);
-        if (state.press() > 0f) fill = GuiMotion.lerpColor(fill, 0xFF234C68, state.press());
+        if (state.press() > 0f) fill = GuiMotion.lerpColor(fill, UiTheme.current().controlFill(0xFF234C68, 0.22f), state.press());
         DarkModeTheme.rounded(graphics, x, y, width, height, 4, focused || selected ? 2 : 1, edge,
                 fill);
     }
 
     static int controlText(DarkModeTheme.State state, boolean selected) {
-        if (!state.enabled()) return DarkModeTheme.TEXT_MUTED;
-        if (selected || state.focused() || state.highContrast()) return 0xFFFFFFFF;
-        return GuiMotion.lerpColor(DarkModeTheme.TEXT_SECONDARY, 0xFFFFFFFF, state.hover());
+        if (!state.enabled()) return DarkModeTheme.mutedTextColor();
+        if (selected || state.focused() || state.highContrast())
+            return ThemeEffects.material("network").text(UiTheme.current().text(0xFFFFFFFF));
+        return ThemeEffects.material("network").text(GuiMotion.lerpColor(DarkModeTheme.secondaryTextColor(),
+                UiTheme.current().text(0xFFFFFFFF), state.hover()));
     }
 
     static int outline(boolean contrast) {
-        return contrast ? FOCUS : EDGE;
+        return contrast ? UiTheme.current().text(FOCUS) : ThemeEffects.material("network").edge(UiTheme.current().border(EDGE));
     }
 
     static int surface(boolean contrast, int fill) {
-        return contrast ? CONTRAST_FILL : fill;
+        return contrast ? UiTheme.current().background(CONTRAST_FILL) : ThemeEffects.material("network").fill(UiTheme.current().controlFill(fill, 0f));
     }
 
     /** 获取设置项标签色，可与数值颜色分别应用于 Component。 */
     public static int labelColor(UiPreferences preferences) {
-        return preferences.highContrast() ? DarkModeTheme.TEXT : LABEL;
+        return preferences.highContrast() ? DarkModeTheme.textColor() : ThemeEffects.material("network").accent(UiTheme.current().accent(LABEL));
     }
 }

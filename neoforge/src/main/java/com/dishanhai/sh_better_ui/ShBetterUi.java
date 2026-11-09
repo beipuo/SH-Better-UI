@@ -4,6 +4,8 @@ import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.TabScrollSettings;
+import com.dishanhai.sh_better_ui.config.ThemeSettings;
+import com.dishanhai.sh_better_ui.config.ThemeOverrides;
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.concurrent.ConcurrentCommentedConfig;
 import com.electronwill.nightconfig.core.io.WritingException;
@@ -54,6 +56,14 @@ public final class ShBetterUi {
         var tabAutoReveal = builder.define("tabAutoReveal", tabs.autoReveal());
         var tabStep = builder.defineInRange("tabScrollStep", tabs.scrollStep(), TabScrollSettings.MIN_SCROLL_STEP,
                 TabScrollSettings.MAX_SCROLL_STEP);
+        var themeMode = builder.defineEnum("themeMode", defaults.theme().mode());
+        var themeBase = builder.defineEnum("themeCustomBase", defaults.theme().customBase());
+        var themeBackground = builder.define("themeCustomBackground", "", ThemeSettings::validColor);
+        var themeSurface = builder.define("themeCustomSurface", "", ThemeSettings::validColor);
+        var themeBorder = builder.define("themeCustomBorder", "", ThemeSettings::validColor);
+        var themeText = builder.define("themeCustomText", "", ThemeSettings::validColor);
+        var themeAccent = builder.define("themeCustomAccent", "", ThemeSettings::validColor);
+        var themeEffects = builder.define("themeCustomEffects", "{}", ThemeOverrides::valid);
         var spec = builder.pop().build();
         container.getEventBus().addListener((ModConfigEvent event) -> {
             if (event.getConfig().getSpec() != spec) return;
@@ -67,7 +77,10 @@ public final class ShBetterUi {
                             highContrast.get(), reducedMotion.get(), widgetBackdropBlur.get(),
                             new ControlFeedbackSettings(hoverAnimation.get(), pressAnimation.get(),
                                     selectionPulse.get(), tooltipDelay.get()),
-                            new TabScrollSettings(tabWheel.get(), tabDrag.get(), tabAutoReveal.get(), tabStep.get()))
+                            new TabScrollSettings(tabWheel.get(), tabDrag.get(), tabAutoReveal.get(), tabStep.get()),
+                            new ThemeSettings(themeMode.get(), themeBase.get(), themeBackground.get(),
+                                    themeSurface.get(), themeBorder.get(), themeText.get(), themeAccent.get(),
+                                        new ThemeOverrides(themeEffects.get())))
                     : defaults);
         });
         container.registerConfig(ModConfig.Type.CLIENT, spec);
@@ -112,6 +125,15 @@ public final class ShBetterUi {
         updatedUi.set("tabDragEnabled", tabs.dragEnabled());
         updatedUi.set("tabAutoReveal", tabs.autoReveal());
         updatedUi.set("tabScrollStep", tabs.scrollStep());
+        var theme = settings.theme();
+        updatedUi.set("themeMode", theme.mode().name());
+        updatedUi.set("themeCustomBase", theme.customBase().name());
+        updatedUi.set("themeCustomBackground", theme.background());
+        updatedUi.set("themeCustomSurface", theme.surface());
+        updatedUi.set("themeCustomBorder", theme.border());
+        updatedUi.set("themeCustomText", theme.text());
+        updatedUi.set("themeCustomAccent", theme.accent());
+        updatedUi.set("themeCustomEffects", theme.effects().json());
 
         replaceSections(data, updatedBackdrop, updatedUi);
         spec.afterReload();

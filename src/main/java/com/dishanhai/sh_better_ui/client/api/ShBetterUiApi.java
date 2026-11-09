@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.api;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
+import com.dishanhai.sh_better_ui.client.gui.panel.BuiltinPreviews;
 import net.minecraft.network.chat.Component;
 
 /** 山海：Forge 与 NeoForge 共用的客户端 API 入口。分组可复用，组件状态归各自的宿主。 */
@@ -26,6 +28,10 @@ public final class ShBetterUiApi {
 
     public static UiExtensionRegistry extensions() {
         return EXTENSIONS;
+    }
+
+    public static PreviewRegistry developerPreviews() {
+        return DeveloperPreviewsHolder.REGISTRY;
     }
 
     public static UiApiContext context() {
@@ -82,5 +88,15 @@ public final class ShBetterUiApi {
 
     public static PlatformUiApi platform() {
         return PLATFORM;
+    }
+
+    private static final class DeveloperPreviewsHolder {
+        private static final PreviewRegistry REGISTRY = createRegistry();
+
+        private static PreviewRegistry createRegistry() {
+            var registry = new PreviewRegistry();
+            BuiltinPreviews.registerInto(registry);
+            return registry;
+        }
     }
 }

@@ -118,9 +118,9 @@ public final class UiFullscreenPreview extends Screen {
         } finally {
             graphics.disableScissor();
         }
-        graphics.fill(0, 0, width, viewport.y(), DarkModeTheme.SURFACE);
+        graphics.fill(0, 0, width, viewport.y(), DarkModeTheme.surfaceColor());
         UiFormattedText.draw(graphics, font, heading, headingX, (viewport.y() - font.lineHeight) / 2,
-                DarkModeTheme.TEXT, false, preferences);
+                DarkModeTheme.textColor(), false, preferences);
         back.render(graphics, mouseX, mouseY, partialTick);
     }
 }

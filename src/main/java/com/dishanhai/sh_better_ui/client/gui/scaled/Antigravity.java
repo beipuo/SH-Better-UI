@@ -16,10 +16,16 @@ public final class Antigravity {
     private boolean paused;
     private boolean motionAllowed;
 
-    public Antigravity() { this(AntigravityProfile.DEFAULT); }
+    private boolean themed;
+
+    public Antigravity() {
+        this(AntigravityProfile.DEFAULT);
+        themed = true;
+    }
     public Antigravity(AntigravityProfile profile) { setProfile(profile); }
     public AntigravityProfile profile() { return profile; }
-    public void setProfile(AntigravityProfile profile) { this.profile = Objects.requireNonNull(profile); }
+    public void setProfile(AntigravityProfile profile) {
+        themed = false; this.profile = Objects.requireNonNull(profile); }
     public boolean isPaused() { return paused; }
     public void setPaused(boolean paused) {
         this.paused = paused;
@@ -55,6 +61,11 @@ public final class Antigravity {
 
     /** 被模态层或自定义裁切挡住时传 null。返回 false 表示 shader 不可用或高对比降级。 */
     public boolean draw(GuiGraphics graphics, Bounds bounds, UiMouseState mouse, UiPreferences preferences) {
+        if (themed) {
+            var resolved = ThemeEffects.profile("antigravity", AntigravityProfile.DEFAULT);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         Objects.requireNonNull(preferences);
         long now = PageTransition.nowMs();
         float dt = lastFrameMs == Long.MIN_VALUE ? 0 : Math.clamp((now - lastFrameMs) / 1000f, 0, 1f / 30);

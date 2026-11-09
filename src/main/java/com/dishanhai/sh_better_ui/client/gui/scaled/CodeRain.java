@@ -28,7 +28,19 @@ public final class CodeRain {
     private int lastWidth;
     private int lastHeight;
 
-    public CodeRain() { this(CodeRainProfile.DEFAULT); }
+    private CodeRainProfile themeBase;
+
+    public static CodeRain ascii() {
+        var fallback = CodeRainProfile.builder().mode(CodeRainProfile.Mode.ASCII).build();
+        var rain = new CodeRain(fallback);
+        rain.themeBase = fallback;
+        return rain;
+    }
+
+    public CodeRain() {
+        this(CodeRainProfile.DEFAULT);
+        themeBase = CodeRainProfile.DEFAULT;
+    }
 
     public CodeRain(CodeRainProfile profile, CodeRainEffect... effects) {
         this.effects = List.of(effects);
@@ -40,6 +52,7 @@ public final class CodeRain {
 
     /** 替换配置，重新生成字形并从初始相位播放。 */
     public void setProfile(CodeRainProfile profile) {
+        themeBase = null;
         Objects.requireNonNull(profile);
         if (profile.equals(this.profile)) return;
         this.profile = profile;
@@ -76,6 +89,13 @@ public final class CodeRain {
      */
     public boolean draw(GuiGraphics graphics, Font font, Bounds bounds, UiMouseState mouse,
                         UiPreferences preferences) {
+        if (themeBase != null) {
+            var fallback = themeBase;
+            String group = fallback.mode() == CodeRainProfile.Mode.ASCII ? "ascii" : "codeRain";
+            var resolved = ThemeEffects.profile(group, fallback);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themeBase = fallback;
+        }
         if (preferences.highContrast() || bounds.width() == 0 || bounds.height() == 0 || profile.density() == 0) {
             if (lastFrameMs != Long.MIN_VALUE) suspend();
             return !preferences.highContrast();

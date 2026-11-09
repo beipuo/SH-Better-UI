@@ -102,7 +102,7 @@ public final class MotionApi {
     }
 
     public Spring openingSpring(Spring.Preset preset) {
-        return Spring.opening(preset);
+        return Spring.opening(preset, nowMs());
     }
 
     public <K> SpringTable<K> springTable(Spring.Preset preset) {

@@ -5,6 +5,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiTheme;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -264,6 +265,21 @@ public final class SearchField<T> extends EditBox {
         return rowAt(dropdown(screenHeight), mouseX, mouseY) >= 0;
     }
 
+    private boolean defaultTextColor = true;
+    private boolean defaultDisabledColor = true;
+
+    @Override
+    public void setTextColor(int color) {
+        defaultTextColor = false;
+        super.setTextColor(color);
+    }
+
+    @Override
+    public void setTextColorUneditable(int color) {
+        defaultDisabledColor = false;
+        super.setTextColorUneditable(color);
+    }
+
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!isVisible()) return;
@@ -286,8 +302,8 @@ public final class SearchField<T> extends EditBox {
         if (showIcon) {
             boolean glass = style == UiStyle.LIQUID_GLASS;
             int color = preferences.highContrast() || isFocused()
-                    ? (glass ? LiquidGlassTheme.TEXT : DarkModeTheme.TEXT)
-                    : (glass ? LiquidGlassTheme.TEXT_MUTED : DarkModeTheme.TEXT_MUTED);
+                    ? (glass ? LiquidGlassTheme.textColor() : DarkModeTheme.textColor())
+                    : (glass ? LiquidGlassTheme.mutedTextColor() : DarkModeTheme.mutedTextColor());
             GraphicIcon.SEARCH.draw(graphics, getX() + getWidth() - ICON_RIGHT_PADDING - GraphicIcon.PIXELS,
                     getY() + (getHeight() - GraphicIcon.PIXELS) / 2, 1, color, preferences);
         }
@@ -299,6 +315,9 @@ public final class SearchField<T> extends EditBox {
             return;
         }
 
+        if (defaultTextColor) super.setTextColor(UiTheme.current().text(0xFFE0E0E0));
+        if (defaultDisabledColor) super.setTextColorUneditable(
+                UiTheme.current().secondaryText(0xFF707070, 0.38f));
         LiquidGlassTheme.input(graphics, getX(), getY(), getWidth(), getHeight(), preferences,
                 sampleBackground, isFocused());
         graphics.pose().pushPose();
@@ -365,7 +384,7 @@ public final class SearchField<T> extends EditBox {
         if (liquidGlass) {
             LiquidGlassTheme.popover(graphics, x, dropdown.top(), getWidth(), dropdown.height(), preferences);
         } else {
-            graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.SURFACE);
+            graphics.fill(x, dropdown.top(), x + getWidth(), bottom, DarkModeTheme.surfaceColor());
         }
         Component clippedLabel = null;
         for (int row = 0; row < dropdown.rows(); row++) {
@@ -376,20 +395,20 @@ public final class SearchField<T> extends EditBox {
                         index == selected, index == hovered, preferences);
             } else if (index == selected || index == hovered) {
                 graphics.fill(x + 1, y + 1, x + getWidth() - 1, y + dropdown.rowHeight(),
-                        index == selected ? DarkModeTheme.BACKGROUND : DarkModeTheme.BORDER);
+                        index == selected ? DarkModeTheme.backgroundColor() : DarkModeTheme.borderColor());
             }
             if (!liquidGlass && index == selected) {
-                graphics.fill(x + 1, y + 1, x + 3, y + dropdown.rowHeight(), DarkModeTheme.ACCENT);
+                graphics.fill(x + 1, y + 1, x + 3, y + dropdown.rowHeight(), DarkModeTheme.accentColor());
             }
             Component label = label(suggestions.get(index));
             String text = label.getString();
             String visibleText = font.plainSubstrByWidth(text, getWidth() - 10);
             if (index == hovered && !visibleText.equals(text)) clippedLabel = label;
             graphics.drawString(font, visibleText, x + 5, y + (dropdown.rowHeight() - font.lineHeight) / 2,
-                    liquidGlass ? LiquidGlassTheme.TEXT : DarkModeTheme.TEXT, false);
+                    liquidGlass ? LiquidGlassTheme.textColor() : DarkModeTheme.textColor(), false);
         }
         if (!liquidGlass) {
-            graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.BORDER_HOVER);
+            graphics.renderOutline(x, dropdown.top(), getWidth(), dropdown.height(), DarkModeTheme.hoverBorderColor());
         }
         return clippedLabel;
     }

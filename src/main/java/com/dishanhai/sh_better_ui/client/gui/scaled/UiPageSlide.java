@@ -109,7 +109,8 @@ public final class UiPageSlide {
             origin = STILL;
             return STILL;
         }
-        float t = Math.max(0L, nowMs - startedAt) / (float) DURATION_MS;
+        var effect = ThemeEffects.local("pageSlide");
+        float t = effect.enabled() ? Math.max(0L, nowMs - startedAt) * effect.speed() / DURATION_MS : 1f;
         if (t >= 1f) {
             origin = STILL;
             return STILL;

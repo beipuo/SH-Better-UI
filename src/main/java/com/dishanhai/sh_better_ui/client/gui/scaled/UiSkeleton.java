@@ -10,8 +10,6 @@ import java.util.Objects;
 public final class UiSkeleton {
     private static final long PERIOD_MS = 1800L;
     private static final float HIGHLIGHT_SPREAD = 0.4f;
-    private static final int BASE = GuiMotion.lerpColor(DarkModeTheme.BORDER, DarkModeTheme.BORDER_HOVER, 0.2f);
-    private static final int HIGHLIGHT = GuiMotion.lerpColor(DarkModeTheme.BORDER, DarkModeTheme.BORDER_HOVER, 0.65f);
 
     private UiSkeleton() {}
 
@@ -47,14 +45,14 @@ public final class UiSkeleton {
                                UiPreferences preferences, boolean card, float opacity) {
         if (viewport.width() == 0 || viewport.height() == 0) return;
         boolean highContrast = preferences.highContrast();
-        int base = highContrast ? DarkModeTheme.BORDER_HOVER : BASE;
-        int peak = highContrast ? DarkModeTheme.TEXT_MUTED : HIGHLIGHT;
+        int base = highContrast ? DarkModeTheme.hoverBorderColor() : GuiMotion.lerpColor(DarkModeTheme.borderColor(), DarkModeTheme.hoverBorderColor(), 0.2f);
+        int peak = highContrast ? DarkModeTheme.mutedTextColor() : GuiMotion.lerpColor(DarkModeTheme.borderColor(), DarkModeTheme.hoverBorderColor(), 0.65f);
         graphics.enableScissor(viewport.x(), viewport.y(), viewport.right(), viewport.bottom());
         try {
             if (card) {
                 RoundedCorners.draw(graphics, viewport.x(), viewport.y(), viewport.width(), viewport.height(), 6f, 1f,
-                        highContrast ? DarkModeTheme.TEXT_SECONDARY : DarkModeTheme.BORDER,
-                        highContrast ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE);
+                        highContrast ? DarkModeTheme.secondaryTextColor() : DarkModeTheme.borderColor(),
+                        highContrast ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor());
             }
             for (Block block : blocks) {
                 Bounds bounds = block.bounds();

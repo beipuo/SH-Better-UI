@@ -1,5 +1,8 @@
 package com.dishanhai.sh_better_ui.client.api;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -12,6 +15,11 @@ public class UiClientApi implements UiApi {
         return new UiApiContext(extensions());
     }
 
+    /** 登记后由开发者面板与按 ID 打开的入口共同发现。 */
+    public PreviewRegistry.Registration registerDeveloperPreview(PreviewSpec spec) {
+        return ShBetterUiApi.developerPreviews().register(spec);
+    }
+
     /** 每个逻辑操作持有一个实例，跨页面保留未决操作。 */
     public <T> UiRequest<T> operation() {
         return request(UiRequest.Mode.OPERATION);
@@ -22,7 +30,7 @@ public class UiClientApi implements UiApi {
         return new UiRequest<>(mode, client::execute, () -> {
             var listener = client.getConnection();
             return listener != null && listener.getConnection().isConnected() ? listener : null;
-        }, ShBetterUiApi.motion()::nowMs);
+        }, UiFrameScheduler::rawNowMs);
     }
 
     public UiScreenBuilder screen(String titleKey) {

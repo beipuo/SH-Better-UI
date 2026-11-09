@@ -72,15 +72,15 @@ public final class NetworkToggle extends Button {
         var state = motion.sample(isHovered(), justPressed, isFocused(), active, preferences, PageTransition.nowMs());
         justPressed = false;
         if (state.focused() || state.hover() > 0f || state.press() > 0f) {
-            int fill = GuiMotion.lerpColor(0x001C3448, 0xCC1C3448, Math.max(state.hover(), state.press()));
+            int fill = GuiMotion.lerpColor(0x001C3448, UiTheme.current().controlFill(0xCC1C3448, 0.14f), Math.max(state.hover(), state.press()));
             DarkModeTheme.rounded(graphics, x, y, width, height, 4, state.focused() ? 2 : 1,
                     NetworkTheme.outline(preferences.highContrast() || state.focused()), fill);
         }
 
         int trackX = x + width - TRACK_WIDTH - PADDING;
         int trackY = y + (height - TRACK_HEIGHT) / 2;
-        int edge = active ? DarkModeTheme.TEXT_SECONDARY : DarkModeTheme.TEXT_MUTED;
-        int fill = value && active ? 0xFF265C83 : 0xFF121A24;
+        int edge = active ? DarkModeTheme.secondaryTextColor() : DarkModeTheme.mutedTextColor();
+        int fill = value && active ? UiTheme.current().accent(0xFF265C83) : UiTheme.current().background(0xFF121A24);
         float knobRadius = KNOB_SIZE * 0.5f;
         float trackRadius = RoundedCorners.outsetRadius(KNOB_SIZE, KNOB_SIZE, knobRadius, KNOB_INSET);
         DarkModeTheme.rounded(graphics, trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, trackRadius,
@@ -93,7 +93,7 @@ public final class NetworkToggle extends Button {
         graphics.enableScissor(x + PADDING, y + 2, trackX - PADDING, y + height - 2);
         try {
             graphics.drawString(font, getMessage(), x + PADDING, y + (height - font.lineHeight) / 2,
-                    active ? NetworkTheme.labelColor(preferences) : DarkModeTheme.TEXT_MUTED, false);
+                    active ? NetworkTheme.labelColor(preferences) : DarkModeTheme.mutedTextColor(), false);
         } finally {
             graphics.disableScissor();
         }

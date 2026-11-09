@@ -195,15 +195,15 @@ public final class UiPullRefresh {
         if (width < 3 || height < 3 || clipBounds.getWidth() <= 0 || clipBounds.getHeight() <= 0) return;
         Frame frame = sample(nowMs, preferences);
         boolean highContrast = preferences.highContrast();
-        int textColor = highContrast ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_SECONDARY;
-        int border = highContrast ? DarkModeTheme.TEXT : DarkModeTheme.BORDER_HOVER;
-        int highlight = highContrast ? DarkModeTheme.TEXT : DarkModeTheme.ACCENT;
+        int textColor = highContrast ? DarkModeTheme.textColor() : DarkModeTheme.secondaryTextColor();
+        int border = highContrast ? DarkModeTheme.textColor() : DarkModeTheme.hoverBorderColor();
+        int highlight = highContrast ? DarkModeTheme.textColor() : DarkModeTheme.accentColor();
         boolean armed = frame.phase() == Phase.ARMED;
         graphics.enableScissor(clipBounds.getX(), clipBounds.getY(), clipBounds.getX() + clipBounds.getWidth(),
                 clipBounds.getY() + clipBounds.getHeight());
         try {
             DarkModeTheme.rounded(graphics, x, y, width, height, 4, 1,
-                    armed ? highlight : border, highContrast ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE);
+                    armed ? highlight : border, highContrast ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor());
 
             int textX = x + 4;
             int lineHeight = font.lineHeight;

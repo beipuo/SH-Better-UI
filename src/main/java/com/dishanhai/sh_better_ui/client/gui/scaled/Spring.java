@@ -71,8 +71,13 @@ public final class Spring {
 
     /** 开场弹簧：从 0 起弹向 1，起点取当前 {@code System.currentTimeMillis()}。字段初始化里直接用。 */
     public static Spring opening(Preset preset) {
+        return opening(preset, System.currentTimeMillis());
+    }
+
+    /** 开场弹簧，起点与后续取样使用调用方的同一个时钟。 */
+    public static Spring opening(Preset preset, long nowMs) {
         Spring s = new Spring(preset);
-        s.setTarget(1f, System.currentTimeMillis());
+        s.setTarget(1f, nowMs);
         return s;
     }
 

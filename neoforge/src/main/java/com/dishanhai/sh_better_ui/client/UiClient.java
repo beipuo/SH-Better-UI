@@ -17,6 +17,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
@@ -51,16 +52,21 @@ public final class UiClient {
         return new ControlPanelScreen(parent, controlPanelKey, ShBetterUi::saveClientUiSettings);
     }
 
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onFrameStart(RenderFrameEvent.Pre event) {
+        UiFrameScheduler.beginFrame();
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onFrameEnd(RenderFrameEvent.Post event) {
+        UiClientRendering.endFrame();
+    }
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
         GaussBlur.onScreenRenderPost(event);
-        if (event.getScreen() != Minecraft.getInstance().screen) return;
-        UiPointerCapture.validate(event.getScreen());
-        UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null) {
-            overlay.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-        }
-        UiToast.renderOverlay(event.getGuiGraphics());
+        UiClientRendering.renderScreenOverlays(event.getScreen(), event.getGuiGraphics(), event.getMouseX(),
+                event.getMouseY(), event.getPartialTick());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -152,10 +158,7 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onHudRenderPost(RenderGuiEvent.Post event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen == null && minecraft.getOverlay() == null && !minecraft.options.hideGui) {
-            UiToast.renderOverlay(event.getGuiGraphics());
-        }
+        UiClientRendering.renderHudOverlay(event.getGuiGraphics());
     }
 
     @SubscribeEvent
@@ -166,11 +169,7 @@ public final class UiClient {
 
     @SubscribeEvent
     public static void onScreenClosing(ScreenEvent.Closing event) {
-        UiPointerCapture.ownerClosed(event.getScreen());
-        UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null) overlay.ownerClosed();
-        GaussBlur.clear();
-        GaussBlur.clearTopLayer();
+        UiClientRendering.screenClosing(event.getScreen());
     }
 
     @SubscribeEvent

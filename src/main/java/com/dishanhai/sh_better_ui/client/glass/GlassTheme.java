@@ -1,6 +1,6 @@
 package com.dishanhai.sh_better_ui.client.glass;
 
-import com.dishanhai.sh_better_ui.client.glass.GlassPalette;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -104,7 +104,14 @@ public class GlassTheme {
      * 带边框的盒子。玻璃主题下四条边各自画、内芯半透明（内芯下面是背后的世界而不是边框色），
      * 再补左上受光亮边，同 {@code GlassPanelTexture} 的 plate。
      */
+    private ThemeEffects.Material material() {
+        return ThemeEffects.material(!glass ? "classic" : colors == GlassColors.SMOKE ? "smokeGlass" : "clearGlass");
+    }
+
     public void box(GuiGraphics g, int x, int y, int w, int h, int border, int fill) {
+        var material = material();
+        border = material.edge(border);
+        fill = material.fill(fill);
         if (!glass) {
             g.fill(x, y, x + w, y + h, border);
             g.fill(x + 1, y + 1, x + w - 1, y + h - 1, fill);
@@ -150,7 +157,7 @@ public class GlassTheme {
      * 「关」态常用的 §8/§7 映射成仍清晰可读的灰蓝，不再是深底上的深灰。
      */
     public int ink(String text, int fallback) {
-        if (!glass) return fallback;
+        if (!glass) return material().text(fallback);
         char code = 'f';
         if (text != null) {
             for (int i = 0; i + 1 < text.length(); i++) {
@@ -159,22 +166,23 @@ public class GlassTheme {
                 if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) { code = c; break; }
             }
         }
+        var material = material();
         return switch (code) {
-            case '0', '8' -> colors.TEXT_DIM;
-            case '7' -> colors.TEXT_MUTED;
+            case '0', '8' -> material.text(colors.TEXT_DIM);
+            case '7' -> material.text(colors.TEXT_MUTED);
             case 'a', '2' -> colors.OK;
-            case 'b', '3', '9', '1' -> colors.ACCENT;
+            case 'b', '3', '9', '1' -> material.accent(colors.ACCENT);
             case 'c', '4' -> GLASS_RED;
             case 'e', '6' -> GLASS_GOLD;
             case 'd', '5' -> GLASS_PURPLE;
-            default -> colors.TEXT;
+            default -> material.text(colors.TEXT);
         };
     }
 
     /** 页签/普通文字的常态、悬停、选中色（玻璃主题；经典调用方仍用自己的灰/白/金）。 */
-    public int tabIdle() { return colors.TEXT_MUTED; }
-    public int tabHover() { return colors.TEXT; }
-    public int tabActive() { return colors.ACCENT; }
+    public int tabIdle() { return material().text(colors.TEXT_MUTED); }
+    public int tabHover() { return material().text(colors.TEXT); }
+    public int tabActive() { return material().accent(colors.ACCENT); }
 
     /** 居中画按钮文字：经典带阴影（原样）；玻璃无阴影，同样板生成器。 */
     public void drawCentered(GuiGraphics g, net.minecraft.client.gui.Font font, String text, int cx, int y, int color) {
@@ -275,10 +283,11 @@ public class GlassTheme {
             box(g, ix, iy, iw, ih, colors.DISPLAY_EDGE, panelInner);
             return;
         }
-        g.fill(x, y, x + w, y + h, outer);
-        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, line);
-        g.fill(x + 2, y + 2, x + w - 2, y + h - 2, panelBg);
-        g.fill(ix, iy, ix + iw, iy + ih, panelInner);
+        var material = material();
+        g.fill(x, y, x + w, y + h, material.edge(outer));
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, material.accent(line));
+        g.fill(x + 2, y + 2, x + w - 2, y + h - 2, material.fill(panelBg));
+        g.fill(ix, iy, ix + iw, iy + ih, material.fill(panelInner));
     }
 
     /** 区域底（列表区、详情区）。经典：原来的纯色块；玻璃：区域毛玻璃 + 细边 + 半透明底，分区一眼可见。 */
@@ -289,7 +298,7 @@ public class GlassTheme {
     /** 同上，自选底色（如会员档位行的悬停 {@link #rowBg}）。 */
     public void region(GuiGraphics g, int x, int y, int w, int h, int fill) {
         if (!glass) {
-            g.fill(x, y, x + w, y + h, fill);
+            g.fill(x, y, x + w, y + h, material().fill(fill));
             return;
         }
         regionBackdrop(g, x, y, w, h);

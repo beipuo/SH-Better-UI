@@ -1,11 +1,13 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
+
 /** 山海：共用的頁面切換時間軸，進度可同時驅動位移及方向模糊。 */
 public class PageTransition {
     public static final long DURATION_MS = 640L;
 
     public static long nowMs() {
-        return System.nanoTime() / 1_000_000L;
+        return UiFrameScheduler.nowMs();
     }
 
     private int currentStage;
@@ -41,9 +43,13 @@ public class PageTransition {
     public int targetStage() { return targetStage; }
 
     public float linear(long nowMs) {
+        return linear(nowMs, 1f);
+    }
+
+    float linear(long nowMs, float speed) {
         if (currentStage == targetStage) return 1.0f;
         long elapsed = Math.max(0L, nowMs - startedAt);
-        return Math.min(1.0f, elapsed / (float) DURATION_MS);
+        return Math.min(1.0f, elapsed * speed / DURATION_MS);
     }
 
     public float progress(long nowMs) {

@@ -5,6 +5,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.ShaderInstance;
@@ -69,7 +70,7 @@ public final class ElectricLogo implements AutoCloseable {
 
     public boolean draw(GuiGraphics graphics, int x, int y, int width, int height, double mouseX, double mouseY) {
         return draw(graphics, x, y, width, height, mouseX, mouseY,
-                ElectricLogoProfile.DEFAULT, UiPreferences.configured());
+                ThemeEffects.profile("electricLogo", ElectricLogoProfile.DEFAULT), UiPreferences.configured());
     }
 
     /**

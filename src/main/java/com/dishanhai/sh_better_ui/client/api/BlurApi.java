@@ -10,6 +10,7 @@ import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.glass.PixelRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.RevealProfile;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 import com.dishanhai.sh_better_ui.client.gui.scaled.VisualReveal;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import net.minecraft.client.gui.GuiGraphics;
@@ -78,10 +79,12 @@ public final class BlurApi {
     }
 
     public boolean revealRegion(GuiGraphics graphics, GuiRect area, RevealProfile profile) {
+        if (profile == RevealProfile.DEFAULT) profile = ThemeEffects.profile("reveal", profile);
         return GlassBlur.revealRegion(graphics, area, profile.maxRadius(), profile.fullBlurUntil(), profile.sharpFrom());
     }
 
     public boolean revealRegion(GuiGraphics graphics, GuiRect area, RevealProfile profile, RevealDirection direction) {
+        if (profile == RevealProfile.DEFAULT) profile = ThemeEffects.profile("reveal", profile);
         return GlassBlur.revealRegion(graphics, area, profile.maxRadius(), profile.fullBlurUntil(), profile.sharpFrom(),
                 direction);
     }

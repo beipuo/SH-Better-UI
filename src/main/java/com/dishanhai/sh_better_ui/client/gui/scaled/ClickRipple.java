@@ -30,7 +30,7 @@ public final class ClickRipple {
     /** 调用方使用同一毫秒时钟；时间回退时夹到起点，结束后不再分配新帧。 */
     public Frame sample(long nowMs, boolean reducedMotion) {
         if (!active) return Frame.NONE;
-        double elapsed = Math.max(0d, (double) nowMs - startedAt);
+        double elapsed = Math.max(0d, (double) nowMs - startedAt) * ThemeEffects.local("clickRipple").speed();
         if (elapsed >= DURATION_MS) {
             clear();
             return Frame.NONE;

@@ -13,7 +13,12 @@ public final class LaserFlow {
     private float phase;
     private float opening;
 
-    public LaserFlow() { this(LaserFlowProfile.DEFAULT); }
+    private boolean themed;
+
+    public LaserFlow() {
+        this(LaserFlowProfile.DEFAULT);
+        themed = true;
+    }
     public LaserFlow(LaserFlowProfile profile) {
         setProfile(profile);
         opening = profile.paused() ? 1 : 0;
@@ -22,6 +27,7 @@ public final class LaserFlow {
 
     /** 替换参数并保留当前动画相位。 */
     public void setProfile(LaserFlowProfile profile) {
+        themed = false;
         this.profile = Objects.requireNonNull(profile);
     }
 
@@ -52,6 +58,11 @@ public final class LaserFlow {
      */
     public boolean draw(GuiGraphics graphics, Bounds bounds, LaserFlowSurface surface, LaserFlowReveal reveal,
                         UiMouseState mouse, UiPreferences preferences) {
+        if (themed) {
+            var resolved = ThemeEffects.profile("laserFlow", LaserFlowProfile.DEFAULT);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         Objects.requireNonNull(preferences);
         if (preferences.highContrast() || !LaserFlowRenderer.available()) {
             suspend();

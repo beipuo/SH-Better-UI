@@ -73,19 +73,21 @@ public final class UiRecipePageTransition {
 
     /** 事件和绘制使用同一个单调毫秒时钟，例如 {@link PageTransition#nowMs()}。 */
     public Frame sample(long nowMs, UiPreferences preferences) {
-        if (preferences.reducedMotion()) timeline.reset(0, nowMs);
-        float eased = timeline.progress(nowMs);
+        var effect = ThemeEffects.local("recipeTransition");
+        if (preferences.reducedMotion() || !effect.enabled()) timeline.reset(0, nowMs);
+        float linear = timeline.linear(nowMs, effect.speed());
+        float eased = linear * linear * (3f - 2f * linear);
         float remaining = 1f - eased;
         float x = startX * remaining;
         float y = startY * remaining;
-        float speed = GlassMotion.speed(timeline.linear(nowMs));
+        float speed = GlassMotion.speed(linear);
         float strength = speed + (1f - speed) * startBlur * remaining;
         float maxAxis = Math.max(Math.abs(startX), Math.abs(startY));
         float axisX = maxAxis == 0f ? 0f : Math.abs(startX) / maxAxis;
         float axisY = maxAxis == 0f ? 0f : Math.abs(startY) / maxAxis;
         return new Frame(GuiMotion.lerp(startProgress, 1f, eased), x, y,
                 x + direction.axisX() * distance, y + direction.axisY() * distance,
-                new GlassMotion.Sample(strength, blurRadius, axisX, axisY));
+                new GlassMotion.Sample(GuiMotion.clamp01(strength * effect.strength()), blurRadius, axisX, axisY));
     }
 
     /** 在固定视口内仅绘制当前页。交互坐标减去同一帧的 incomingX/Y。 */

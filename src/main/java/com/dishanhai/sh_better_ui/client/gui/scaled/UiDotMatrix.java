@@ -27,8 +27,11 @@ public final class UiDotMatrix {
     private boolean selectionDirty = true;
     private long selectedCycle;
 
+    private boolean themed;
+
     public UiDotMatrix() {
         this(DotMatrixProfile.VIOLET);
+        themed = true;
     }
 
     public UiDotMatrix(DotMatrixProfile profile) {
@@ -37,6 +40,7 @@ public final class UiDotMatrix {
 
     /** 换色、换效果或调整互动范围时保留网格位置。 */
     public void setProfile(DotMatrixProfile profile) {
+        themed = false;
         Objects.requireNonNull(profile);
         if (!this.profile.grid().equals(profile.grid())) layoutWidth = -1;
         if (!this.profile.motion().equals(profile.motion())) selectionDirty = true;
@@ -131,12 +135,17 @@ public final class UiDotMatrix {
             lens.reset();
             return;
         }
+        if (themed) {
+            var resolved = ThemeEffects.profile("dotMatrix", DotMatrixProfile.VIOLET);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         DotMatrixProfile style = profile;
         DotMatrixProfile.Palette palette = style.palette();
         if (preferences.highContrast()) {
             click.clear();
             lens.reset();
-            background.quad(0, 0, width, height, DarkModeTheme.BACKGROUND);
+            background.quad(0, 0, width, height, DarkModeTheme.backgroundColor());
             return;
         }
         if ((palette.backgroundArgb() >>> 24) != 0) background.quad(0, 0, width, height, palette.backgroundArgb());

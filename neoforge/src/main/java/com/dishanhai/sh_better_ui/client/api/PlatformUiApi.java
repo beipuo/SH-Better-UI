@@ -11,6 +11,7 @@ import com.dishanhai.sh_better_ui.compat.ldlib2.LdLib2UiBridge.PullRefreshHandle
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.renderer.Rect2i;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -28,6 +29,11 @@ public final class PlatformUiApi {
     /** 山海：统一两平台原生控件的提示延迟，单位为毫秒。 */
     public static void setTooltipDelay(AbstractWidget widget, int delayMs) {
         widget.setTooltipDelay(Duration.ofMillis(delayMs));
+    }
+
+    /** 将滚轮事件传给原生控件，使用该版本支持的滚动方向。 */
+    public static boolean scrollWidget(GuiEventListener child, double x, double y, double deltaX, double deltaY) {
+        return child.mouseScrolled(x, y, deltaX, deltaY);
     }
 
     /** 山海：仅包含加载器元数据，不触发可选模组的类加载。 */

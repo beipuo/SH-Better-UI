@@ -13,11 +13,17 @@ public final class LightRays {
     private long lastFrameMs = Long.MIN_VALUE;
     private boolean motionAllowed;
 
-    public LightRays() { this(LightRaysProfile.DEFAULT); }
+    private boolean themed;
+
+    public LightRays() {
+        this(LightRaysProfile.DEFAULT);
+        themed = true;
+    }
     public LightRays(LightRaysProfile profile) { setProfile(profile); }
     public LightRaysProfile profile() { return profile; }
 
     public void setProfile(LightRaysProfile profile) {
+        themed = false;
         this.profile = Objects.requireNonNull(profile);
     }
 
@@ -50,6 +56,11 @@ public final class LightRays {
      * 高对比模式或着色器不可用时返回 false，宿主可绘制后备背景。
      */
     public boolean draw(GuiGraphics graphics, Bounds bounds, UiMouseState mouse, UiPreferences preferences) {
+        if (themed) {
+            var resolved = ThemeEffects.profile("lightRays", LightRaysProfile.DEFAULT);
+            if (!resolved.equals(profile)) setProfile(resolved);
+            themed = true;
+        }
         Objects.requireNonNull(preferences);
         if (preferences.highContrast() || !LightRaysRenderer.available()) {
             suspend();

@@ -215,7 +215,7 @@ public final class NetworkScreen extends Screen {
             int y = GAP;
             for (var line : font.split(TOO_SMALL, Math.max(1, width - 2 * GAP))) {
                 if (y + font.lineHeight > height - 24) break;
-                graphics.drawString(font, line, GAP, y, DarkModeTheme.TEXT, false);
+                graphics.drawString(font, line, GAP, y, DarkModeTheme.textColor(), false);
                 y += font.lineHeight + 2;
             }
             super.render(graphics, mouseX, mouseY, partialTick);
@@ -265,7 +265,7 @@ public final class NetworkScreen extends Screen {
                 case Status status -> {
                     var entry = status.value().get();
                     var statusLayout = GraphicDisplayLayout.arrange(area, 1, area.height(), false);
-                    GraphicDisplay.drawRows(graphics, font, statusLayout, List.of(entry), 1, DarkModeTheme.TEXT, 0);
+                    GraphicDisplay.drawRows(graphics, font, statusLayout, List.of(entry), 1, DarkModeTheme.textColor(), 0);
                     if (hovered) tip = entry.label();
                 }
                 case Toggle ignored -> { }
@@ -274,7 +274,7 @@ public final class NetworkScreen extends Screen {
         if (layout.pageCount() > 1) {
             var footer = new GraphicDisplayLayout.Result(layout.panel(), List.of(), layout.previous(), layout.next());
             GraphicDisplay.drawPageNumber(graphics, font, footer, layout.pageIndex() + 1, layout.pageCount(),
-                    DarkModeTheme.TEXT);
+                    DarkModeTheme.textColor());
         }
         return tip;
     }

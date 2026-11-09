@@ -96,11 +96,11 @@ public final class UiLoading {
     }
 
     private static int track(UiPreferences preferences) {
-        return preferences.highContrast() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
+        return preferences.highContrast() ? DarkModeTheme.hoverBorderColor() : DarkModeTheme.borderColor();
     }
 
     private static int accent(UiPreferences preferences) {
-        return preferences.highContrast() ? DarkModeTheme.TEXT : LiquidGlassTheme.ACCENT;
+        return preferences.highContrast() ? DarkModeTheme.textColor() : LiquidGlassTheme.accentColor();
     }
 
     private static void drawBar(GuiGraphics graphics, Bounds area, float offset, float fillWidth,

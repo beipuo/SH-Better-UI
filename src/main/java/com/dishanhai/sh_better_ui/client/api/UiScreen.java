@@ -290,14 +290,14 @@ public final class UiScreen extends Screen {
         }
         if (disposed || removed) return;
         if (back != null) {
-            graphics.fill(0, 0, width, barHeight(), DarkModeTheme.SURFACE);
+            graphics.fill(0, 0, width, barHeight(), DarkModeTheme.surfaceColor());
             back.render(graphics, mouseX, mouseY, partialTick);
             int titleX = back.getX() + back.getWidth() + inset();
             int availableWidth = width - inset() - titleX;
             if (availableWidth > 0 && barHeight() >= font.lineHeight) {
                 var title = Language.getInstance().getVisualOrder(font.substrByWidth(getTitle(), availableWidth));
                 UiFormattedText.draw(graphics, font, title, titleX,
-                        (barHeight() - font.lineHeight) / 2, DarkModeTheme.TEXT, false, frame.preferences());
+                        (barHeight() - font.lineHeight) / 2, DarkModeTheme.textColor(), false, frame.preferences());
             }
         }
     }

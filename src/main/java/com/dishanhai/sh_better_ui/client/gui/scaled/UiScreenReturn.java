@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -57,17 +58,21 @@ public final class UiScreenReturn {
         parent = previous;
         prepared = true;
         startedAt = PageTransition.nowMs();
-        if (parent == null) return;
-        if (parent.width != width || parent.height != height) parent.resize(Minecraft.getInstance(), width, height);
-        if (parent instanceof Target target) {
-            target.prepareReturnLayer();
-            fallbackBlocks = List.of();
-        } else {
-            fallbackBlocks = parent.children().stream().filter(AbstractWidget.class::isInstance)
-                    .map(AbstractWidget.class::cast).filter(widget -> widget.visible)
-                    .map(widget -> new UiSkeleton.Block(new Bounds(widget.getX(), widget.getY(),
-                            widget.getWidth(), widget.getHeight()))).toList();
-        }
+        if (previous == null) return;
+        UiFrameScheduler.renderPreview(() -> {
+            if (previous.width != width || previous.height != height) {
+                previous.resize(Minecraft.getInstance(), width, height);
+            }
+            if (previous instanceof Target target) {
+                target.prepareReturnLayer();
+                fallbackBlocks = List.of();
+            } else {
+                fallbackBlocks = previous.children().stream().filter(AbstractWidget.class::isInstance)
+                        .map(AbstractWidget.class::cast).filter(widget -> widget.visible)
+                        .map(widget -> new UiSkeleton.Block(new Bounds(widget.getX(), widget.getY(),
+                                widget.getWidth(), widget.getHeight()))).toList();
+            }
+        });
     }
 
     /** parent 为 null 时保留游戏已经绘制的世界，不增加本页遮罩或黑底。 */
@@ -90,10 +95,12 @@ public final class UiScreenReturn {
             renderParent(graphics, partialTick);
             if (fallbackPreferences != null && !(parent instanceof Target)) {
                 long now = PageTransition.nowMs();
-                float opacity = fallbackPreferences.reducedMotion() ? 0f : 1f
-                        - GuiMotion.clamp01((now - startedAt) / 240f);
+                var effect = ThemeEffects.local("screenReturn");
+                float opacity = fallbackPreferences.reducedMotion() || !effect.enabled() ? 0f : effect.strength()
+                        * (1f - GuiMotion.clamp01((now - startedAt) * effect.speed() / 240f));
                 if (opacity > 0f) {
-                    int veil = GuiMotion.lerpColor(DarkModeTheme.BACKGROUND & 0xFFFFFF, DarkModeTheme.BACKGROUND, opacity);
+                    int color = effect.ink(DarkModeTheme.backgroundColor());
+                    int veil = GuiMotion.lerpColor(color & 0xFFFFFF, color, opacity);
                     graphics.fill(0, 0, width, height, veil);
                     UiSkeleton.draw(graphics, new Bounds(0, 0, width, height), fallbackBlocks, now,
                             fallbackPreferences, opacity);
@@ -113,7 +120,8 @@ public final class UiScreenReturn {
         if (parent == null || rendering) return;
         rendering = true;
         try {
-            parent.render(graphics, -1, -1, partialTick);
+            Screen preview = parent;
+            UiFrameScheduler.renderPreview(() -> preview.render(graphics, -1, -1, partialTick));
         } finally {
             rendering = false;
         }

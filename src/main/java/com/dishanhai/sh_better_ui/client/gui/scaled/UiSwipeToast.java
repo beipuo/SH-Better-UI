@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import net.minecraft.client.Minecraft;
@@ -97,6 +98,7 @@ public final class UiSwipeToast extends AbstractWidget {
     private float grabOffset;
     private boolean announced;
     private int occupiedHeight;
+    private long openRevision;
 
     public UiSwipeToast(Screen owner, Placement placement, Content content, Options options, Style style,
                         UiPreferences preferences, Consumer<CloseReason> onClose) {
@@ -138,6 +140,7 @@ public final class UiSwipeToast extends AbstractWidget {
             active = interactive();
             announced = false;
             timeline.open(now);
+            openRevision++;
         } else {
             close(CloseReason.PROGRAMMATIC, now);
         }
@@ -332,8 +335,15 @@ public final class UiSwipeToast extends AbstractWidget {
 
     @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        long now = PageTransition.nowMs();
         var client = Minecraft.getInstance();
+        if (!UiFrameScheduler.canCommitFor(owner)) {
+            if (card != null && layout != null) {
+                drawFrame(graphics, client.font, layout, Integer.MIN_VALUE, Integer.MIN_VALUE, false);
+            }
+            return;
+        }
+
+        long now = PageTransition.nowMs();
         int available = placement == Placement.INLINE ? getWidth() : graphics.guiWidth() - 2 * MARGIN;
         int width = Math.min(style.width(), available);
         int maxHeight = placement == Placement.INLINE ? graphics.guiHeight() - Math.max(0, getY())
@@ -355,7 +365,10 @@ public final class UiSwipeToast extends AbstractWidget {
             occupiedHeight = 0;
             visible = false;
             card = slot = null;
-            onClose.accept(reason);
+            long revision = openRevision;
+            UiFrameScheduler.afterFrame(owner, () -> {
+                if (openRevision == revision) onClose.accept(reason);
+            });
             return;
         }
         if (nextLayout == null) { occupiedHeight = 0; return; }
@@ -378,17 +391,22 @@ public final class UiSwipeToast extends AbstractWidget {
                 + Math.round(Math.max(0f, timeline.slot() - reveal) * nextLayout.height())
                 : Math.round((1f - reveal) * (nextLayout.height() + MARGIN));
         card = new Bounds(x, y + slide + Math.round(displacement), width, nextLayout.height());
-        int alpha = Math.round(255f * reveal);
+        drawFrame(graphics, client.font, nextLayout, mouseX, mouseY,
+                swipe.active() && sample.dismissesDown(style.swipeDistance(), FLICK_SPEED));
+    }
+
+    private void drawFrame(GuiGraphics graphics, Font font, Layout layout, int mouseX, int mouseY, boolean armed) {
+        int alpha = Math.round(255f * timeline.reveal());
+        boolean inline = placement == Placement.INLINE;
         if (alpha < 4 || (inline && occupiedHeight == 0)) return;
-        if (clipSlot) graphics.enableScissor(slot.x(), slot.y(), slot.right(), slot.bottom());
+        if (slot != null) graphics.enableScissor(slot.x(), slot.y(), slot.right(), slot.bottom());
         graphics.pose().pushPose();
         try {
             if (!inline) graphics.pose().translate(0f, 0f, 400f);
-            draw(graphics, client.font, nextLayout, alpha, mouseX, mouseY,
-                    swipe.active() && sample.dismissesDown(style.swipeDistance(), FLICK_SPEED));
+            draw(graphics, font, layout, alpha, mouseX, mouseY, armed);
         } finally {
             graphics.pose().popPose();
-            if (clipSlot) graphics.disableScissor();
+            if (slot != null) graphics.disableScissor();
         }
     }
 
@@ -438,10 +456,10 @@ public final class UiSwipeToast extends AbstractWidget {
 
     private void draw(GuiGraphics g, Font font, Layout layout, int alpha, int mouseX, int mouseY, boolean armed) {
         boolean highContrast = preferences.highContrast();
-        int ink = highContrast ? DarkModeTheme.TEXT : style.color();
-        int surface = highContrast ? DarkModeTheme.BACKGROUND : style.background();
+        int ink = highContrast ? DarkModeTheme.textColor() : style == Style.DEFAULT ? UiTheme.current().text(style.color()) : style.color();
+        int surface = highContrast ? DarkModeTheme.backgroundColor() : style == Style.DEFAULT ? UiTheme.current().surface(style.background()) : style.background();
         int fuse = highContrast ? ink : style.fuseColor();
-        int edge = armed ? fuse : isFocused() || highContrast ? ink : DarkModeTheme.BORDER;
+        int edge = armed ? fuse : isFocused() || highContrast ? ink : DarkModeTheme.borderColor();
         if (pressed == Target.CARD && !highContrast) surface = GuiMotion.lerpColor(surface, ink, 0.10f);
         DarkModeTheme.rounded(g, card.x(), card.y(), card.width(), card.height(), style.radius(),
                 armed || isFocused() ? 2 : 1, tint(edge, alpha), tint(surface, alpha));

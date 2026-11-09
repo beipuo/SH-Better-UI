@@ -89,7 +89,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         Objects.checkIndex(index, buttons.size());
         selected = index;
         for (int i = 0; i < buttons.size(); i++) buttons.get(i).setSelected(i == selected);
-        if (settings.autoReveal()) reveal(index);
+        if (ThemeEffects.profile("tabs", settings).autoReveal()) reveal(index);
     }
 
     /** 定位键盘焦点，不提交选择；键盘焦点始终可见。 */
@@ -109,7 +109,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     public void setSettings(TabScrollSettings settings) {
         cancelDrag();
         this.settings = Objects.requireNonNull(settings);
-        if (settings.autoReveal()) reveal(selected);
+        if (ThemeEffects.profile("tabs", settings).autoReveal()) reveal(selected);
     }
 
     public void setBounds(Bounds area) {
@@ -122,7 +122,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         scrolling.resize(area.width(), (double) buttons.size() * (tabWidth + GAP) - GAP);
         layoutButtons();
         if (isFocused()) reveal(focused);
-        else if (settings.autoReveal()) reveal(selected);
+        else if (ThemeEffects.profile("tabs", settings).autoReveal()) reveal(selected);
     }
 
     /** 内容坐标滚动量；可供外部滚动条或其他输入源独立控制。 */
@@ -175,7 +175,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         cancelDrag();
         captured = true;
         pressed = buttonAt(x, y);
-        if (settings.dragEnabled()) scrolling.beginDrag(x, y);
+        if (ThemeEffects.profile("tabs", settings).dragEnabled()) scrolling.beginDrag(x, y);
         if (pressed >= 0) {
             focused = pressed;
             buttons.get(pressed).setHeld(true);
@@ -218,9 +218,9 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     }
 
     public boolean mouseScrolled(double x, double y, double delta) {
-        if (!contains(x, y) || !settings.wheelEnabled() || captured || !Double.isFinite(delta)
+        if (!contains(x, y) || !ThemeEffects.profile("tabs", settings).wheelEnabled() || captured || !Double.isFinite(delta)
                 || delta == 0 || scrolling.maxOffset() == 0) return false;
-        scrolling.scrollBy(-delta * settings.scrollStep());
+        scrolling.scrollBy(-delta * ThemeEffects.profile("tabs", settings).scrollStep());
         layoutButtons();
         return true;
     }
@@ -312,7 +312,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
                 int thumb = Math.max(8, (int) Math.round(track * track / (track + scrolling.maxOffset())));
                 int start = getX() + (int) Math.round((track - thumb) * scrolling.offset() / scrolling.maxOffset());
                 graphics.fill(getX(), getY() + getHeight() - 1, getX() + track, getY() + getHeight(), 0x664A5565);
-                graphics.fill(start, getY() + getHeight() - 1, start + thumb, getY() + getHeight(), LiquidGlassTheme.TEXT_MUTED);
+                graphics.fill(start, getY() + getHeight() - 1, start + thumb, getY() + getHeight(), LiquidGlassTheme.mutedTextColor());
             } finally {
                 graphics.disableScissor();
             }

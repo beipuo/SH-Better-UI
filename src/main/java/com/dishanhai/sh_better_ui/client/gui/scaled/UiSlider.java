@@ -125,8 +125,8 @@ public final class UiSlider extends AbstractSliderButton {
         int trackWidth = width - 2 * TRACK_INSET;
         int trackY = y + height - 5;
         int thumbX = trackX + (int) Math.round(value * trackWidth);
-        int accent = active ? LiquidGlassTheme.ACCENT : LiquidGlassTheme.TEXT_MUTED;
-        graphics.fill(trackX, trackY, trackX + trackWidth, trackY + 1, LiquidGlassTheme.TEXT_MUTED);
+        int accent = active ? LiquidGlassTheme.accentColor() : LiquidGlassTheme.mutedTextColor();
+        graphics.fill(trackX, trackY, trackX + trackWidth, trackY + 1, LiquidGlassTheme.mutedTextColor());
         graphics.fill(trackX, trackY, thumbX, trackY + 1, accent);
         graphics.fill(thumbX - 2, trackY - 1, thumbX + 2, trackY + 2, accent);
 

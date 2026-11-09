@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.glass
 
 import com.dishanhai.sh_better_ui.client.gui.scaled.GuiMotion
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects
 import net.minecraft.client.gui.GuiGraphics
 
 /** 配方修改器 IO 格子的玻璃绘制：选中光晕、边框、不透明格心、左上受光线。 */
@@ -19,15 +20,17 @@ object GlassCell {
     @JvmStatic
     fun draw(g: GuiGraphics, x: Int, y: Int, size: Int, frame: Int, select: Float, hover: Boolean,
              colors: GlassColors) {
+        val material = ThemeEffects.material(if (colors === GlassColors.SMOKE) "smokeGlass" else "clearGlass")
+        val accent = material.accent(colors.ACCENT)
         if (select > 0.02f) {
             val alpha = minOf(255, Math.round(255f * select))
             val inset = Math.round((1f - select) * 3f)
             g.fill(x - 1 + inset, y - 1 + inset, x + size + 1 - inset, y + size + 1 - inset,
-                (alpha shl 24) or (colors.ACCENT and 0xFFFFFF))
+                (alpha shl 24) or (accent and 0xFFFFFF))
         }
-        val edge = if (hover) GuiMotion.lerpColor(frame, colors.ACCENT, 0.6f) else frame
+        val edge = if (hover) GuiMotion.lerpColor(material.edge(frame), accent, 0.6f) else material.edge(frame)
         g.fill(x, y, x + size, y + size, edge)
-        g.fill(x + 1, y + 1, x + size - 1, y + size - 1, colors.CELL_FILL)
-        g.fill(x + 1, y + 1, x + size - 1, y + 2, colors.LIT)
+        g.fill(x + 1, y + 1, x + size - 1, y + size - 1, material.fill(colors.CELL_FILL))
+        g.fill(x + 1, y + 1, x + size - 1, y + 2, material.accent(colors.LIT))
     }
 }

@@ -175,15 +175,15 @@ final class UiTextDetailsScreen extends Screen {
                 }
                 int titleY = headingY + (headingHeight - heading.size() * lineStep()) / 2;
                 drawLines(graphics, heading, textLeft + headingInset, titleY,
-                        preferences.highContrast() ? LiquidGlassTheme.TEXT : LiquidGlassTheme.ACCENT);
-                drawLines(graphics, content, textLeft, headingY + headingHeight + GAP, LiquidGlassTheme.TEXT);
+                        preferences.highContrast() ? LiquidGlassTheme.textColor() : LiquidGlassTheme.accentColor());
+                drawLines(graphics, content, textLeft, headingY + headingHeight + GAP, LiquidGlassTheme.textColor());
             } finally {
                 graphics.disableScissor();
             }
             if (hasTrack()) {
                 int thumb = thumbTop();
                 graphics.fill(innerRight - TRACK_WIDTH, viewTop, innerRight, viewBottom, 0xFF394657);
-                graphics.fill(innerRight - TRACK_WIDTH, thumb, innerRight, thumb + thumbHeight(), LiquidGlassTheme.ACCENT);
+                graphics.fill(innerRight - TRACK_WIDTH, thumb, innerRight, thumb + thumbHeight(), LiquidGlassTheme.accentColor());
             }
         }
         super.render(graphics, mouseX, mouseY, partialTick);

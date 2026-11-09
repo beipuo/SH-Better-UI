@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import net.minecraft.client.Minecraft;
@@ -301,7 +302,8 @@ public final class UiOverlayHost {
         Layer layer = modal;
         boolean morph = layer != null && sourceAvailable(layer.source);
         if (layer != null && layer.closing() && !morph) {
-            completeDismissal();
+            layer.enter.finish();
+            queueDismissal(layer);
             return;
         }
         if (layer == null && bubble == null) return;
@@ -331,7 +333,16 @@ public final class UiOverlayHost {
         } finally {
             graphics.pose().popPose();
         }
-        if (layer != null && layer == modal && layer.enter.takeCompletion(layer.closeRevision)) completeDismissal();
+        if (layer != null && layer.closing() && !layer.enter.running()) queueDismissal(layer);
+    }
+
+    private void queueDismissal(Layer layer) {
+        long revision = layer.closeRevision;
+        UiFrameScheduler.afterFrame(owner, () -> {
+            if (layer == modal && layer.closeRevision == revision && layer.enter.takeCompletion(revision)) {
+                completeDismissal();
+            }
+        });
     }
 
     private void renderBubble(GuiGraphics graphics, Bubble bubble) {
@@ -360,7 +371,7 @@ public final class UiOverlayHost {
                 var text = line == visible - 1 && visible < lines.size()
                         ? CommonComponents.ELLIPSIS.getVisualOrderText() : lines.get(line);
                 graphics.drawString(font, text, box.x() + GAP + inset, textY + line * font.lineHeight,
-                        LiquidGlassTheme.TEXT, false);
+                        LiquidGlassTheme.textColor(), false);
             }
         } finally {
             graphics.disableScissor();
@@ -373,7 +384,7 @@ public final class UiOverlayHost {
     }
 
     private int iconColor() {
-        return preferences.highContrast() ? LiquidGlassTheme.TEXT : LiquidGlassTheme.ACCENT;
+        return preferences.highContrast() ? LiquidGlassTheme.textColor() : LiquidGlassTheme.accentColor();
     }
 
     static boolean intersectsViewport(Rect2i anchor, int width, int height) {
@@ -731,8 +742,8 @@ public final class UiOverlayHost {
                                 1, iconColor(), preferences);
                     }
                     int titleY = headingY + (headingHeight - titleLines.size() * lineHeight) / 2;
-                    drawLines(graphics, titleLines, body.x() + headingInset, titleY, DarkModeTheme.TEXT);
-                    drawLines(graphics, detailLines, body.x(), headingY + headingHeight + GAP, DarkModeTheme.TEXT_SECONDARY);
+                    drawLines(graphics, titleLines, body.x() + headingInset, titleY, DarkModeTheme.textColor());
+                    drawLines(graphics, detailLines, body.x(), headingY + headingHeight + GAP, DarkModeTheme.secondaryTextColor());
                     for (int i = 0; i < rowCount; i++) {
                         UiButton row = buttons.get(i);
                         if (row.getY() < body.bottom() && row.getY() + row.getHeight() > body.y()) {
@@ -761,7 +772,7 @@ public final class UiOverlayHost {
             if (button == pressed && button.isMouseOver(mouseX, mouseY)) {
                 int x = button.getX() + 2;
                 int y = button.getY() + button.getHeight() - 2;
-                graphics.fill(x, y, Math.max(x, x + button.getWidth() - 4), y + 1, LiquidGlassTheme.ACCENT);
+                graphics.fill(x, y, Math.max(x, x + button.getWidth() - 4), y + 1, LiquidGlassTheme.accentColor());
             }
         }
     }

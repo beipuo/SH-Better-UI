@@ -147,15 +147,15 @@ public final class UiSlideConfirm extends AbstractWidget {
         boolean completed = isCompleted();
         float successProgress = completed ? gesture.sampleCompletion(now, preferences) : 0f;
         boolean highContrast = preferences.highContrast();
-        int surface = highContrast ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE;
-        int accent = highContrast ? DarkModeTheme.TEXT : LiquidGlassTheme.ACCENT;
+        int surface = highContrast ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor();
+        int accent = highContrast ? DarkModeTheme.textColor() : LiquidGlassTheme.accentColor();
         int edge = isFocused() || armed ? accent
-                : highContrast ? DarkModeTheme.TEXT_SECONDARY : DarkModeTheme.BORDER_HOVER;
+                : highContrast ? DarkModeTheme.secondaryTextColor() : DarkModeTheme.hoverBorderColor();
         int fill = completed && !highContrast ? GuiMotion.lerpColor(accent, DarkModeTheme.SUCCESS, successProgress) : accent;
-        int thumb = active ? fill : DarkModeTheme.TEXT_MUTED;
+        int thumb = active ? fill : DarkModeTheme.mutedTextColor();
         if (active && !highContrast && !completed && !isFocused() && !gesture.held()
                 && !track.containsThumb(mouseX, mouseY, progress)) {
-            thumb = DarkModeTheme.TEXT_SECONDARY;
+            thumb = DarkModeTheme.secondaryTextColor();
         }
 
         RoundedCorners.draw(graphics, track.x, track.y, track.width, track.height, track.height * 0.5f,
@@ -167,13 +167,13 @@ public final class UiSlideConfirm extends AbstractWidget {
         }
         drawLabel(graphics, track, armed);
         RoundedCorners.draw(graphics, thumbX, track.y + INSET, diameter, diameter, diameter * 0.5f,
-                gesture.held() ? 1f : 0f, DarkModeTheme.BACKGROUND, thumb);
+                gesture.held() ? 1f : 0f, DarkModeTheme.backgroundColor(), thumb);
         GraphicIcon icon = completed ? GraphicIcon.SUCCESS : GraphicIcon.NEXT;
         int iconX = Math.round(thumbX + (diameter - GraphicIcon.PIXELS) * 0.5f);
         int iconY = track.y + (track.height - GraphicIcon.PIXELS) / 2;
         float iconScale = completed ? GuiMotion.lerp(0.66f, 1f, successProgress) : 1f;
         GuiRenderUtil.withButtonMotion(graphics, iconX, iconY, GraphicIcon.PIXELS, GraphicIcon.PIXELS, iconScale, 0f,
-                () -> icon.draw(graphics, iconX, iconY, 1, DarkModeTheme.BACKGROUND, preferences));
+                () -> icon.draw(graphics, iconX, iconY, 1, DarkModeTheme.backgroundColor(), preferences));
     }
 
     private void drawLabel(GuiGraphics graphics, Track track, boolean armed) {
@@ -186,7 +186,7 @@ public final class UiSlideConfirm extends AbstractWidget {
         var line = Language.getInstance().getVisualOrder(font.substrByWidth(text, right - left));
         UiFormattedText.draw(graphics, font, line, left + (right - left - font.width(line)) / 2,
                 track.y + (track.height - font.lineHeight) / 2,
-                active || isCompleted() ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_MUTED, false, preferences);
+                active || isCompleted() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), false, preferences);
     }
 
     private Track track() {

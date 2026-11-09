@@ -30,13 +30,24 @@ public final class DarkModeTheme {
 
     private DarkModeTheme() {}
 
+    public static int backgroundColor() { return UiTheme.current().background(BACKGROUND); }
+    public static int surfaceColor() { return ThemeEffects.material("slate").fill(UiTheme.current().surface(SURFACE)); }
+    public static int borderColor() { return ThemeEffects.material("slate").edge(UiTheme.current().border(BORDER)); }
+    public static int hoverBorderColor() { return UiTheme.current().accent(BORDER_HOVER); }
+    public static int textColor() { return ThemeEffects.material("slate").text(UiTheme.current().text(TEXT)); }
+    public static int secondaryTextColor() { return UiTheme.current().secondaryText(TEXT_SECONDARY, 0.2f); }
+    public static int mutedTextColor() { return UiTheme.current().secondaryText(TEXT_MUTED, 0.38f); }
+    public static int accentColor() { return ThemeEffects.material("slate").accent(UiTheme.current().accent(ACCENT)); }
+
+    private static int textContrastEdge() { return UiTheme.current().text(CONTRAST_EDGE); }
+
     public static void background(GuiGraphics g, int x, int y, int width, int height) {
-        if (width > 0 && height > 0) g.fill(x, y, x + width, y + height, BACKGROUND);
+        if (width > 0 && height > 0) g.fill(x, y, x + width, y + height, backgroundColor());
     }
 
     static void modalPanel(GuiGraphics g, int x, int y, int width, int height, boolean highContrast) {
         rounded(g, x, y, width, height, CARD_RADIUS, 1,
-                highContrast ? CONTRAST_EDGE : BORDER, highContrast ? BACKGROUND : 0xF21E293B);
+                highContrast ? textContrastEdge() : borderColor(), highContrast ? backgroundColor() : UiTheme.current().surface(0xF21E293B));
     }
 
     /**
@@ -55,7 +66,7 @@ public final class DarkModeTheme {
                             0, 0, opacity(SHADOW, state.hover() * (4 - spread) / 12f));
                 }
             }
-            int fill = state.highContrast() ? SURFACE : GuiMotion.lerpColor(CARD_REST, SURFACE, state.hover());
+            int fill = state.highContrast() ? surfaceColor() : GuiMotion.lerpColor(UiTheme.current().surface(CARD_REST), surfaceColor(), state.hover());
             if (state.enabled() && !state.highContrast()) {
                 float turn = state.reducedMotion() ? 0.12f
                         : Math.floorMod(PageTransition.nowMs(), CARD_ROTATION_MS) / (float) CARD_ROTATION_MS;
@@ -92,7 +103,7 @@ public final class DarkModeTheme {
                 for (int spread = 3; spread >= 1; spread--) {
                     rounded(g, x - spread, y - spread, width + 2 * spread, height + 2 * spread,
                             RoundedCorners.outsetRadius(width, height, CONTROL_RADIUS, spread), 1,
-                            opacity(ACCENT, state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
+                            opacity(accentColor(), state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
                 }
             }
             rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
@@ -120,7 +131,7 @@ public final class DarkModeTheme {
         int x = Math.round(frame.x());
         int bottom = Math.round(frame.y() + frame.height());
         g.fill(x, bottom - 2, Math.round(frame.x() + frame.width()), bottom,
-                preferences.highContrast() ? CONTRAST_FOCUS : ACCENT);
+                preferences.highContrast() ? UiTheme.current().accent(CONTRAST_FOCUS) : accentColor());
     }
 
     /** 内容目标区域的短暂内侧亮边，在减少动效时仅保留选中控件的静态标记。 */
@@ -129,7 +140,7 @@ public final class DarkModeTheme {
         if (!frame.visible() || preferences.reducedMotion() || frame.emphasis() <= 0f
                 || width <= 0 || height <= 0) return;
         rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
-                opacity(preferences.highContrast() ? CONTRAST_FOCUS : ACCENT, frame.emphasis()), 0);
+                opacity(preferences.highContrast() ? UiTheme.current().accent(CONTRAST_FOCUS) : accentColor(), frame.emphasis()), 0);
     }
 
     /** 输入框底板。由原生输入控件继续处理光标、选择区、输入及旁白。 */
@@ -137,7 +148,7 @@ public final class DarkModeTheme {
         if (width <= 0 || height <= 0) return;
         focus(g, x, y, width, height, CONTROL_RADIUS, state);
         rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
-                state.focused() ? state.focusColor() : edge(state), SURFACE);
+                state.focused() ? state.focusColor() : edge(state), surfaceColor());
     }
 
     /** 绘制可识别的拖曳把手。以同一矩形命中，并用 PointerDrag.active() 表示按住。 */
@@ -162,12 +173,12 @@ public final class DarkModeTheme {
 
     /** 对已验证可接收的落点画内侧预览边，不改变布局和焦点。 */
     public static void dropTarget(GuiGraphics g, int x, int y, int width, int height) {
-        if (width > 0 && height > 0) rounded(g, x, y, width, height, CARD_RADIUS, 2, ACCENT, 0);
+        if (width > 0 && height > 0) rounded(g, x, y, width, height, CARD_RADIUS, 2, accentColor(), 0);
     }
 
     private static int edge(State state) {
-        if (state.highContrast()) return CONTRAST_EDGE;
-        return GuiMotion.lerpColor(BORDER, ACCENT, Math.max(state.hover(), state.press()));
+        if (state.highContrast()) return textContrastEdge();
+        return GuiMotion.lerpColor(borderColor(), accentColor(), Math.max(state.hover(), state.press()));
     }
 
     private static void focus(GuiGraphics g, int x, int y, int width, int height, int radius, State state) {
@@ -176,7 +187,7 @@ public final class DarkModeTheme {
         rounded(g, x - outer, y - outer, width + 2 * outer, height + 2 * outer,
                 RoundedCorners.outsetRadius(width, height, radius, outer), FOCUS_WIDTH, state.focusColor(), 0);
         rounded(g, x - FOCUS_OFFSET, y - FOCUS_OFFSET, width + 2 * FOCUS_OFFSET, height + 2 * FOCUS_OFFSET,
-                RoundedCorners.outsetRadius(width, height, radius, FOCUS_OFFSET), FOCUS_OFFSET, BACKGROUND, 0);
+                RoundedCorners.outsetRadius(width, height, radius, FOCUS_OFFSET), FOCUS_OFFSET, backgroundColor(), 0);
     }
 
     private static int opacity(int argb, float alpha) {
@@ -247,12 +258,16 @@ public final class DarkModeTheme {
             this(hover, textHover, press, focused, enabled, reducedMotion, false);
         }
 
-        public int titleText() { return enabled ? GuiMotion.lerpColor(0xFFE2E8F0, TEXT, textHover) : TEXT_MUTED; }
+        public int titleText() { return controlText(); }
         public int secondaryText() {
-            return highContrast ? TEXT_SECONDARY : GuiMotion.lerpColor(TEXT_MUTED, TEXT_SECONDARY, textHover);
+            return highContrast ? secondaryTextColor() : GuiMotion.lerpColor(mutedTextColor(), secondaryTextColor(), textHover);
         }
-        public int controlText() { return enabled ? GuiMotion.lerpColor(0xFFE2E8F0, TEXT, textHover) : TEXT_MUTED; }
-        int focusColor() { return highContrast ? CONTRAST_FOCUS : ACCENT; }
+        public int controlText() {
+            if (!enabled) return mutedTextColor();
+            int rest = UiTheme.current().secondaryText(0xFFE2E8F0, 0.08f);
+            return GuiMotion.lerpColor(rest, textColor(), textHover);
+        }
+        int focusColor() { return highContrast ? UiTheme.current().accent(CONTRAST_FOCUS) : accentColor(); }
 
         /** 卡片当前的绘制 Y 偏移，子控件命中应使用同一偏移。 */
         public float cardOffset() { return reducedMotion || !hoverAnimation ? 0f : -2f * hover; }
@@ -260,13 +275,17 @@ public final class DarkModeTheme {
         float buttonScale() { return reducedMotion || !pressAnimation ? 1f : GuiMotion.lerp(1f, 0.98f, press); }
 
         int buttonFill(boolean primary) {
-            return primary && enabled ? GuiMotion.lerpColor(PRIMARY, PRIMARY_HOVER, hover)
-                    : GuiMotion.lerpColor(SURFACE, 0xFF334B6B, hover);
+            var theme = UiTheme.current();
+            if (primary && enabled) {
+                return GuiMotion.lerpColor(theme.controlFill(PRIMARY, 0.18f),
+                        theme.controlFill(PRIMARY_HOVER, 0.28f), hover);
+            }
+            return GuiMotion.lerpColor(surfaceColor(), ThemeEffects.material("slate").fill(theme.controlFill(0xFF334B6B, 0.12f)), hover);
         }
 
         int buttonFill(boolean primary, boolean selected, float emphasis) {
             float strength = selected && !primary ? 0.22f + 0.18f * GuiMotion.clamp01(emphasis) : 0f;
-            return GuiMotion.lerpColor(buttonFill(primary), ACCENT, strength);
+            return GuiMotion.lerpColor(buttonFill(primary), accentColor(), strength);
         }
     }
 

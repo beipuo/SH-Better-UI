@@ -242,22 +242,22 @@ public final class JeiSearchPanel {
     /** 先于 Screen 的控件绘制。 */
     public void renderBackground(GuiGraphics graphics) {
         refreshData();
-        graphics.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), DarkModeTheme.BACKGROUND);
-        graphics.renderOutline(panel.x(), panel.y(), panel.width(), panel.height(), DarkModeTheme.BORDER_HOVER);
+        graphics.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), DarkModeTheme.backgroundColor());
+        graphics.renderOutline(panel.x(), panel.y(), panel.width(), panel.height(), DarkModeTheme.hoverBorderColor());
         if (!available) {
             Component status = catalog == IngredientCatalog.jei() ? UNAVAILABLE : CATALOG_UNAVAILABLE;
             drawText(graphics, status.getString(), list.x() + GAP, list.y() + GAP, panel.width() - 4 * PAD,
-                    DarkModeTheme.TEXT_SECONDARY);
+                    DarkModeTheme.secondaryTextColor());
         } else if (results.isEmpty()) {
             drawText(graphics, NO_RESULTS.getString(), list.x() + GAP, list.y() + GAP, list.width() - 2 * GAP,
-                    DarkModeTheme.TEXT_SECONDARY);
+                    DarkModeTheme.secondaryTextColor());
         }
         if (selected != null) {
             drawIcon(graphics, selected, detail.x() + 2, detail.y() + 2);
             drawText(graphics, selected.name(), detail.x() + 22, detail.y() + 2, detail.width() - 22,
-                    DarkModeTheme.TEXT);
+                    DarkModeTheme.textColor());
             drawText(graphics, selected.id().toString(), detail.x() + 22, detail.y() + 2 + font.lineHeight,
-                    detail.width() - 22, DarkModeTheme.TEXT_SECONDARY);
+                    detail.width() - 22, DarkModeTheme.secondaryTextColor());
         }
     }
 
@@ -464,14 +464,14 @@ public final class JeiSearchPanel {
         int movingTitleY = titleY + textOffset;
         GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
                 drawText(graphics, title.getString(), detail.x() + GAP, movingTitleY, width,
-                        DarkModeTheme.TEXT_SECONDARY));
+                        DarkModeTheme.secondaryTextColor()));
         if (recipe == null) return;
 
         if (!layoutFits) {
             if (secondLineFits) {
                 GuiRenderUtil.withAttentionContent(graphics, frame.contentAlpha(), 0f, () ->
                         drawText(graphics, PREVIEW_UNAVAILABLE.getString(), detail.x() + GAP,
-                                contentY + textOffset, width, DarkModeTheme.TEXT_SECONDARY));
+                                contentY + textOffset, width, DarkModeTheme.secondaryTextColor()));
             }
             return;
         }
@@ -585,19 +585,19 @@ public final class JeiSearchPanel {
             int y = getY();
             boolean previewed = ingredient == selected;
             boolean staged = chosen.test(ingredient);
-            int border = isFocused() ? DarkModeTheme.TEXT : previewed ? DarkModeTheme.ACCENT : DarkModeTheme.BORDER;
+            int border = isFocused() ? DarkModeTheme.textColor() : previewed ? DarkModeTheme.accentColor() : DarkModeTheme.borderColor();
             graphics.fill(x, y, x + getWidth(), y + ROW_HEIGHT,
-                    isHoveredOrFocused() ? DarkModeTheme.BORDER : DarkModeTheme.SURFACE);
+                    isHoveredOrFocused() ? DarkModeTheme.borderColor() : DarkModeTheme.surfaceColor());
             graphics.renderOutline(x, y, getWidth(), ROW_HEIGHT, border);
-            if (previewed) graphics.fill(x + 1, y + 1, x + 3, y + ROW_HEIGHT - 1, DarkModeTheme.ACCENT);
+            if (previewed) graphics.fill(x + 1, y + 1, x + 3, y + ROW_HEIGHT - 1, DarkModeTheme.accentColor());
             if (staged) {
                 int markX = x + getWidth() - 12;
-                graphics.renderOutline(markX, y + 6, 8, 8, DarkModeTheme.TEXT);
-                graphics.fill(markX + 2, y + 8, markX + 6, y + 12, DarkModeTheme.TEXT);
+                graphics.renderOutline(markX, y + 6, 8, 8, DarkModeTheme.textColor());
+                graphics.fill(markX + 2, y + 8, markX + 6, y + 12, DarkModeTheme.textColor());
             }
             drawIcon(graphics, ingredient, x + 3, y + 2);
             drawText(graphics, getMessage().getString(), x + 23, y + (ROW_HEIGHT - font.lineHeight) / 2,
-                    getWidth() - (staged ? 39 : 27), DarkModeTheme.TEXT);
+                    getWidth() - (staged ? 39 : 27), DarkModeTheme.textColor());
         }
     }
 }

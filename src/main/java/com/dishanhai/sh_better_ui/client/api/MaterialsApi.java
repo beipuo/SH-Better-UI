@@ -10,6 +10,9 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiAttention;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiTheme;
+import com.dishanhai.sh_better_ui.config.ThemeSettings;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
@@ -17,6 +20,22 @@ import net.minecraft.util.FormattedCharSequence;
 /** 山海：原生画面的玻璃、Slate 和液态玻璃材质。自绘入口沿用 GUI 逻辑坐标。 */
 public final class MaterialsApi {
     MaterialsApi() {}
+
+    public UiTheme theme() {
+        return UiTheme.current();
+    }
+
+    public UiTheme resolveTheme(ThemeSettings settings) {
+        return UiTheme.resolve(settings);
+    }
+
+    public <T extends Record> T themedProfile(String group, T fallback) {
+        return com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects.profile(group, fallback);
+    }
+
+    public GraphicIcon themeIcon(ThemeSettings.Mode mode) {
+        return UiTheme.icon(mode);
+    }
 
     public GlassTheme classicTheme() {
         return GlassTheme.CLASSIC;

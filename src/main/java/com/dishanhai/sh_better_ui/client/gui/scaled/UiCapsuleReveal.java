@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import net.minecraft.client.gui.GuiGraphics;
@@ -25,6 +26,7 @@ public final class UiCapsuleReveal {
     private float originY;
     private boolean pending;
     private long closeRevision;
+    private UiFrameScheduler.OwnerLifetime closeOwner;
     private boolean closed;
     private Runnable onClosed;
     private Supplier<? extends AbstractWidget> returnSource;
@@ -88,7 +90,7 @@ public final class UiCapsuleReveal {
     public void finish() {
         if (closing()) {
             opening.finish();
-            commitClose();
+            queueClose();
             return;
         }
         if (closed) return;
@@ -98,7 +100,17 @@ public final class UiCapsuleReveal {
         closingSeed = null;
     }
 
-    public boolean closing() { return closeRevision != 0L; }
+    public boolean closing() {
+        if (closeOwner != null && !closeOwner.valid()) {
+            clearClose();
+            pending = false;
+            opening.snapTo(1f);
+            originX.finish();
+            closingSeed = null;
+            visibleContent = null;
+        }
+        return closeRevision != 0L;
+    }
 
     /** 打开途中只让已经显现的区域接收指针输入。 */
     public boolean allowsPointer(double x, double y) {
@@ -135,8 +147,7 @@ public final class UiCapsuleReveal {
     boolean reopen(long now) {
         if (!closing()) return false;
         opening.transitionTo(1f, now, InterruptibleAnimation.Policy.REVERSE, PANEL_PRIORITY);
-        closeRevision = 0L;
-        onClosed = null;
+        clearClose();
         return true;
     }
 
@@ -154,28 +165,47 @@ public final class UiCapsuleReveal {
             closingSeed = FluidMorph.seed(originX.sample(now), originY);
         }
         closeRevision = opening.transitionTo(0f, now, InterruptibleAnimation.Policy.REVERSE, PANEL_PRIORITY);
-        if (preferences.reducedMotion()) finish();
+        closeOwner = UiFrameScheduler.captureOwnerLifetime();
+        if (!ThemeEffects.local("capsule").enabled() || preferences.reducedMotion()) finish();
+    }
+
+    private void queueClose() {
+        if (!closing()) return;
+        long revision = closeRevision;
+        UiFrameScheduler.afterFrame(closeOwner == null ? null : closeOwner.screen(), () -> {
+            if (closeRevision == revision) commitClose();
+        });
     }
 
     boolean commitClose() {
-        if (!opening.takeCompletion(closeRevision)) return false;
-        closeRevision = 0L;
+        if (!closing() || !opening.takeCompletion(closeRevision)) return false;
         closed = true;
         Runnable action = onClosed;
-        onClosed = null;
+        clearClose();
         action.run();
         return true;
     }
 
+    private void clearClose() {
+        closeRevision = 0L;
+        closeOwner = null;
+        onClosed = null;
+    }
+
     float sampleProgress(long now, UiPreferences preferences) {
         if (closed) return 0f;
+        boolean closing = closing();
+        if (!ThemeEffects.local("capsule").enabled() && !closing) {
+            finish();
+            return 1f;
+        }
         if (pending) {
             pending = false;
             opening.snapTo(0f);
             opening.setOpen(true, now);
         }
         float progress = GuiMotion.clamp01(opening.sample(now, preferences));
-        if (closing()) {
+        if (closing) {
             // 反向速度可能把弹簧带过可见端点，此时可在这一帧完成交接。
             if (progress == 0f) opening.finish();
         } else if (progress == 1f) {
@@ -229,12 +259,14 @@ public final class UiCapsuleReveal {
         float progress = sampleProgress(now, preferences);
         if (target.width() < FluidMorph.SEED_WIDTH || target.height() < FluidMorph.SEED_HEIGHT) {
             finish();
-            return closed;
+            return closing() || closed;
         }
         if (progress == 1f && !closing()) return false;
         if (backdrop != null) backdrop.accept(progress);
-        if ((readyToClose == null || readyToClose.getAsBoolean()) && commitClose()) return true;
-        if (progress == 0f) return true;
+        if (progress == 0f) {
+            if (closing() && (readyToClose == null || readyToClose.getAsBoolean())) queueClose();
+            return true;
+        }
 
         float coverage = LiquidGlassTheme.revealCoverage(progress);
         float opacity = GuiRenderUtil.easeOut((progress - CONTENT_FADE_START) / (CONTENT_FADE_END - CONTENT_FADE_START));
@@ -245,9 +277,10 @@ public final class UiCapsuleReveal {
         }
         var frame = frame(target, progress, now);
         var rect = frame.rect();
-        int fill = insetPanel ? DarkModeTheme.BACKGROUND : LiquidGlassTheme.POPOVER_FILL | 0xFF000000;
+        int fill = ThemeEffects.local("capsule").ink(insetPanel ? DarkModeTheme.backgroundColor()
+                : LiquidGlassTheme.popoverFill() | 0xFF000000);
         if (insetPanel) {
-            int edge = preferences.highContrast() ? DarkModeTheme.TEXT : DarkModeTheme.BORDER;
+            int edge = preferences.highContrast() ? DarkModeTheme.textColor() : DarkModeTheme.borderColor();
             RoundedCorners.draw(graphics, rect.getX(), rect.getY(), rect.getW(), rect.getH(), frame.radius(), 1f,
                     GuiMotion.lerpColor(edge & 0xFFFFFF, edge, coverage),
                     GuiMotion.lerpColor(fill & 0xFFFFFF, fill, coverage));

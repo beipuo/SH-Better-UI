@@ -26,14 +26,15 @@ public record UiPreferences(boolean highContrast, boolean reducedMotion, boolean
 
     /** 读取客户端配置中的默认显示偏好。 */
     public static UiPreferences configured() {
-        return fromSettings(ClientUiSettings.current());
+        return fromSettings(ThemeEffects.settings());
     }
 
     /** 使用指定快照的控件偏好，适用于尚未提交的设置预览。 */
     public static UiPreferences fromSettings(ClientUiSettings settings) {
-        if (!ControlFeedbackSettings.DEFAULT.equals(settings.feedback())) {
+        var feedback = ThemeEffects.profile(settings.theme(), "feedback", settings.feedback());
+        if (!ControlFeedbackSettings.DEFAULT.equals(feedback)) {
             return new UiPreferences(settings.highContrast(), settings.reducedMotion(), settings.widgetBackdropBlur(),
-                    settings.feedback());
+                    feedback);
         }
         int index = (settings.highContrast() ? 4 : 0) | (settings.reducedMotion() ? 2 : 0)
                 | (settings.widgetBackdropBlur() ? 1 : 0);

@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.blur;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
+
 import com.dishanhai.sh_better_ui.ShBetterUi;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.mojang.blaze3d.shaders.Uniform;
@@ -842,7 +844,7 @@ public final class GaussBlur {
                                             float strength, float radiusPixels, GlassStyle glass,
                                             float cornerPixels, float yToXScale) {
         return sampleBackdropNow(g, x, y, w, h, strength, radiusPixels, glass, cornerPixels,
-                yToXScale, GlassBackdropSettings.current());
+                yToXScale, ThemeEffects.glass());
     }
 
     /** 以指定设置即时取样，供本地预览使用。 */
@@ -879,7 +881,7 @@ public final class GaussBlur {
         if (direction == null || !Float.isFinite(radiusPixels) || radiusPixels <= 0f
                 || !(fullBlurUntil >= 0f && fullBlurUntil < sharpFrom && sharpFrom <= 1f)) return false;
         return blurNow(g, x, y, w, h, 1f, radiusPixels, GlassStyle.NONE, 0f, fullBlurUntil, sharpFrom,
-                null, true, GlassBackdropSettings.current(), direction);
+                null, true, ThemeEffects.glass(), direction);
     }
 
     /** 山海：当前内容区域的即时方向模糊，半径及区域使用 framebuffer 像素。 */
@@ -888,7 +890,7 @@ public final class GaussBlur {
         if (!Float.isFinite(strength) || !Float.isFinite(radiusPixels) || radiusPixels <= 0f
                 || !Float.isFinite(axisX) || !Float.isFinite(axisY) || (axisX <= 0f && axisY <= 0f)) return false;
         return blurNow(g, x, y, w, h, strength, radiusPixels, GlassStyle.SWAP, 0f, 0f, 0f,
-                null, true, GlassBackdropSettings.current(), RevealDirection.LEFT_TO_RIGHT,
+                null, true, ThemeEffects.glass(), RevealDirection.LEFT_TO_RIGHT,
                 clamp01(axisX), clamp01(axisY));
     }
 
@@ -933,7 +935,7 @@ public final class GaussBlur {
                                    float radiusPixels, GlassStyle glass, float cornerPixels,
                                    float fullBlurUntil, float sharpFrom, RoundedBackdrop shape, boolean loadOnDemand) {
         return blurNow(g, x, y, w, h, strength, radiusPixels, glass, cornerPixels, fullBlurUntil,
-                sharpFrom, shape, loadOnDemand, GlassBackdropSettings.current(), RevealDirection.LEFT_TO_RIGHT);
+                sharpFrom, shape, loadOnDemand, ThemeEffects.glass(), RevealDirection.LEFT_TO_RIGHT);
     }
 
     private static boolean blurNow(GuiGraphics g, int x, int y, int w, int h, float strength,

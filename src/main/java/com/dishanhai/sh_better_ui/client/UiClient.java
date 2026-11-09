@@ -51,16 +51,21 @@ public final class UiClient {
         return new ControlPanelScreen(parent, controlPanelKey, ShBetterUi::saveClientUiSettings);
     }
 
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onFrameStart(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) UiFrameScheduler.beginFrame();
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onFrameEnd(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) UiClientRendering.endFrame();
+    }
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
         GaussBlur.onScreenRenderPost(event);
-        if (event.getScreen() != Minecraft.getInstance().screen) return;
-        UiPointerCapture.validate(event.getScreen());
-        UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null) {
-            overlay.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-        }
-        UiToast.renderOverlay(event.getGuiGraphics());
+        UiClientRendering.renderScreenOverlays(event.getScreen(), event.getGuiGraphics(), event.getMouseX(),
+                event.getMouseY(), event.getPartialTick());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -152,10 +157,7 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onHudRenderPost(RenderGuiEvent.Post event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen == null && minecraft.getOverlay() == null && !minecraft.options.hideGui) {
-            UiToast.renderOverlay(event.getGuiGraphics());
-        }
+        UiClientRendering.renderHudOverlay(event.getGuiGraphics());
     }
 
     @SubscribeEvent
@@ -166,11 +168,7 @@ public final class UiClient {
 
     @SubscribeEvent
     public static void onScreenClosing(ScreenEvent.Closing event) {
-        UiPointerCapture.ownerClosed(event.getScreen());
-        UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null) overlay.ownerClosed();
-        GaussBlur.clear();
-        GaussBlur.clearTopLayer();
+        UiClientRendering.screenClosing(event.getScreen());
     }
 
     @SubscribeEvent
