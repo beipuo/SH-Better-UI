@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /** 山海：解析普通词、模组和 tag 筛选词，并保留补全前的原始输入。 */
-record SearchQuery(String text, List<Token> tokens, String prefix) {
+record SearchQuery(String text, List<Token> tokens, String prefix, boolean plainText) {
     private static final Pattern WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
     private static final Pattern TOKEN = Pattern.compile("[@#]?\"(?:\\\\.|[^\"\\\\])*\"?|\\S+", Pattern.UNICODE_CHARACTER_CLASS);
     private static final Pattern RESERVED_TEXT = Pattern.compile("(^|\\s)[@#]|\"", Pattern.UNICODE_CHARACTER_CLASS);
@@ -40,7 +40,15 @@ record SearchQuery(String text, List<Token> tokens, String prefix) {
             text = normalize(text);
             tokens.add(new Token(kind, text, PinyinSearch.fold(text)));
         }
-        return new SearchQuery(normalize(raw), List.copyOf(tokens), raw.substring(0, lastStart));
+        return new SearchQuery(normalize(raw), List.copyOf(tokens), raw.substring(0, lastStart), false);
+    }
+
+    /** 宿主已有自己的查询语法时，只按空白分词，保留 @、# 和引号的字面含义。 */
+    static SearchQuery plainText(String raw) {
+        String text = normalize(raw);
+        List<Token> tokens = text.isEmpty() ? List.of() : java.util.Arrays.stream(text.split(" "))
+                .map(token -> new Token(Kind.TEXT, token, PinyinSearch.fold(token))).toList();
+        return new SearchQuery(text, tokens, "", true);
     }
 
     boolean hasFilters() {
@@ -52,6 +60,7 @@ record SearchQuery(String text, List<Token> tokens, String prefix) {
     }
 
     String completeText(String completion) {
+        if (plainText) return completion;
         if (RESERVED_TEXT.matcher(completion).find()) {
             completion = "\"" + completion.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
         }

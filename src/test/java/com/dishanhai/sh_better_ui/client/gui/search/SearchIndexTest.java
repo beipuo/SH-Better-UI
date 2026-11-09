@@ -12,6 +12,75 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** 山海：覆盖搜索范围、排序与可填充文本。 */
 class SearchIndexTest {
     @Test
+    void plainTextSearchTreatsFacetPrefixesAndQuotesAsLiteralText() {
+        var numbered = metadataEntry(1, "Block #1", "demo:block", "Demo", "other:tag");
+        var named = metadataEntry(2, "Block @home", "other:block", "Home", "forge:blocks");
+        var quoted = entry(3, "Block \"quoted\"", "demo:quoted");
+        var index = new SearchIndex<>(List.of(numbered, named, quoted));
+        assertEquals(List.of(numbered), index.searchPlainText("#1"));
+        assertEquals(List.of(named), index.searchPlainText("@home"));
+        assertEquals(List.of(quoted), index.searchPlainText("\"quoted\""));
+        assertEquals(List.of(), index.searchPlainText("#forge:blocks"));
+        assertEquals(List.of(), index.searchPlainText("block", value -> value > 3));
+        assertEquals(List.of(numbered, quoted), index.search("@demo"));
+    }
+
+    @Test
+    void plainTextSuggestionsKeepLiteralCompletionsPinyinAndHostOrder() {
+        var index = new SearchIndex<>(List.of(entry(1, "Block #1", "mod:block"),
+                entry(2, "铁锭", "mod:iron"), entry(3, "铁锭块", "mod:iron_block"),
+                entry(4, "Other", "mod:tieding")));
+        var literal = index.suggestPlainText("#1", List.of(4, 999, 1), 8);
+        assertEquals(List.of("Block #1"), completions(literal));
+        var pinyin = index.suggestPlainText("tieding", List.of(3, 2, 4), 8);
+        assertEquals(List.of(4, 3, 2), values(pinyin));
+        assertEquals("mod:tieding", pinyin.getFirst().completion());
+        assertEquals(List.of(), index.suggestPlainText(" ", List.of(1), 8));
+        assertEquals(List.of(), index.suggestPlainText("block", List.of(1), 0));
+        assertEquals("Block #1", index.suggestMatches("$external \"tag\"", List.of(1), 8).getFirst().completion());
+    }
+
+    @Test
+    void orderedCandidatesKeepHostOrderWithinEachRankAndIgnoreUnknownValues() {
+        var index = new SearchIndex<>(List.of(entry(1, "Iron A", "mod:a"),
+                entry(2, "Iron B", "mod:b"), entry(3, "Iron", "mod:iron"),
+                entry(4, "Copper", "mod:copper")));
+        assertEquals(List.of(3, 2, 1), values(orderedSuggestions(index, "suggest", "iron",
+                List.of(2, 4, 999, 1, 3), 8)));
+        assertEquals(List.of(3, 2), values(orderedSuggestions(index, "suggest", "iron",
+                List.of(2, 4, 999, 1, 3), 2)));
+    }
+
+    @Test
+    void externallyMatchedSuggestionsRankWithoutReapplyingTextOrFacetFilters() {
+        var index = new SearchIndex<>(List.of(entry(1, "Copper", "mod:copper"),
+                entry(2, "Iron", "mod:iron"), entry(3, "Iron Plate", "mod:plate")));
+        assertEquals(List.of(2, 3, 1), values(orderedSuggestions(index, "suggestMatches", "iron",
+                List.of(1, 3, 999, 2), 8)));
+        assertEquals(List.of(3, 1), values(orderedSuggestions(index, "suggestMatches", "#conductors",
+                List.of(3, 1), 8)));
+        assertEquals(List.of(), orderedSuggestions(index, "suggestMatches", " ", List.of(1), 8));
+        assertEquals(List.of(), orderedSuggestions(index, "suggestMatches", "iron", List.of(1), 0));
+    }
+
+    @Test
+    void orderedCandidatesReusePinyinMatchingAndKeepIdCompletions() {
+        var index = new SearchIndex<>(List.of(entry(1, "铁锭", "mod:iron"),
+                entry(2, "铁锭块", "mod:iron_block"), entry(3, "Other", "mod:tieding")));
+        assertEquals(List.of(2, 1), values(orderedSuggestions(index, "suggest", "td",
+                List.of(2, 1), 8)));
+        var result = orderedSuggestions(index, "suggest", "tieding", List.of(2, 1, 3), 8);
+        assertEquals(List.of(3, 2, 1), values(result));
+        assertEquals("mod:tieding", result.getFirst().completion());
+    }
+
+    private static List<SearchIndex.Suggestion<Integer>> orderedSuggestions(SearchIndex<Integer> index,
+            String method, String query, List<Integer> candidates, int limit) {
+        return method.equals("suggestMatches") ? index.suggestMatches(query, candidates, limit)
+                : index.suggest(query, candidates, limit);
+    }
+
+    @Test
     void derivesModSuggestionsFromExistingIdEntries() {
         var iron = entry(1, "Iron Ingot", "minecraft:iron_ingot");
         var copper = entry(2, "Copper Ingot", "minecraft:copper_ingot");

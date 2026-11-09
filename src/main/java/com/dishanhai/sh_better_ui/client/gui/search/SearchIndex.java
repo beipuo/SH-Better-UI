@@ -51,8 +51,8 @@ public final class SearchIndex<T> {
     private record Prepared<T>(Entry<T> entry, String name, List<String> ids, List<String> aliases,
                                List<String> pinyinKeys, List<String> mods, String modName,
                                List<String> modPinyinKeys, List<String> tags) {
-        static <T> Prepared<T> of(Entry<T> entry, Map<String, List<String>> modPinyin) {
-            String name = normalize(entry.name());
+        static <T> Prepared<T> of(Entry<T> entry, Map<String, List<String>> modPinyin, boolean displayOnlyName) {
+            String name = displayOnlyName ? "" : normalize(entry.name());
             List<String> ids = entry.ids().stream().map(SearchQuery::normalize).toList();
             List<String> aliases = entry.aliases().stream().map(SearchQuery::normalize).toList();
             List<String> pinyin = new ArrayList<>(PinyinSearch.keys(name));
@@ -98,10 +98,19 @@ public final class SearchIndex<T> {
     }
 
     private final List<Prepared<T>> entries;
+    private final Map<T, List<Prepared<T>>> entriesByValue;
 
     public SearchIndex(List<Entry<T>> entries) {
+        this(entries, entry -> false);
+    }
+
+    /** 名称由 ID 回退而来时可标记为仅展示；保留 Entry 契约，匹配与排名仍取实际 ID／别名。 */
+    public SearchIndex(List<Entry<T>> entries, Predicate<? super Entry<T>> displayOnlyNames) {
+        Objects.requireNonNull(displayOnlyNames, "displayOnlyNames");
         Map<String, List<String>> modPinyin = new HashMap<>();
-        this.entries = entries.stream().map(entry -> Prepared.of(entry, modPinyin)).toList();
+        this.entries = entries.stream().map(entry -> Prepared.of(entry, modPinyin, displayOnlyNames.test(entry))).toList();
+        this.entriesByValue = this.entries.stream().collect(Collectors.groupingBy(
+                candidate -> candidate.entry().value(), LinkedHashMap::new, Collectors.toList()));
     }
 
     public List<Entry<T>> search(String query) {
@@ -110,7 +119,19 @@ public final class SearchIndex<T> {
 
     /** 普通词匹配名称、ID、别名或拼音；@ 筛选模组，# 筛选 tag。各词同时成立，结果保留索引顺序。 */
     public List<Entry<T>> search(String query, Predicate<? super T> scope) {
-        SearchQuery prepared = SearchQuery.of(query);
+        return search(SearchQuery.of(query), scope);
+    }
+
+    /** 只按空白分词匹配名称、ID、别名和拼音，@、# 和引号均视为普通文字。 */
+    public List<Entry<T>> searchPlainText(String query) {
+        return searchPlainText(query, value -> true);
+    }
+
+    public List<Entry<T>> searchPlainText(String query, Predicate<? super T> scope) {
+        return search(SearchQuery.plainText(query), scope);
+    }
+
+    private List<Entry<T>> search(SearchQuery prepared, Predicate<? super T> scope) {
         return entries.stream().filter(entry -> scope.test(entry.entry().value()) && entry.matches(prepared.tokens(), false))
                 .map(Prepared::entry).toList();
     }
@@ -131,29 +152,57 @@ public final class SearchIndex<T> {
         return suggest(query, scope, limit, completion -> true);
     }
 
+    /** 在宿主给定的候选范围内匹配；同档候选保留宿主顺序，忽略索引中不存在的值。 */
+    public List<Suggestion<T>> suggest(String query, List<? extends T> orderedCandidates, int limit) {
+        return suggest(SearchQuery.of(query), orderedEntries(orderedCandidates), value -> true, limit, completion -> true, true);
+    }
+
+    /** 纯文本匹配并按宿主候选顺序稳定排名；补全直接返回原名称或 ID，不生成筛选词或引号。 */
+    public List<Suggestion<T>> suggestPlainText(String query, List<? extends T> orderedCandidates, int limit) {
+        return suggest(SearchQuery.plainText(query), orderedEntries(orderedCandidates), value -> true,
+                limit, completion -> true, true);
+    }
+
+    /** 宿主已按提示、标签等语义匹配；只按普通文本排序，不再筛除候选或补全筛选词。 */
+    public List<Suggestion<T>> suggestMatches(String query, List<? extends T> orderedMatches, int limit) {
+        return suggest(SearchQuery.plainText(query), orderedEntries(orderedMatches), value -> true,
+                limit, completion -> true, false);
+    }
+
+    private List<Prepared<T>> orderedEntries(List<? extends T> values) {
+        List<Prepared<T>> ordered = new ArrayList<>();
+        for (T value : values) ordered.addAll(entriesByValue.getOrDefault(value, List.of()));
+        return ordered;
+    }
+
     List<Suggestion<T>> suggest(String query, Predicate<? super T> scope, int limit,
                                 Predicate<String> acceptsCompletion) {
-        SearchQuery prepared = SearchQuery.of(query);
+        return suggest(SearchQuery.of(query), entries, scope, limit, acceptsCompletion, true);
+    }
+
+    private List<Suggestion<T>> suggest(SearchQuery prepared, List<Prepared<T>> candidates, Predicate<? super T> scope,
+                                        int limit, Predicate<String> acceptsCompletion, boolean matchText) {
         if (limit <= 0 || prepared.tokens().isEmpty()) return List.of();
-        if (prepared.tokens().get(prepared.tokens().size() - 1).kind() != SearchQuery.Kind.TEXT) {
-            return suggestFilters(prepared, scope, limit, acceptsCompletion);
+        if (matchText && prepared.tokens().get(prepared.tokens().size() - 1).kind() != SearchQuery.Kind.TEXT) {
+            return suggestFilters(prepared, candidates, scope, limit, acceptsCompletion);
         }
-        String text = prepared.hasFilters() ? prepared.tokens().get(prepared.tokens().size() - 1).text() : prepared.text();
+        String text = matchText && prepared.hasFilters()
+                ? prepared.tokens().get(prepared.tokens().size() - 1).text() : prepared.text();
 
         List<List<Suggestion<T>>> ranked = new ArrayList<>(RANK_COUNT);
         for (int i = 0; i < RANK_COUNT; i++) ranked.add(new ArrayList<>());
-        for (Prepared<T> candidate : entries) {
+        for (Prepared<T> candidate : candidates) {
             Entry<T> entry = candidate.entry();
-            if (!scope.test(entry.value()) || !candidate.matches(prepared.tokens(), false)) continue;
+            if (!scope.test(entry.value()) || (matchText && !candidate.matches(prepared.tokens(), false))) continue;
 
-            String completion = prepared.completeText(entry.name());
+            String completion = matchText ? prepared.completeText(entry.name()) : entry.name();
             boolean fillable = acceptsCompletion.test(completion);
             int rank = fillable ? matchRank(candidate.name(), text) : NO_LITERAL_MATCH;
             if (rank == NO_LITERAL_MATCH) {
                 int idRank = NO_LITERAL_MATCH;
                 for (int i = 0; i < candidate.ids().size(); i++) {
                     int next = matchRank(candidate.ids().get(i), text);
-                    String id = prepared.completeText(entry.ids().get(i));
+                    String id = matchText ? prepared.completeText(entry.ids().get(i)) : entry.ids().get(i);
                     if (next < idRank && acceptsCompletion.test(id)) {
                         idRank = next;
                         completion = id;
@@ -180,13 +229,14 @@ public final class SearchIndex<T> {
 
     private record RankedSuggestion<T>(int rank, Suggestion<T> suggestion) {}
 
-    private List<Suggestion<T>> suggestFilters(SearchQuery query, Predicate<? super T> scope, int limit,
+    private List<Suggestion<T>> suggestFilters(SearchQuery query, List<Prepared<T>> candidates,
+                                               Predicate<? super T> scope, int limit,
                                                Predicate<String> acceptsCompletion) {
         var token = query.tokens().get(query.tokens().size() - 1);
         var preceding = query.tokens().subList(0, query.tokens().size() - 1);
         var unique = new LinkedHashMap<String, RankedSuggestion<T>>();
         boolean mod = token.kind() == SearchQuery.Kind.MOD;
-        for (Prepared<T> candidate : entries) {
+        for (Prepared<T> candidate : candidates) {
             if (!scope.test(candidate.entry().value()) || !candidate.matches(preceding, false)) continue;
             for (String value : mod ? candidate.mods() : candidate.tags()) {
                 int rank = mod ? candidate.modRank(value, token) : matchRank(value, token.text());
