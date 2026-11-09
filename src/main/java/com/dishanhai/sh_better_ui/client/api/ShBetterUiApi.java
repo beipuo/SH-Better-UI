@@ -18,6 +18,7 @@ public final class ShBetterUiApi {
     private static final MotionApi MOTION = new MotionApi();
     private static final AudioApi AUDIO = new AudioApi();
     private static final LyricApi LYRICS = new LyricApi();
+    private static final MusicApi MUSIC = new MusicApi();
     private static final PlatformUiApi PLATFORM = new PlatformUiApi();
     private static final UiExtensionRegistry EXTENSIONS = new UiExtensionRegistry();
     private static final UiClientApi CLIENT = new UiClientApi();
@@ -95,6 +96,10 @@ public final class ShBetterUiApi {
 
     public static LyricApi lyrics() {
         return LYRICS;
+    }
+
+    public static MusicApi music() {
+        return MUSIC;
     }
 
     public static PlatformUiApi platform() {

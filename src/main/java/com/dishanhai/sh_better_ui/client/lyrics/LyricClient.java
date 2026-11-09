@@ -22,7 +22,8 @@ import java.util.function.Supplier;
 
 /** 山海：客户端的可选 Salt Player 歌词 HUD 与设置入口。 */
 public final class LyricClient {
-    private static final BridgePlaybackSource SOURCE = BridgePlaybackSource.linkMc();
+    private static final BridgePlaybackSource SOURCE = BridgePlaybackSource.linkMc(Minecraft.getInstance()
+            .gameDirectory.toPath().resolve("config/sh_better_ui-lyrics"));
     private static final FloatingLyricRenderer HUD = new FloatingLyricRenderer(SOURCE);
 
     private static LyricDragController controls;

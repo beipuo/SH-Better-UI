@@ -1,0 +1,18 @@
+// Author: dishanhai
+processResources {
+    // An explicit override wins. Plain builds also pick up a locally published bridge.
+    ['x64': 'musicBridgeX64', 'arm64': 'musicBridgeArm64'].each { arch, property ->
+        def override = providers.gradleProperty(property)
+        def executable = override.isPresent() ? file(override.get())
+                : new File(sourceRoot, "native/windows-media/bin/publish-${arch}/shb-media-bridge.exe")
+        if (override.isPresent() && !executable.isFile()) {
+            throw new GradleException("Missing music bridge: " + executable)
+        }
+        if (executable.isFile()) {
+            from(executable) {
+                into("music-integration/windows/" + arch)
+                rename { 'shb-media-bridge.exe' }
+            }
+        }
+    }
+}

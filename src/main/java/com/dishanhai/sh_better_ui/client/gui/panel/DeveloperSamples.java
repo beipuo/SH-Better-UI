@@ -481,6 +481,11 @@ enum DeveloperSamples {
             MusicIsland.drawWaveform(ui.graphics(), waveBounds, motion, trackAccent, prefs);
             // Draw localized metadata and native playback controls on top.
             """),
+    LOCAL_MUSIC("local_music", MATERIALS, 18, LocalMusicGalleryPreview.HEIGHT, 0, LocalMusicGalleryPreview::new, """
+            var card = ShBetterUiApi.music().island();
+            card.setExpanded(true, ui.nowMs(), ui.preferences().reducedMotion());
+            card.render(ui, font, compactBounds, panelBounds, hovered);
+            """),
     LYRICS("lyrics", MATERIALS, 15, LyricGalleryPreview.HEIGHT, 0, LyricGalleryPreview::new, """
             // Adapted from Link-Lyric by beipuo
             // https://github.com/beipuo/Link-Lyric

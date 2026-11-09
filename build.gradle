@@ -12,12 +12,12 @@ group = 'com.dishanhai'
 version = mod_version
 base { archivesName = mod_id }
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
     withSourcesJar()
 }
 kotlin {
-    jvmToolchain(21)
-    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21 }
+    jvmToolchain(17)
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 repositories {
@@ -37,7 +37,14 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
-tasks.withType(Test).configureEach { useJUnitPlatform() }
+// The existing shared test suite uses Java 21 convenience APIs; the game and production classes use Java 17.
+tasks.named('compileTestJava', JavaCompile) {
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
 
 // Reuse the verified metadata cache instead of fetching it on every configuration.
 def cachedMcVersionJson = file("${System.properties['user.home']}/.gradle/caches/forge_gradle/minecraft_repo/versions/${minecraft_version}/version.json")
@@ -62,6 +69,9 @@ minecraft {
         }
     }
 }
+
+ext.sourceRoot = projectDir
+apply from: 'gradle/windows-media.gradle'
 
 processResources {
     from('LICENSE')

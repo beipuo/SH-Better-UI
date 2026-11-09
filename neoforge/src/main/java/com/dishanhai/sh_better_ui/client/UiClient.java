@@ -9,6 +9,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.client.lyrics.LyricClient;
+import com.dishanhai.sh_better_ui.client.music.ClientMusic;
 import com.dishanhai.sh_better_ui.client.lyrics.render.LyricView;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -227,6 +228,7 @@ public final class UiClient {
 
     /** 資源重載仍停留在玻璃畫面時，立即以新資源恢復管線，不必重開畫面。 */
     private static void reloadCurrentScreen() {
+        ClientMusic.artwork().invalidate();
         GaussBlur.release();
         Screen screen = Minecraft.getInstance().screen;
         if (screen != null && GaussBlur.isAllowed(screen)) GaussBlur.warmUp();
@@ -239,6 +241,7 @@ public final class UiClient {
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
+            event.enqueueWork(() -> ClientMusic.start(Minecraft.getInstance().gameDirectory.toPath().resolve("config")));
             ModList.get().getModContainerById(ShBetterUi.MOD_ID).ifPresent(container ->
                     container.registerExtensionPoint(IConfigScreenFactory.class,
                             (ignored, parent) -> createControlPanel(parent)));

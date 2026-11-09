@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
@@ -100,7 +101,7 @@ final class DeveloperPreviewDirectory extends Screen {
             updateMatches();
         });
         search.setOnSubmit(value -> {
-            if (!value.isBlank() && !matches.isEmpty()) choose(matches.getFirst().value());
+            if (!value.isBlank() && !matches.isEmpty()) choose(matches.get(0).value());
         });
         clear = addButton(right - ARROW_WIDTH, searchY, ARROW_WIDTH, label("gallery.directory_clear"), null, () -> {
             search.setValue("");
@@ -156,13 +157,13 @@ final class DeveloperPreviewDirectory extends Screen {
 
     private void updateMatches() {
         matches = index.search(query);
-        page = Math.clamp(page, 0, pageCount() - 1);
+        page = UiMath.clamp(page, 0, pageCount() - 1);
         clear.active = !query.isEmpty();
         updateRows();
     }
 
     private int pageCount() {
-        return Math.max(1, Math.ceilDiv(matches.size(), rows.size()));
+        return Math.max(1, UiMath.ceilDiv(matches.size(), rows.size()));
     }
 
     private void updateRows() {
@@ -184,7 +185,7 @@ final class DeveloperPreviewDirectory extends Screen {
     }
 
     private boolean turn(int direction) {
-        int target = Math.clamp(page + direction, 0, pageCount() - 1);
+        int target = UiMath.clamp(page + direction, 0, pageCount() - 1);
         if (target == page) return false;
         page = target;
         updateRows();

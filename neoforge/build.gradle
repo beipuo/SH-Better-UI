@@ -85,6 +85,9 @@ tasks.withType(Test).configureEach {
     // Existing source-boundary tests resolve paths relative to the original source root.
     workingDir = projectDir.parentFile
 }
+ext.sourceRoot = projectDir.parentFile
+apply from: '../gradle/windows-media.gradle'
+
 processResources {
     from('../LICENSE')
     inputs.property('mod_version', mod_version)

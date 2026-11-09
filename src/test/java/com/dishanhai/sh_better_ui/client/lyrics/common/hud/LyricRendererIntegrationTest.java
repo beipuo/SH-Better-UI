@@ -1,7 +1,7 @@
 package com.dishanhai.sh_better_ui.client.lyrics.common.hud;
 
 import com.dishanhai.sh_better_ui.client.lyrics.common.style.LyricStyleConfig;
-import com.dishanhai.sh_better_ui.client.lyrics.core.lyric.LyricLine;
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.lyrics.core.lyric.LyricTimeline;
 import com.dishanhai.sh_better_ui.client.lyrics.core.sync.TrackIdentity;
 import org.junit.jupiter.api.Test;
@@ -15,15 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class LyricRendererIntegrationTest {
     @Test
     void rendersTranslationAndUpcomingLinesOnceAndClearsWhenTrackChanges() {
-        var source = new LocalLyricFeed("test:lyrics");
+        var lyrics = ShBetterUiApi.lyrics();
+        var source = lyrics.localFeed("test:lyrics");
         var renderer = new FloatingLyricRenderer(source);
         renderer.setStyle(LyricStyleConfig.DEFAULT.withLineCount(4));
         var painter = new Painter();
         var track = TrackIdentity.of("Test track", "", 6000);
-        var timeline = new LyricTimeline(List.of(
-                new LyricLine("first", "translation", 0, 2000, List.of(), ""),
-                new LyricLine("second", "", 2000, 4000, List.of(), ""),
-                new LyricLine("third", "", 4000, 6000, List.of(), "")));
+        var timeline = lyrics.parseLrc("[00:00]first\n[00:02]second\n[00:04]third",
+                "[00:00]translation", 6000);
 
         source.publish(track, timeline, 1000, false);
         assertTrue(renderer.render(painter, true));
