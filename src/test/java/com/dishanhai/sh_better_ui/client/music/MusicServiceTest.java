@@ -88,8 +88,11 @@ class MusicServiceTest {
             assertTrue(oldStarted.await(3, TimeUnit.SECONDS));
             mock.set(session("one", "new", PlaybackStatus.PAUSED, 2000));
             assertTrue(oldInterrupted.await(3, TimeUnit.SECONDS));
-            assertEquals("new", service.getFrame().snapshot().session().track().key());
-            assertEquals(MusicService.LyricsState.LOADING, service.getCurrentLyrics().state());
+            await(() -> {
+                var frame = service.getFrame();
+                return "new".equals(frame.snapshot().session().track().key())
+                        && frame.lyrics().state() == MusicService.LyricsState.LOADING;
+            });
             nextRelease.countDown();
             await(() -> service.getCurrentLyrics().state() == MusicService.LyricsState.AVAILABLE);
             var frame = service.getFrame();
