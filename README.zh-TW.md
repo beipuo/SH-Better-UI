@@ -8,14 +8,14 @@ SH-Better-UI 是 Forge 1.20.1 與 NeoForge 1.21.1 的 Minecraft 客戶端 UI 庫
 
 ## Forge 1.20.1 環境與依賴
 
-- Minecraft 1.20.1、Forge 47.4.16 或更高、Java 21。
+- Minecraft 1.20.1、Forge 47.4.16 或更高、Java 17（執行端）。
 - 必需 KotlinForForge 4.12.0（2.2.21 runtime），由整合包單獨提供；本庫不內嵌任何 jar。
 - 使用 LDLib 接口時另裝 `ldlib-forge-1.20.1-1.0.33.b.jar`；原生 Screen 使用者無須安裝 LDLib。
 - 開發時將 `kotlinforforge-4.12.0-all.jar` 及 `ldlib-forge-1.20.1-1.0.33.b.jar` 放入 `libs/`。
 
 ## 建置
 
-使用 `build-local.ps1` 單獨建置 Forge，或執行 `簡易構建.bat` 依序建置 Forge 與 NeoForge。兩個入口均使用 JDK 21。Forge 使用 Gradle 8.8，建置包含 JUnit 與 reobfJar。批次腳本會清理兩個平台各自的 `build/libs`，並列出新產物。
+使用 `build-local.ps1` 單獨建置 Forge，或執行 `簡易構建.bat` 依序建置 Forge 與 NeoForge。兩個腳本以 JDK 21 啟動 Gradle。Forge 正式類別使用 JDK 17 工具鏈，既有測試使用 JDK 21。Forge 使用 Gradle 8.8，建置包含 JUnit 與 reobfJar。批次腳本會清理兩個平台各自的 `build/libs`，並列出新產物。
 
 首次建置時先移除命令中的 `--offline`，讓 Gradle 下載 JEI 編譯用 API。快取建立後可恢復離線建置。
 

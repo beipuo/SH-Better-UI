@@ -16,6 +16,7 @@ __pycache__/
 /docs/*
 !/docs/music-rhythm.md
 !/docs/lyrics.md
+!/docs/local-music.md
 /src_collection/
 TODO.md
 /neoforge/.gradle/

@@ -8,14 +8,15 @@ SH-Better-UI 是 Forge 1.20.1 与 NeoForge 1.21.1 的 Minecraft 客户端 UI 库
 
 ## Forge 1.20.1 环境与依赖
 
-- Minecraft 1.20.1、Forge 47.4.16 或更高、Java 21。
+- Minecraft 1.20.1、Forge 47.4.16 或更高、Java 17（运行端）。
+- [本机音乐 API 与 Windows 桥构建](docs/local-music.md)
 - 必需 KotlinForForge 4.12.0（2.2.21 runtime），由整合包单独提供；本库不内嵌任何 jar。
 - 使用 LDLib 接口时另装 `ldlib-forge-1.20.1-1.0.33.b.jar`；原生 Screen 用户无须安装 LDLib。
 - 开发时将 `kotlinforforge-4.12.0-all.jar` 及 `ldlib-forge-1.20.1-1.0.33.b.jar` 放入 `libs/`。
 
 ## 构建
 
-使用 `build-local.ps1` 单独构建 Forge，或执行 `簡易構建.bat` 依次构建 Forge 与 NeoForge。两个入口均使用 JDK 21。Forge 使用 Gradle 8.8，构建包含 JUnit 与 reobfJar。批处理脚本会清理两个平台各自的 `build/libs`，并列出新产物。
+使用 `build-local.ps1` 单独构建 Forge，或执行 `簡易構建.bat` 依次构建 Forge 与 NeoForge。两个脚本以 JDK 21 启动 Gradle。Forge 生产类使用 JDK 17 工具链，现有测试使用 JDK 21。Forge 使用 Gradle 8.8，构建包含 JUnit 与 reobfJar。批处理脚本会清理两个平台各自的 `build/libs`，并列出新产物。
 
 首次构建时先移除命令中的 `--offline`，让 Gradle 下载 JEI 编译用 API。缓存建立后可恢复离线构建。
 
@@ -434,6 +435,8 @@ var buttons = UiLayout.row(area, List.of(new UiLayout.Size(28, 18), new UiLayout
 Forge 与 NeoForge 的原生 `Screen` 可使用 `client.gui.display` 下的图标与状态面板。状态和翻页图标有 `INFO`、`SUCCESS`、`WARNING`、`ERROR`、`PREVIOUS`、`NEXT`。通用操作图标有 `ADD`、`REMOVE`、`SEARCH`、`SETTINGS`、`REFRESH`、`CLOSE`。可用 `new GraphicIcon(textureId)` 引用自己的 16×16 透明 PNG，白色图形可按 ARGB 着色。给 `UiButton` 设置图标时仍应传入本地化按钮名称，供悬停提示和旁白使用。
 
 内置图标的 64×64 透明副本位于 `sh_better_ui:textures/gui/display_64/<图标名>.png`，与 16×16 原图同名。副本按最近邻放大 4 倍，适用于按 64×64 读取完整纹理的调用方。内置 `GraphicIcon` 常数引用 16×16 原图。
+
+HUD 行首可使用按 8 像素网格设计的 `COMPACT_SIGNAL`、`COMPACT_CLOCK`、`COMPACT_CALENDAR`、`COMPACT_WORLD`、`COMPACT_BIOME`、`COMPACT_LOCATION`、`COMPACT_CHUNK` 和 `COMPACT_TORCH`。用 0.5 倍 PoseStack 绘制时，8 个 GUI 像素即可保留完整轮廓。
 
 其他操作可用 `FILTER`、`SORT`、`EDIT`、`COPY`、`DELETE`、`FAVORITE`、`LOCK`、`UNLOCK`、`EXPAND`、`COLLAPSE`、`UPLOAD` 和 `DOWNLOAD`。例如用 `button.setLeadingIcon(GraphicIcon.FILTER)` 在筛选按钮的文字旁显示漏斗。
 

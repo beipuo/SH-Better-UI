@@ -13,6 +13,10 @@
 - `/shbetterlyrics location` 打开位置编辑。拖动或用方向键微调后点「保存」，Esc 会取消。`/shbetterlyrics location reset` 恢复默认位置。
 - 设置页可调堆叠、弧形或环形排版，以及行数、折行、对齐、位置、字号、逐字渐变、颜色、描边、字重、阴影、行间过渡和间奏提示。布局和样式保存在 `config/sh_better_ui-lyrics.properties`。
 
+当 Link-MC 提供当前曲目的播放位置但没有歌词时，HUD 会在该游戏实例的 `config/sh_better_ui-lyrics/` 查找 UTF-8 文件。自行创建该目录，例如为歌手「歌手」、曲名「曲名」放入 `歌手 - 曲名.ttml` 或 `歌手 - 曲名.lrc`。没有歌手时用 `曲名` 作文件名。将文件名中的控制字符与 `< > : " / \ | ? *` 替换为 `_`，文件名按 Unicode NFC 查找。
+
+顺序是播放器歌词、有效的本地 TTML、本地 LRC。可用同名 `.translation.lrc` 为 LRC 提供译文。没有匹配项时隐藏歌词。暂停和定位沿用播放器进度，修改文件后切歌再切回来，或关闭再开启歌词 HUD，即可重新读取。
+
 图库用静音样例演示逐字染色，可暂停并切换排版。标有「Link-Lyric · beipuo」的按钮会复制原仓库地址，提示同时标注外部提供器 Link-MC。
 
 ## 嵌入自己的画面
@@ -39,6 +43,23 @@ lyrics.draw(renderer, frame, font, area);
 ```
 
 `renderer.setStyle(...)` 设置当前区域的样式，`feed.clear()` 清空当前曲目。`LyricFeed` 也可接自定义源，后台线程实现应以同一份 `Frame` 发布曲目、位置和歌词。需要在自己画面接 Salt Player 时，可用 `lyrics.linkMc()` 创建会话并传给 `lyrics.renderer(source)`，按宿主生命周期调用 `start()` 和 `close()`。`lyrics.saltPlayer()` 是同一会话的别名。
+
+### 使用本地 LRC
+
+宿主选定当前曲目的文件后，用 UTF-8 读取 `.lrc` 文本。换曲或替换歌词时解析一次，再随播放器快照发布同一份时间轴。
+
+```java
+var timeline = lyrics.parseLrc(lrcText, translatedLrcText, track.durationMs());
+feed.publish(track, timeline, positionMs, playing);
+```
+
+`translatedLrcText` 可传 `null`，曲长未知时传 `0`。支持 `[mm:ss.xx]` 行时间、同一行多个时间标签、`<mm:ss.xx>` 逐字时间和 `[offset:+毫秒]` 提前播放。译文按两份文件应用各自偏移后的起点精确匹配。纯时间标签可结束上一行，末行使用曲长或四秒时长，逐字末尾也可用一个空的时间标签指定结束。缺少带时间的歌词时返回空时间轴，发布后会清空旧歌词。
+
+### 使用 TTML
+
+`lyrics.parseTtml(ttmlText, track.durationMs())` 同样返回可发布给 `LocalLyricFeed` 的时间轴。支持 [TTML 媒体时间](https://www.w3.org/TR/ttml2/#timing-value-timeExpression) 的并行容器、时钟和时长，以及带 `itunes:timing` 的 [Apple Music／AMLL 绝对时间](https://github.com/amll-dev/applemusic-like-lyrics/blob/main/packages/docs/src/content/docs/en/guides/lyric/ttml.md)。读取 `<p>` 行、`<span>` 逐字、声部与行内 `x-translation`。帧／tick 计时、顺序容器和头部译文留待后续支持。
+
+在自己的画面中使用 Link-MC 并启用本地查找时，调用 `lyrics.linkMc(lyricDirectory)`。
 
 ## 给 FormattedCharSequence 着色
 

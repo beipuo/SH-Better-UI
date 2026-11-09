@@ -17,7 +17,7 @@ Install KotlinForForge separately. JEI is optional. Forge integrations under `co
 
 ## Build and install
 
-For Forge development, place `kotlinforforge-4.12.0-all.jar` and `ldlib-forge-1.20.1-1.0.33.b.jar` in `libs/`. Use JDK 21 for both builds.
+For Forge development, place `kotlinforforge-4.12.0-all.jar` and `ldlib-forge-1.20.1-1.0.33.b.jar` in `libs/`. Forge production classes target Java 17. Its existing test suite and the NeoForge build use JDK 21.
 
 - Run `build-local.ps1` to build Forge with Gradle 8.8, including JUnit and reobfuscation.
 - Run `簡易構建.bat` to build Forge and NeoForge in sequence. It clears each platform's `build/libs` and lists the resulting JARs. Pass `--no-pause` in automation to return the build exit code without waiting for input. Keep the script in UTF-8 without BOM with Windows CRLF line endings.
