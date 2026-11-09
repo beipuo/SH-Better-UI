@@ -365,7 +365,8 @@ class ControlPanelScreenTest {
 
     private static UiScrollableSectionBar bar(ControlPanelScreen screen) {
         return screen.children().stream().filter(UiScrollableSectionBar.class::isInstance)
-                .map(UiScrollableSectionBar.class::cast).filter(value -> value.buttons().size() == 5).findFirst().orElseThrow();
+                .map(UiScrollableSectionBar.class::cast)
+                .filter(value -> value.buttons().contains(button(screen, "section.glass"))).findFirst().orElseThrow();
     }
 
     @Test

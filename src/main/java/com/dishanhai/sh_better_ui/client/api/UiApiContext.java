@@ -4,6 +4,7 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.theme.ThemeScope;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public final class UiApiContext implements UiApi, AutoCloseable {
     private final List<AutoCloseable> resources = new ArrayList<>();
     private final Set<AutoCloseable> managed = Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean closed;
+    private ThemeScope themeScope;
 
     public UiApiContext() {
         this(ShBetterUiApi.extensions());
@@ -98,21 +100,37 @@ public final class UiApiContext implements UiApi, AutoCloseable {
         return manage(motion().animation(preset, initial));
     }
 
-    /** 每个独立查询槽创建一个实例，离开页面时自动失效。 */
-    public <T> UiRequest<T> query() {
-        requireOpen();
     /** 创建随本次页面打开释放的碰撞布局，视口重建时可保留布局并重绑控件。 */
     public UiCollisionLayout collisionLayout(Bounds viewport) {
         requireOpen();
         return manage(new UiCollisionLayout(viewport));
     }
 
+    /** 每个独立查询槽创建一个实例，离开页面时自动失效。 */
+    public <T> UiRequest<T> query() {
+        requireOpen();
         return manage(UiClientApi.request(UiRequest.Mode.QUERY));
     }
 
     public UiPreferences preferences() {
         requireOpen();
-        return settings().preferences();
+        var base = settings().preferences();
+        if (themeScope == null || themeScope.isClosed()) return base;
+        var dynamic = themeScope.preferences();
+        return new UiPreferences(base.highContrast() || dynamic.highContrast(),
+                base.reducedMotion() || dynamic.reducedMotion(),
+                base.backgroundBlur() && !dynamic.lowPerformance(), base.feedback());
+    }
+
+    /** Opens the context's opt-in screen scope. It survives resize and closes with this context. */
+    public ThemeScope themeScope() {
+        requireOpen();
+        if (themeScope == null || themeScope.isClosed()) {
+            var scope = themes().global().child("screen");
+            manage(scope);
+            themeScope = scope;
+        }
+        return themeScope;
     }
 
     /** 每次绘制采样一次，将返回值传给本帧协作的多个组件。 */

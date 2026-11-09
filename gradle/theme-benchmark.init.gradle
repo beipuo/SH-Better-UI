@@ -1,0 +1,15 @@
+// Author: dishanhai
+// Opt-in benchmark, usable by both wrappers without affecting packaged sources.
+gradle.projectsEvaluated {
+    gradle.rootProject.allprojects { p ->
+        if (!p.plugins.hasPlugin('java') || p.name != 'sh_better_ui') return
+        p.tasks.register('benchmarkDynamicTheme', JavaExec) {
+            group = 'verification'
+            description = 'Measures dynamic theme resolution and property invalidation'
+            dependsOn p.tasks.named('testClasses')
+            classpath = p.sourceSets.test.runtimeClasspath
+            mainClass = 'com.dishanhai.sh_better_ui.theme.ThemeBenchmark'
+            jvmArgs '-Xms512m', '-Xmx1g'
+        }
+    }
+}

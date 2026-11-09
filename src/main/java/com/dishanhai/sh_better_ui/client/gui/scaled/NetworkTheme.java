@@ -121,8 +121,14 @@ public final class NetworkTheme {
     }
 
     static void drawTab(GuiGraphics graphics, int x, int y, int width, int height,
-                        DarkModeTheme.State state, boolean selected) {
+                        DarkModeTheme.State state, boolean selected, ThemeButtonStyle.Paint paint) {
         boolean focused = state.focused();
+        if (paint != null) {
+            int stroke = Math.max(paint.borderWidth(), focused ? (state.highContrast() ? 2 : 1) : 0);
+            DarkModeTheme.rounded(graphics, x, y, width, height, paint.radius(), stroke,
+                    focused ? paint.focus() : paint.border(), paint.fill());
+            return;
+        }
         int edge = focused ? UiTheme.current().accent(FOCUS) : controlText(state, selected);
         int fill = surface(state.highContrast(), selected ? 0xE51B3549 : FIELD);
         if (state.press() > 0f) fill = GuiMotion.lerpColor(fill, UiTheme.current().controlFill(0xFF234C68, 0.22f), state.press());

@@ -56,14 +56,9 @@ public final class MusicArtworkTexture {
     }
 
     private void decode(long ticket, MusicSnapshot.Artwork artwork) {
-        byte[] png = artwork.png();
-        if (png.length < 24) return;
-        var header = ByteBuffer.wrap(png);
-        if (header.getLong() != 0x89504e470d0a1a0aL || header.getInt() != 13 || header.getInt() != 0x49484452) return;
-        int width = header.getInt(), height = header.getInt();
-        if (width <= 0 || height <= 0 || width > 240 || height > 240) return;
         try {
-            var image = NativeImage.read(new java.io.ByteArrayInputStream(png));
+            var image = readArtwork(artwork);
+            if (image == null) return;
             synchronized (this) {
                 if (closed || generation != ticket) image.close();
                 else pending = image;
@@ -71,6 +66,17 @@ public final class MusicArtworkTexture {
         } catch (java.io.IOException | RuntimeException ignored) {
             // Keep the host's missing-cover placeholder.
         }
+    }
+
+    /** Decodes only the bounded PNG cover. The caller owns and closes the returned CPU image. */
+    public static NativeImage readArtwork(MusicSnapshot.Artwork artwork) throws java.io.IOException {
+        byte[] png = artwork.png();
+        if (png.length < 24) return null;
+        var header = ByteBuffer.wrap(png);
+        if (header.getLong() != 0x89504e470d0a1a0aL || header.getInt() != 13 || header.getInt() != 0x49484452) return null;
+        int width = header.getInt(), height = header.getInt();
+        if (width <= 0 || height <= 0 || width > 240 || height > 240) return null;
+        return NativeImage.read(new java.io.ByteArrayInputStream(png));
     }
 
     /** Resource reload runs on the render thread; the next draw uploads the current cover again. */

@@ -6,7 +6,9 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiTheme;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
+import com.dishanhai.sh_better_ui.theme.ThemeScope;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -38,6 +40,7 @@ public final class UiScreen extends Screen {
     private boolean disposed;
     private boolean handlingFailure;
     private UiButton back;
+    private ThemeScope widgetThemes;
 
     UiScreen(UiScreenBuilder.Definition definition) {
         super(definition.title());
@@ -64,7 +67,19 @@ public final class UiScreen extends Screen {
 
     public <T extends AbstractWidget> T add(T widget) {
         if (disposed) throw new IllegalStateException("Disposed UI screen");
+        bindTheme(widget);
         return addRenderableWidget(Objects.requireNonNull(widget));
+    }
+
+    /** Theme parent for widgets and containers created during this init/resize. */
+    public ThemeScope widgetThemeScope() {
+        if (widgetThemes == null || widgetThemes.isClosed()) throw new IllegalStateException("Inactive dynamic UI");
+        return widgetThemes;
+    }
+
+    private void bindTheme(AbstractWidget widget) {
+        if (widgetThemes != null && widget instanceof UiButton button && button.supportsThemeBinding()
+                && !button.hasThemeBinding()) button.bindTheme(widgetThemes);
     }
 
     public UiButton button(int x, int y, int width, int height, String translationKey, Runnable onPress) {
@@ -105,6 +120,12 @@ public final class UiScreen extends Screen {
             if (context == null || context.isClosed()) {
                 context = Objects.requireNonNull(definition.contexts().get());
             }
+            if (definition.theme() != null) {
+                if (widgetThemes != null) widgetThemes.close();
+                var theme = context.themeScope();
+                theme.configure(definition.theme());
+                widgetThemes = theme.child("widgets");
+            }
             back = null;
             if (definition.backButton()) {
                 int inset = inset();
@@ -113,6 +134,7 @@ public final class UiScreen extends Screen {
                 back = addWidget(context.controls().button(area, Component.translatable("gui.back"),
                         button -> onClose(), context.preferences(), false, UiStyle.DEFAULT));
                 back.setLeadingIcon(GraphicIcon.BACK);
+                bindTheme(back);
                 back.setSampleBackground(false);
                 setInitialFocus(back);
             }
@@ -274,6 +296,12 @@ public final class UiScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (disposed || removed) return;
+        if (definition.theme() == null) renderContents(graphics, mouseX, mouseY, partialTick);
+        else UiTheme.preview(UiTheme.fromScope(context().themeScope()),
+                () -> renderContents(graphics, mouseX, mouseY, partialTick));
+    }
+
+    private void renderContents(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         var original = context().frame(graphics, viewport(), partialTick);
         var modal = UiLocalModal.current(this);
         var mouse = modal == null ? original.mouse() : modal.filterPointer(original.mouse());

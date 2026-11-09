@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.config;
 
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.theme.accessibility.ThemePreferences;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,6 +48,26 @@ class ClientUiSettingsTest {
         assertEquals(FEEDBACK, changedTabs.feedback());
         assertSame(backdrop, changedTabs.backdrop());
         assertTrue(changedTabs.reducedMotion());
+    }
+
+    @Test
+    void dynamicThemeSettingsRemainIndependentAndKeepMissingPackIds() {
+        var dynamic = new DynamicThemeSettings("example:missing_theme", 125, true);
+        var draft = ClientUiSettings.DEFAULT.withDynamicTheme(dynamic)
+                .withTheme(ThemeSettings.DEFAULT.withMode(ThemeSettings.Mode.LIGHT))
+                .withFeedback(FEEDBACK).withTabs(TABS).withDisplay(true, true, false)
+                .withBackdrop(GlassBackdropSettings.DEFAULT.withEnabled(false));
+        assertEquals(dynamic, draft.dynamicTheme());
+        var preferences = dynamic.applyTo(ThemePreferences.DEFAULT.withHighContrast(true).withReducedMotion(true));
+        assertEquals(ThemePreferences.Mode.FIXED, preferences.mode());
+        assertEquals("example:missing_theme", preferences.fixedThemeId());
+        assertEquals(1.25, preferences.animationSpeed());
+        assertTrue(preferences.lowPerformance());
+        assertTrue(preferences.highContrast());
+        assertTrue(preferences.reducedMotion());
+        assertEquals(ThemePreferences.Mode.FOLLOW_ENVIRONMENT, DynamicThemeSettings.DEFAULT.applyTo(preferences).mode());
+        assertThrows(IllegalArgumentException.class, () -> new DynamicThemeSettings("invalid", 100, false));
+        assertThrows(IllegalArgumentException.class, () -> new DynamicThemeSettings("", 801, false));
     }
 
     @Test

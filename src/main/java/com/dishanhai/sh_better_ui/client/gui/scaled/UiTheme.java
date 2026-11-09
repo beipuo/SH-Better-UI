@@ -3,6 +3,8 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
+import com.dishanhai.sh_better_ui.theme.ThemeScope;
+import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
 
 /** 山海：解析共用材质色，并为设置界面提供作用域内的草稿预览。 */
 public record UiTheme(boolean light, int background, int surface, int border, int text, int accent,
@@ -58,6 +60,14 @@ public record UiTheme(boolean light, int background, int surface, int border, in
             if (previous == null) PREVIEW.remove();
             else PREVIEW.set(previous);
         }
+    }
+
+    /** Adapts semantic colors for existing renderers while a dynamic screen is being painted. */
+    public static UiTheme fromScope(ThemeScope scope) {
+        return new UiTheme(scope.resolve(ThemeTokens.LIGHT), scope.resolve(ThemeTokens.BACKGROUND).argb(),
+                scope.resolve(ThemeTokens.SURFACE).argb(), scope.resolve(ThemeTokens.BORDER).argb(),
+                scope.resolve(ThemeTokens.TEXT).argb(), scope.resolve(ThemeTokens.ACCENT).argb(),
+                BACKGROUND | SURFACE | BORDER | TEXT | ACCENT);
     }
 
     public static GraphicIcon icon(ThemeSettings.Mode mode) {

@@ -5,11 +5,14 @@
 
 ## 统一调用入口
 
+**工作区新增（1.0.4）**：`GlassTheme.AURORA`、`AMETHYST`、`ROSE`、`EMBER` 是完整的染色玻璃配色，消费端可直接使用或通过受保护复制构造保留全部结构色。`GlassColors.tintedDark(int accent, int surface)` 接受 RGB／ARGB 的颜色值，生成深色底板、按钮、行、边框及文字色；交易成功和失败语义色保持一致。四套配色沿用 `clearGlass` 参数组，局部覆写仍通过 `ThemeEffects` 作用域提供，不读取消费方配置。
+
 **工作区新增** `com.dishanhai.sh_better_ui.client.api.ShBetterUiApi` 是 Forge 与 NeoForge 的共同入口。每个分组是无状态单例，工厂返回现有组件类型。界面持有自己的控件、动画和手势状态，并按下文对应的绘制、输入与释放约定调用。[统一入口源码](src/main/java/com/dishanhai/sh_better_ui/client/api/ShBetterUiApi.java)
 
 | 分组 | 主要入口 |
 | --- | --- |
 | `settings()` | `preferences()`、`current()`、`backdrop()`、`save()`、`saveBackdrop()` 与内置面板工厂 |
+| `themes()` | 动态令牌、主题注册、过渡、环境规则、作用域和资源包。[接入指南与示例](docs/DYNAMIC_THEMES.md) |
 | `controls()` | 按钮、滑块、开关、分区、详情、状态、骨架与进度 |
 | `interactions()` | 覆层、全屏预览、确认、抽屉、刷新、滑动确认、鼠标快照、指针捕获、视口、历史和轻提示 |
 | `search()` | `index()`、`field()`、`jeiPanel()`，以及 JEI 查询、打开和侧栏避让 |
@@ -243,11 +246,11 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 
 ## 搜索、JEI 与素材选取
 
+宿主已有查询语法时，使用 `SearchIndex.searchPlainText(query)`／`searchPlainText(query, scope)`：只按空白分词，`@`、`#`、引号均为普通文字，仍复用名称、ID、别名与拼音匹配。`suggestPlainText(query, orderedCandidates, limit)` 采用同一纯文本语义；`suggest(query, orderedCandidates, limit)` 保留共享筛选语法。两者同档按宿主候选顺序排列并忽略未知值。宿主已按标签、提示或其他语义筛选后，使用 `suggestMatches(query, orderedMatches, limit)` 仅排名，不再次过滤。纯文本及外部匹配联想直接补全原名称或 ID，不添加筛选语法或引号。对空名称做 ID 展示回退的宿主，可用构造重载 `SearchIndex(entries, displayOnlyNames)` 将回退名称标记为仅展示；它不参与名称匹配或排名，`Entry` 的非空名称契约及原构造保持兼容。
+
 | 用途 | 入口与调用约定 |
 | --- | --- |
 | 本地搜索与联想 | `SearchIndex<T>` 用 `Entry(value, name, ids, aliases)` 建立快照，也可用六参数重载追加 `modName, tags`。`search(query, scope)` 保留来源顺序，`suggest(query, scope, limit)` 返回可填充建议，`Suggestion.suffixFor()` 取灰字补全，`label()` 取候选行文字。数据或语言变化时重建索引。名称和别名支持汉字全拼及首字母匹配。**工作区新增行为** `@模组`、`#tag` 支持筛选与去重联想，填充保留前面的查询；模组 ID 自动取自条目 ID 命名空间，模组名称支持拼音，多词名称使用 `@"名称"`。素材面板自动接入模组与 tag 数据。 |
-宿主已有查询语法时，使用 `SearchIndex.searchPlainText(query)`／`searchPlainText(query, scope)`：只按空白分词，`@`、`#`、引号均为普通文字，仍复用名称、ID、别名与拼音匹配。`suggestPlainText(query, orderedCandidates, limit)` 采用同一纯文本语义；`suggest(query, orderedCandidates, limit)` 保留共享筛选语法。两者同档按宿主候选顺序排列并忽略未知值。宿主已按标签、提示或其他语义筛选后，使用 `suggestMatches(query, orderedMatches, limit)` 仅排名，不再次过滤。纯文本及外部匹配联想直接补全原名称或 ID，不添加筛选语法或引号。对空名称做 ID 展示回退的宿主，可用构造重载 `SearchIndex(entries, displayOnlyNames)` 将回退名称标记为仅展示；它不参与名称匹配或排名，`Entry` 的非空名称契约及原构造保持兼容。
-
 | 原生搜索输入框 | `SearchField<T>` 继承 `EditBox`。`setIndex()/setScope()` 更新来源和范围，`setResponder()/setOnSubmit()` 接收查询变化和 Enter。普通控件之后调用 `renderSuggestions()`。在 Screen 默认分派前调用 `mouseClickedSuggestion()/mouseScrolledSuggestions()`，Esc 先交给 `dismissSuggestions()`。存在帧末后处理时，可通过 `GaussBlur.deferTopLayer()` 绘制候选。 |
 | 嵌入素材搜索与配方预览 | `JeiSearchPanel` 最小为 `144 × 132` GUI 单位。注册 `widgets()`、转发 `tick()` 和候选输入，按 `renderBackground()` → Screen 控件 → `renderOverlays()` 绘制。`snapshot()/restore()` 用于重建面板，`setOnChoose()` 在明确选用时回传素材。候选显示时可通过 `hasOpenSuggestions()` 暂停宿主底层 tooltip。`JeiIntegration.setExtraAreas(screen, panel::extraAreas)` 为 JEI 侧栏留出避让区，永久移除时传 `null`。NeoForge 滚轮转发垂直量 `scrollY`。 |
 | 素材来源与筛选 | `IngredientCatalog.jei()` 取可见 JEI 素材，`registry()` 取物品默认形态及源流体，`automatic()` 优先 JEI 并可回退原生注册表，`of(candidates)` 接收自建列表。`JeiSearchPanel` 默认用 `jei()`，需要无 JEI 回退时传入 `automatic()`。`IngredientFilter.all()/items()/fluids()` 可叠加 `withKinds()/withIds()/withMods()/withTags()`，同组任一命中，跨组全部匹配。 |
@@ -263,10 +266,10 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | 图标与动效 | `GraphicIcon` 提供内置 16×16 图标，也可传自定义贴图。`withMotion(GraphicIconMotion)` 配置动作，`withShader(GraphicIconShader)` 配置着色器。自定义着色器由宿主在客户端注册，使用 `POSITION_TEX`。 |
 | 图文列表、网格与分页 | `GraphicDisplayLayout.arrange()/pageCapacity()` 计算 `Bounds`、单元格和翻页区域。`GraphicDisplay.drawRows()/drawRowTooltip()/drawPageNumber()/pageButton()` 负责绘制或创建控件，宿主提供 `Entry` 及页数据。 |
 | 自绘排版与文字效果 | `UiLayout.align()/row()/column()` 计算边界，`UiText.drawLeft()/drawCentered()/drawRight()` 在区域内绘制对齐文字。`UiFormattedText.draw()/colorize()` 处理格式化文字，`graphics().colorizeLyricText()` 为 FCS 提供逐字进度色；`UiTextEffects.apply()/parse()` 套用逐字效果，`registerPalette()/registerEffect()` 扩展效果。 |
+| 二维弹性挤压 | `UiApiContext.collisionLayout(viewport)` 创建页面布局。`world().add(shape)` 链式配置响应、分组、优先级、锚点和尺寸，`bind(body, widget)` 复用原生控件。绘制前调用 `update(frame)`。自绘控件使用绑定回调提供的 `Bounds` 和 `hitTest()`。见 [二维 UI 弹性挤压](docs/UI_COLLISION.md)。 |
 | 网络风格界面 | `NetworkScreen` 根据 `Tab` 与 `Field / Edit / Status / Toggle` 等行模型建立整页控件。已有页面可独立使用 `NetworkLayout.arrange()`、`NetworkTheme` 与 `NetworkToggle`。表单内容、权限判断和提交仍由宿主提供。 |
 
 [图形和布局源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/) · [格式化文字源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/text/) · [网络风格控件](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java)
-| 二维弹性挤压 | `UiApiContext.collisionLayout(viewport)` 创建页面布局。`world().add(shape)` 链式配置响应、分组、优先级、锚点和尺寸，`bind(body, widget)` 复用原生控件。绘制前调用 `update(frame)`。自绘控件使用绑定回调提供的 `Bounds` 和 `hitTest()`。见 [二维 UI 弹性挤压](docs/UI_COLLISION.md)。 |
 
 ## 动画与画面过渡
 
@@ -462,6 +465,14 @@ shapes.draw(graphics, new Bounds(16, 16, 240, 120), ShBetterUiApi.interactions()
 `text` 接受宿主已本地化的文本，`fontFamily` 使用 Java 客户端字体族名，默认 `SansSerif`。长文字会按区域宽度缩放。`replayIntro()` 重新播放从中心向外的入场，`restart()` 同时重置波面和涟漪。`setPaused(true)` 冻结波面，鼠标反馈仍可使用。`draw()` 返回 `false` 时只绘制所配置的底色，或区域为空。 [形状波面入口](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWaves.java) · [配置](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWavesProfile.java)
 
 ## 平台适配与库内入口
+
+### 保留自绘布局时的材质接入
+
+`GlassTheme.SLATE`、`LIQUID_GLASS`、`NETWORK` 与原有 `CLASSIC`／`GLASS`／`SMOKE` 共用 `box`、`button`、`region`、`rootPanel` 和 `tooltipPanel` 入口。消费端通过受保护的复制构造保留自己的主题类型，复制后仍读取原材质的参数分组；`materialGroup()` 返回稳定分组名，`controlStyle()` 可用于创建对应的原生控件。
+
+原生文本使用 `button(..., Component, ...)` 保留本地化参数与样式；旧 String 入口继续可用。自绘原生控件的宿主可在焦点状态调用 `focus(graphics, x, y, width, height)`，其边宽遵守高对比偏好。`LiquidGlassTheme.plate` 用于已由根板取样的内层底板，避免每个控件重复采样背景。
+
+调用这些入口时，宿主仍负责注册原生焦点、旁白、输入和坐标转换。`ThemeEffects.preview` 的作用域应覆盖同一帧的根板、内层控件及前景，嵌套时保留外层快照，退出后恢复。材质只决定展示，不改变交易或网络状态。
 
 | 接入环境 | 平台专属部分 |
 | --- | --- |

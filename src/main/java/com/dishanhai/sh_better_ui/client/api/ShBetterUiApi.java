@@ -2,6 +2,8 @@ package com.dishanhai.sh_better_ui.client.api;
 
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
 import com.dishanhai.sh_better_ui.client.gui.panel.BuiltinPreviews;
+import com.dishanhai.sh_better_ui.client.theme.MinecraftThemes;
+import com.dishanhai.sh_better_ui.theme.ThemeManager;
 import net.minecraft.network.chat.Component;
 
 /** 山海：Forge 与 NeoForge 共用的客户端 API 入口。分组可复用，组件状态归各自的宿主。 */
@@ -52,6 +54,9 @@ public final class ShBetterUiApi {
     public static SettingsApi settings() {
         return SETTINGS;
     }
+
+    /** Dynamic themes and resource-pack definitions. Call on the physical client thread. */
+    public static ThemeManager themes() { return MinecraftThemes.manager(); }
 
     public static ControlsApi controls() {
         return CONTROLS;

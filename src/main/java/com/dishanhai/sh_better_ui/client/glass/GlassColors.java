@@ -48,4 +48,25 @@ public final class GlassColors {
     }
 
     public static GlassColors select(boolean clear) { return clear ? CLEAR : DARK; }
+
+    /** 山海：可复用的深色染色玻璃，结构色随基底变化，正文和交易语义保持可读。 */
+    public static GlassColors tintedDark(int accent, int surface) {
+        int rgb = surface & 0xFFFFFF;
+        int tint = accent & 0xFFFFFF;
+        return new GlassColors(0xFF000000 | tint, DARK.TEXT, 0xFF000000 | mix(tint, 0xFFFFFF, 0.65f),
+                DARK.TEXT_MUTED, DARK.TEXT_DIM, DARK.TEXT_OFF, DARK.OK,
+                0x70000000 | tint, 0xB3000000 | mix(rgb, tint, 0.12f), 0xDC000000 | mix(rgb, tint, 0.26f),
+                0x50000000 | tint, 0x24000000 | rgb, 0xA6000000 | rgb,
+                0x50000000 | tint, 0x99000000 | rgb, 0xCC000000 | mix(rgb, tint, 0.2f),
+                0x90000000 | tint, 0x99000000 | rgb, 0x18FFFFFF);
+    }
+
+    private static int mix(int from, int to, float amount) {
+        int result = 0;
+        for (int shift = 0; shift <= 16; shift += 8) {
+            int a = from >> shift & 255, b = to >> shift & 255;
+            result |= Math.round(a + (b - a) * amount) << shift;
+        }
+        return result;
+    }
 }

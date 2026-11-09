@@ -34,6 +34,15 @@ public record ThemeSettings(Mode mode, Base customBase, String background, Strin
         return new ThemeSettings(next, customBase, background, surface, border, text, accent, effects);
     }
 
+    /** 为局部界面叠加效果，继承当前实际基底且不激活已休眠的自定义配置。 */
+    public ThemeSettings overlayEffects(ThemeOverrides local) {
+        Objects.requireNonNull(local);
+        if (local.equals(ThemeOverrides.EMPTY)) return this;
+        ThemeSettings base = mode == Mode.CUSTOM ? this
+                : new ThemeSettings(Mode.CUSTOM, light() ? Base.LIGHT : Base.DARK, "", "", "", "", "");
+        return base.withEffects(base.effects.overlay(local));
+    }
+
     public boolean light() {
         return mode == Mode.LIGHT || mode == Mode.CUSTOM && customBase == Base.LIGHT;
     }

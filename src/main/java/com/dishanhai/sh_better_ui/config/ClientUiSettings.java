@@ -5,7 +5,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** 山海：两个加载器共用的客户端界面设置快照。 */
 public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion,
-                               boolean widgetBackdropBlur, ControlFeedbackSettings feedback, TabScrollSettings tabs, ThemeSettings theme) {
+                               boolean widgetBackdropBlur, ControlFeedbackSettings feedback, TabScrollSettings tabs,
+                               ThemeSettings theme, DynamicThemeSettings dynamicTheme) {
     public static final ClientUiSettings DEFAULT = new ClientUiSettings(GlassBackdropSettings.DEFAULT, false, false, true,
             ControlFeedbackSettings.DEFAULT, TabScrollSettings.DEFAULT);
     private static final AtomicReference<ClientUiSettings> CURRENT = new AtomicReference<>(DEFAULT);
@@ -15,6 +16,13 @@ public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContr
         Objects.requireNonNull(feedback);
         Objects.requireNonNull(tabs);
         Objects.requireNonNull(theme);
+        Objects.requireNonNull(dynamicTheme);
+    }
+
+    public ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion,
+                            boolean widgetBackdropBlur, ControlFeedbackSettings feedback, TabScrollSettings tabs,
+                            ThemeSettings theme) {
+        this(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme, DynamicThemeSettings.DEFAULT);
     }
 
     public ClientUiSettings(GlassBackdropSettings backdrop, boolean highContrast, boolean reducedMotion,
@@ -45,22 +53,32 @@ public record ClientUiSettings(GlassBackdropSettings backdrop, boolean highContr
     }
 
     public ClientUiSettings withBackdrop(GlassBackdropSettings settings) {
-        return new ClientUiSettings(settings, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme);
+        return new ClientUiSettings(settings, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme,
+                dynamicTheme);
     }
 
     public ClientUiSettings withDisplay(boolean highContrast, boolean reducedMotion, boolean widgetBackdropBlur) {
-        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme);
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme,
+                dynamicTheme);
     }
 
     public ClientUiSettings withFeedback(ControlFeedbackSettings settings) {
-        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, settings, tabs, theme);
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, settings, tabs, theme,
+                dynamicTheme);
     }
 
     public ClientUiSettings withTabs(TabScrollSettings settings) {
-        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, settings, theme);
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, settings, theme,
+                dynamicTheme);
     }
 
     public ClientUiSettings withTheme(ThemeSettings settings) {
-        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, settings);
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, settings,
+                dynamicTheme);
+    }
+
+    public ClientUiSettings withDynamicTheme(DynamicThemeSettings settings) {
+        return new ClientUiSettings(backdrop, highContrast, reducedMotion, widgetBackdropBlur, feedback, tabs, theme,
+                settings);
     }
 }

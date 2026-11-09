@@ -8,6 +8,7 @@ import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
 import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
+import com.dishanhai.sh_better_ui.client.theme.DynamicThemePreview;
 import com.google.gson.JsonObject;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -60,6 +61,12 @@ public final class SettingsApi {
     /** 传入已注册的快捷键，面板使用库的客户端配置保存入口。 */
     public ControlPanelScreen controlPanel(Screen parent, KeyMapping keyMapping) {
         return new ControlPanelScreen(parent, keyMapping, ShBetterUi::saveClientUiSettings);
+    }
+
+    /** Creates the interactive dynamic theme example with its own screen lifetime. */
+    public Screen dynamicThemePreview(Screen parent) {
+        GuiEventListener focus = parent == null ? null : parent.getFocused();
+        return DynamicThemePreview.screen(parent, () -> focus);
     }
 
     public DeveloperPanelScreen developerPanel(Screen parent) {

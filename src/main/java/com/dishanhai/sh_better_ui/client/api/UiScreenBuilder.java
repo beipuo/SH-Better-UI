@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.api;
 
+import com.dishanhai.sh_better_ui.theme.ScopeOverride;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -25,6 +26,7 @@ public final class UiScreenBuilder {
     private Consumer<UiScreen> onTick = screen -> {};
     private Consumer<UiScreen> onRemoved = screen -> {};
     private BiConsumer<UiScreen, Throwable> onError;
+    private Consumer<ScopeOverride.Builder> theme;
 
     public UiScreenBuilder(Component title) {
         this(title, ShBetterUiApi::context, screen -> {});
@@ -59,6 +61,15 @@ public final class UiScreenBuilder {
         this.backButton = backButton;
         return this;
     }
+
+    /** Opts into global dynamic themes with a screen-local override draft. */
+    public UiScreenBuilder dynamicTheme(Consumer<ScopeOverride.Builder> theme) {
+        this.theme = Objects.requireNonNull(theme);
+        return this;
+    }
+
+    /** Opts into global dynamic themes with no local overrides. */
+    public UiScreenBuilder dynamicTheme() { return dynamicTheme(ignored -> {}); }
 
     /** 初次打开、返回本页和 GUI 尺寸变化时调用，在此注册和重新布局原生控件。 */
     public UiScreenBuilder onInit(Consumer<UiScreen> onInit) {
@@ -98,7 +109,7 @@ public final class UiScreenBuilder {
     /** 只创建界面，不读取 Minecraft。直接 setScreen 时请按需先设置 parent。 */
     public UiScreen build() {
         var screen = new UiScreen(new Definition(title.copy(), contexts, parent, parentSpecified, returnFocus, pausesGame,
-                backButton, onInit, onRender, onForeground, onTick, onRemoved, onError));
+                backButton, onInit, onRender, onForeground, onTick, onRemoved, onError, theme));
         onBuilt.accept(screen);
         return screen;
     }
@@ -114,5 +125,5 @@ public final class UiScreenBuilder {
                       Supplier<? extends GuiEventListener> returnFocus, boolean pausesGame, boolean backButton,
                       Consumer<UiScreen> onInit, UiScreen.Draw onRender, UiScreen.Draw onForeground,
                       Consumer<UiScreen> onTick, Consumer<UiScreen> onRemoved,
-                      BiConsumer<UiScreen, Throwable> onError) {}
+                      BiConsumer<UiScreen, Throwable> onError, Consumer<ScopeOverride.Builder> theme) {}
 }

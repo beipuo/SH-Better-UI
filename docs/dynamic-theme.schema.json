@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Author: dishanhai. The runtime additionally enforces pack provenance, size, depth, catalog registration and acyclic inheritance.",
+  "title": "SH-Better-UI dynamic theme resource",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "parent": {
+      "$ref": "#/$defs/id"
+    },
+    "nameKey": {
+      "$ref": "#/$defs/text"
+    },
+    "metadata": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "tokens": {
+      "$ref": "#/$defs/tokens"
+    },
+    "styles": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/style"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_.-]+(/[a-z0-9_.-]+)*$"
+    },
+    "tokenName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^([a-z0-9_.-]+:)?[a-zA-Z0-9_./-]+$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+    },
+    "positive": {
+      "type": "number",
+      "minimum": 0
+    },
+    "unit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "duration": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400000
+    },
+    "easing": {
+      "type": "string",
+      "pattern": "^([Ll][Ii][Nn][Ee][Aa][Rr]|[Ss][Tt][Aa][Nn][Dd][Aa][Rr][Dd]|[Ee][Mm][Pp][Hh][Aa][Ss][Ii][Zz][Ee][Dd]|[Ss][Pp][Rr][Ii][Nn][Gg])$"
+    },
+    "integer": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "bool": {
+      "type": "boolean"
+    },
+    "shadow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "radius": {
+          "$ref": "#/$defs/positive"
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "radius",
+        "color"
+      ]
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "scaleX": {
+          "type": "number"
+        },
+        "scaleY": {
+          "type": "number"
+        },
+        "rotation": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "scaleX",
+        "scaleY",
+        "rotation"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/tokenName"
+        }
+      },
+      "required": [
+        "ref"
+      ]
+    },
+    "colorExpr": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/color"
+        },
+        {
+          "$ref": "#/$defs/reference"
+        },
+        {
+          "$ref": "#/$defs/mix"
+        }
+      ]
+    },
+    "mix": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mix": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/colorExpr"
+            },
+            {
+              "$ref": "#/$defs/colorExpr"
+            },
+            {
+              "$ref": "#/$defs/unit"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "mix"
+      ]
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "values"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "states": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 6,
+          "items": {
+            "enum": [
+              "hovered",
+              "pressed",
+              "focused",
+              "selected",
+              "disabled",
+              "dragging",
+              "HOVERED",
+              "PRESSED",
+              "FOCUSED",
+              "SELECTED",
+              "DISABLED",
+              "DRAGGING"
+            ]
+          }
+        },
+        "values": {
+          "$ref": "#/$defs/styleValues"
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "$ref": "#/$defs/tokenName"
+      },
+      "patternProperties": {
+        "^(sh_better_ui:)?(color\\.(primary|onPrimary|secondary|accent)|surface\\.(background|primary|secondary|elevated|overlay)|text\\.(primary|secondary|disabled)|border\\.(default|focused|error)|state\\.(hover|pressed|selected|disabled)|status\\.(success|warning|error|info))$": {
+          "$ref": "#/$defs/colorExpr"
+        },
+        "^(sh_better_ui:)?(shape\\.radius\\.(none|small|medium|large|full)|spacing\\.(xs|sm|md|lg|xl)|typography\\.(size|lineHeight)|border\\.width|effect\\.blur)$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/positive"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?effect\\.(opacity|glow|pulse)$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/unit"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?motion\\.duration\\.(fast|normal|slow)$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/duration"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?motion\\.easing\\.(standard|emphasized|spring)$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/easing"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?typography\\.font$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?typography\\.weight$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/integer"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?(effect\\.backdrop|appearance\\.light)$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/bool"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?effect\\.shadow$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/shadow"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        },
+        "^(sh_better_ui:)?effect\\.transform$": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/transform"
+            },
+            {
+              "$ref": "#/$defs/reference"
+            }
+          ]
+        }
+      },
+      "additionalProperties": {
+        "description": "Registered extension token. The runtime checks the Java token type and its codec."
+      }
+    },
+    "styleValues": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "$ref": "#/$defs/tokenName"
+      },
+      "patternProperties": {
+        "^(sh_better_ui:)?(color\\.(primary|onPrimary|secondary|accent)|surface\\.(background|primary|secondary|elevated|overlay)|text\\.(primary|secondary|disabled)|border\\.(default|focused|error)|state\\.(hover|pressed|selected|disabled)|status\\.(success|warning|error|info))$": {
+          "$ref": "#/$defs/color"
+        },
+        "^(sh_better_ui:)?(shape\\.radius\\.(none|small|medium|large|full)|spacing\\.(xs|sm|md|lg|xl)|typography\\.(size|lineHeight)|border\\.width|effect\\.blur)$": {
+          "$ref": "#/$defs/positive"
+        },
+        "^(sh_better_ui:)?effect\\.(opacity|glow|pulse)$": {
+          "$ref": "#/$defs/unit"
+        },
+        "^(sh_better_ui:)?motion\\.duration\\.(fast|normal|slow)$": {
+          "$ref": "#/$defs/duration"
+        },
+        "^(sh_better_ui:)?motion\\.easing\\.(standard|emphasized|spring)$": {
+          "$ref": "#/$defs/easing"
+        },
+        "^(sh_better_ui:)?typography\\.font$": {
+          "$ref": "#/$defs/text"
+        },
+        "^(sh_better_ui:)?typography\\.weight$": {
+          "$ref": "#/$defs/integer"
+        },
+        "^(sh_better_ui:)?(effect\\.backdrop|appearance\\.light)$": {
+          "$ref": "#/$defs/bool"
+        },
+        "^(sh_better_ui:)?effect\\.shadow$": {
+          "$ref": "#/$defs/shadow"
+        },
+        "^(sh_better_ui:)?effect\\.transform$": {
+          "$ref": "#/$defs/transform"
+        }
+      },
+      "additionalProperties": {
+        "description": "Registered extension token. The runtime checks the Java token type and its codec."
+      }
+    }
+  }
+}

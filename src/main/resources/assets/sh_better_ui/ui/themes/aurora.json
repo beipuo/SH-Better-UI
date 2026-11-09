@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "sh_better_ui:aurora",
+  "parent": "sh_better_ui:dark",
+  "nameKey": "sh_better_ui.theme.dynamic.aurora",
+  "metadata": {
+    "author": "dishanhai",
+    "minecraft": "Forge 1.20.1 / NeoForge 1.21.1"
+  },
+  "tokens": {
+    "surface.background": "#121F2A",
+    "surface.primary": "#243646",
+    "surface.elevated": {"mix": [{"ref": "surface.primary"}, {"ref": "color.accent"}, 0.10]},
+    "color.accent": "#86E2BC",
+    "color.primary": {"ref": "color.accent"},
+    "color.onPrimary": "#122822",
+    "text.primary": "#E5F8F0",
+    "border.default": "#638477",
+    "border.focused": {"ref": "color.accent"},
+    "shape.radius.small": 6,
+    "motion.duration.normal": 450,
+    "motion.easing.standard": "emphasized"
+  },
+  "styles": [
+    {
+      "role": "sh_better_ui:button",
+      "states": ["focused"],
+      "values": {"border.width": 2}
+    },
+    {
+      "role": "sh_better_ui:button",
+      "states": ["pressed"],
+      "values": {"state.pressed": "#4486E2BC"}
+    }
+  ]
+}

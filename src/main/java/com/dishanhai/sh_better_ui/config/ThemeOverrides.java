@@ -49,6 +49,26 @@ public final class ThemeOverrides {
         return new ThemeOverrides(next.toString());
     }
 
+    /** 局部参数按字段覆盖；未提供的分组和嵌套字段继续继承当前快照。 */
+    public ThemeOverrides overlay(ThemeOverrides local) {
+        Objects.requireNonNull(local);
+        if (local.equals(EMPTY)) return this;
+        var next = values.deepCopy();
+        merge(next, local.values);
+        return new ThemeOverrides(next.toString());
+    }
+
+    private static void merge(JsonObject target, JsonObject local) {
+        for (var entry : local.entrySet()) {
+            var existing = target.get(entry.getKey());
+            if (entry.getValue().isJsonObject() && existing != null && existing.isJsonObject()) {
+                merge(existing.getAsJsonObject(), entry.getValue().getAsJsonObject());
+            } else {
+                target.add(entry.getKey(), entry.getValue().deepCopy());
+            }
+        }
+    }
+
     public boolean contains(String name) { return values.has(name); }
     public java.util.Set<String> groups() { return java.util.Set.copyOf(values.keySet()); }
     public String json() { return json; }

@@ -1,7 +1,11 @@
 package com.dishanhai.sh_better_ui.client.api;
 
+import com.dishanhai.sh_better_ui.theme.ThemeManager;
+
 /** 山海：Java、脚本及独立上下文共用的类型化分组访问契约。 */
 public interface UiApi {
+    /** Client-owned dynamic theme manager. */
+    default ThemeManager themes() { return ShBetterUiApi.themes(); }
     default SettingsApi settings() { return ShBetterUiApi.settings(); }
 
     default ControlsApi controls() { return ShBetterUiApi.controls(); }

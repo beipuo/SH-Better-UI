@@ -10,6 +10,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.client.lyrics.LyricClient;
 import com.dishanhai.sh_better_ui.client.music.ClientMusic;
+import com.dishanhai.sh_better_ui.client.theme.MinecraftThemes;
 import com.dishanhai.sh_better_ui.client.lyrics.render.LyricView;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -46,6 +47,7 @@ public final class UiClient {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft minecraft = Minecraft.getInstance();
+        MinecraftThemes.tick(minecraft);
         LyricClient.tick(minecraft);
         UiLocalModal.current(minecraft.screen);
         if (controlPanelKey == null) return;
@@ -67,7 +69,10 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onFrameStart(TickEvent.RenderTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) UiFrameScheduler.beginFrame();
+        if (event.phase == TickEvent.Phase.START) {
+            UiFrameScheduler.beginFrame();
+            MinecraftThemes.frame();
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -221,6 +226,7 @@ public final class UiClient {
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         UiToast.clear();
         Minecraft.getInstance().execute(() -> {
+            MinecraftThemes.disconnect(Minecraft.getInstance());
             UiPointerCapture.validate(null);
             GaussBlur.release();
         });
@@ -241,7 +247,9 @@ public final class UiClient {
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            event.enqueueWork(() -> ClientMusic.start(Minecraft.getInstance().gameDirectory.toPath().resolve("config")));
+            event.enqueueWork(() -> {
+                ClientMusic.start(Minecraft.getInstance().gameDirectory.toPath().resolve("config"));
+            });
             ModList.get().getModContainerById(ShBetterUi.MOD_ID).ifPresent(container ->
                     container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
                             () -> new ConfigScreenHandler.ConfigScreenFactory(UiClient::createControlPanel)));
@@ -261,6 +269,7 @@ public final class UiClient {
 
         @SubscribeEvent
         public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener(MinecraftThemes.reloadListener());
             // 等待資源準備完成，再回主執行緒重建目前畫面需要的 GL 資源。
             event.registerReloadListener((barrier, resources, preparationProfiler, reloadProfiler,
                                           preparationExecutor, reloadExecutor) ->

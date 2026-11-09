@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui;
 
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
+import com.dishanhai.sh_better_ui.config.DynamicThemeSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.TabScrollSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
@@ -65,6 +66,10 @@ public final class ShBetterUi {
         var themeText = builder.define("themeCustomText", "", ThemeSettings::validColor);
         var themeAccent = builder.define("themeCustomAccent", "", ThemeSettings::validColor);
         var themeEffects = builder.define("themeCustomEffects", "{}", ThemeOverrides::valid);
+        var dynamicTheme = builder.define("dynamicFixedTheme", "", DynamicThemeSettings::validFixedTheme);
+        var dynamicSpeed = builder.defineInRange("dynamicAnimationPercent", defaults.dynamicTheme().animationPercent(),
+                0, DynamicThemeSettings.MAX_ANIMATION_PERCENT);
+        var dynamicLowPerformance = builder.define("dynamicLowPerformance", defaults.dynamicTheme().lowPerformance());
         var spec = builder.pop().build();
         context.getModEventBus().addListener((ModConfigEvent event) -> {
             if (event.getConfig().getSpec() != spec) return;
@@ -82,7 +87,8 @@ public final class ShBetterUi {
                                 new TabScrollSettings(tabWheel.get(), tabDrag.get(), tabAutoReveal.get(), tabStep.get()),
                                 new ThemeSettings(themeMode.get(), themeBase.get(), themeBackground.get(),
                                         themeSurface.get(), themeBorder.get(), themeText.get(), themeAccent.get(),
-                                        new ThemeOverrides(themeEffects.get())))
+                                        new ThemeOverrides(themeEffects.get())),
+                                new DynamicThemeSettings(dynamicTheme.get(), dynamicSpeed.get(), dynamicLowPerformance.get()))
                         : defaults);
             }
         });
@@ -137,6 +143,10 @@ public final class ShBetterUi {
         updatedUi.set("themeCustomText", theme.text());
         updatedUi.set("themeCustomAccent", theme.accent());
         updatedUi.set("themeCustomEffects", theme.effects().json());
+        var dynamic = settings.dynamicTheme();
+        updatedUi.set("dynamicFixedTheme", dynamic.fixedTheme());
+        updatedUi.set("dynamicAnimationPercent", dynamic.animationPercent());
+        updatedUi.set("dynamicLowPerformance", dynamic.lowPerformance());
 
         // Forge 的根配置会自动保存。一次 putAll 同时替换两段并只触发一次保存。
         try {

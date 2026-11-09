@@ -4,6 +4,10 @@ import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.api.PlatformUiApi;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
+import com.dishanhai.sh_better_ui.theme.ThemeBinding;
+import com.dishanhai.sh_better_ui.theme.ThemeScope;
+import com.dishanhai.sh_better_ui.theme.token.ColorValue;
+import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -37,6 +41,7 @@ public final class UiButton extends Button {
     private int iconOffsetY;
     private boolean sampleBackground = true;
     private float backgroundBlurRadius = LiquidGlassTheme.DEFAULT_BUTTON_BLUR_RADIUS;
+    private ThemeButtonStyle themeBinding;
 
     public UiButton(int x, int y, int width, int height, Component label, OnPress onPress) {
         this(x, y, width, height, label, onPress, UiPreferences.configured(), false);
@@ -61,6 +66,34 @@ public final class UiButton extends Button {
     public void setPreferences(UiPreferences preferences) {
         this.preferences = Objects.requireNonNull(preferences);
         PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
+    }
+
+    /** Whether this material exposes the complete dynamic button style. */
+    public boolean supportsThemeBinding() { return true; }
+
+    /** Binds this button to a scope using semantic background and text roles. */
+    public void bindTheme(ThemeScope scope) {
+        bindTheme(scope, ThemeBinding.of(primary ? ThemeTokens.PRIMARY : ThemeTokens.SURFACE),
+                ThemeBinding.of(primary ? ThemeTokens.ON_PRIMARY : ThemeTokens.TEXT));
+    }
+
+    /** Replaces this button's bindings. Closing its scope automatically releases the properties. */
+    public void bindTheme(ThemeScope scope, ThemeBinding<ColorValue> background, ThemeBinding<ColorValue> textColor) {
+        var replacement = new ThemeButtonStyle(scope, style, background, textColor);
+        unbindTheme();
+        themeBinding = replacement;
+    }
+
+    public boolean hasThemeBinding() { return themeBinding != null && themeBinding.active(); }
+
+    /** Releases a binding before a standalone widget is removed or recycled. */
+    public void unbindTheme() {
+        if (themeBinding != null) themeBinding.close();
+        themeBinding = null;
+    }
+
+    ThemeButtonStyle.Paint themePaint(DarkModeTheme.State state, boolean pressed) {
+        return hasThemeBinding() ? themeBinding.sample(state, isHovered(), pressed, selected) : null;
     }
 
     /** 位于已有玻璃工具列内时可跳过液态玻璃的重复背景取样。 */
@@ -170,19 +203,23 @@ public final class UiButton extends Button {
         if (isHovered && UiLocalModal.coversMouse(mouseX, mouseY)) isHovered = false;
         if (isCapsule() && UiOverlayHost.hidesSource(this)) return;
         long now = PageTransition.nowMs();
-        var state = sampleMotion(now);
+        boolean pressed = justPressed || held;
+        var effective = effectivePreferences();
+        var state = sampleMotion(now, effective);
+        var paint = themePaint(state, pressed);
         int x = getX(), y = getY(), width = getWidth(), height = getHeight();
         boolean network = style == UiStyle.NETWORK;
         if (network && (width <= 2 || height <= 2)) return;
         var modeLayout = modeIndicatorLayout();
-        int textColor = switch (style) {
+        int textColor = paint != null ? paint.text() : switch (style) {
             case DEFAULT -> state.controlText();
             case LIQUID_GLASS -> LiquidGlassTheme.controlText(state.enabled());
             case NETWORK -> NetworkTheme.controlText(state, selected);
         };
-        Runnable content = () -> drawContent(graphics, x, y, width, height, textColor, state, modeLayout);
+        int indicator = modeLayout == null ? 0 : paint == null ? materialAccent(state) : paint.accent();
+        Runnable content = () -> drawContent(graphics, x, y, width, height, textColor, state, modeLayout, indicator, effective);
         if (network) {
-            NetworkTheme.drawTab(graphics, x, y, width, height, state, selected);
+            NetworkTheme.drawTab(graphics, x, y, width, height, state, selected, paint);
             graphics.enableScissor(x + 1, y + 1, x + width - 1, y + height - 1);
             try {
                 content.run();
@@ -191,14 +228,14 @@ public final class UiButton extends Button {
             }
             return;
         }
-        float emphasis = selectionEmphasis(now);
+        float emphasis = selectionEmphasis(now, effective);
         boolean showSelectionMarker = modeLayout == null;
         if (style == UiStyle.LIQUID_GLASS) {
-            LiquidGlassTheme.button(graphics, x, y, width, height, state, preferences, sampleBackground,
-                    backgroundBlurRadius, primary, selected, emphasis, showSelectionMarker, content);
+            LiquidGlassTheme.button(graphics, x, y, width, height, state, effective, sampleBackground,
+                    backgroundBlurRadius, primary, selected, emphasis, showSelectionMarker, paint, content);
         } else {
             DarkModeTheme.button(graphics, x, y, width, height, state, primary, selected, emphasis,
-                    showSelectionMarker, content);
+                    showSelectionMarker, paint, content);
         }
     }
 
@@ -207,24 +244,33 @@ public final class UiButton extends Button {
     }
 
     int expansionFill(long now) {
-        var state = sampleMotion(now);
-        float emphasis = selectionEmphasis(now);
+        boolean pressed = justPressed || held;
+        var effective = effectivePreferences();
+        var state = sampleMotion(now, effective);
+        var paint = themePaint(state, pressed);
+        if (paint != null) return paint.fill();
+        float emphasis = selectionEmphasis(now, effective);
         return isCapsule() ? LiquidGlassTheme.buttonFill(state, primary, selected, emphasis)
                 : state.buttonFill(primary, selected, emphasis);
     }
 
     FluidMorph renderMorph(GuiGraphics graphics, GuiRect target, UiPreferences panelPreferences,
                            float progress, long now) {
-        var state = sampleMotion(now);
+        boolean pressed = justPressed || held;
+        var effective = effectivePreferences();
+        var state = sampleMotion(now, effective);
+        var paint = themePaint(state, pressed);
         int x = getX(), y = getY(), width = getWidth(), height = getHeight();
         float scale = state.buttonScale();
         if (Math.abs(1f - scale) < 0.001f) scale = 1f;
         float centerX = x + width * 0.5f, centerY = y + height * 0.5f;
         var capsule = new GuiRect(centerX - width * scale * 0.5f, centerY - height * scale * 0.5f,
                 width * scale, height * scale);
-        var frame = FluidMorph.between(capsule, target, LiquidGlassTheme.POPOVER_RADIUS, progress);
-        LiquidGlassTheme.morphPopover(graphics, frame, panelPreferences, state, primary, selected,
-                selectionEmphasis(now), sampleBackground, backgroundBlurRadius, progress);
+        var frame = paint == null ? FluidMorph.between(capsule, target, LiquidGlassTheme.POPOVER_RADIUS, progress)
+                : FluidMorph.between(capsule, target, paint.radius(), LiquidGlassTheme.POPOVER_RADIUS, progress);
+        var panel = hasThemeBinding() ? themeBinding.preferences(panelPreferences) : panelPreferences;
+        LiquidGlassTheme.morphPopover(graphics, frame, panel, state, primary, selected,
+                selectionEmphasis(now, effective), sampleBackground, backgroundBlurRadius, progress, paint);
         float labelOpacity = 1f - GuiMotion.clamp01(progress / 0.36f);
         if (labelOpacity > 0f) {
             GuiRect rect = frame.rect();
@@ -237,10 +283,13 @@ public final class UiButton extends Button {
                 GuiRenderUtil.withButtonMotion(graphics, x, y, width, height, labelScale, 0f,
                         () -> GuiRenderUtil.withAttentionContent(graphics, labelOpacity, 0f, () -> {
                             if (selected && modeLayout == null) {
-                                LiquidGlassTheme.drawSelectionMarker(graphics, x, y, width, height, state.enabled());
+                                int marker = paint == null ? (state.enabled() ? LiquidGlassTheme.accentColor()
+                                        : LiquidGlassTheme.mutedTextColor()) : (state.enabled() ? paint.accent() : paint.text());
+                                LiquidGlassTheme.drawSelectionMarker(graphics, x, y, width, height, marker);
                             }
-                            drawContent(graphics, x, y, width, height,
-                                    LiquidGlassTheme.controlText(state.enabled()), state, modeLayout);
+                            int text = paint == null ? LiquidGlassTheme.controlText(state.enabled()) : paint.text();
+                            drawContent(graphics, x, y, width, height, text, state, modeLayout,
+                                    paint == null ? LiquidGlassTheme.accentColor() : paint.accent(), effective);
                         }));
             } finally {
                 graphics.pose().popPose();
@@ -249,8 +298,12 @@ public final class UiButton extends Button {
         return frame;
     }
 
-    private DarkModeTheme.State sampleMotion(long now) {
-        var state = motion.sample(isHovered(), justPressed || held, isFocused(), active, preferences, now);
+    private UiPreferences effectivePreferences() {
+        return hasThemeBinding() ? themeBinding.preferences(preferences) : preferences;
+    }
+
+    private DarkModeTheme.State sampleMotion(long now, UiPreferences effective) {
+        var state = motion.sample(isHovered(), justPressed || held, isFocused(), active, effective, now);
         justPressed = false;
         return state;
     }
@@ -260,16 +313,17 @@ public final class UiButton extends Button {
         this.held = held;
     }
 
-    private float selectionEmphasis(long now) {
-        return selected && !preferences.reducedMotion() && preferences.feedback().selectionPulse()
+    private float selectionEmphasis(long now, UiPreferences effective) {
+        return selected && !effective.reducedMotion() && effective.feedback().selectionPulse()
                 ? 1f - GuiMotion.clamp01((now - selectedAt) / 360f) : 0f;
     }
 
     private void drawContent(GuiGraphics graphics, int x, int y, int width, int height, int textColor,
-                             DarkModeTheme.State state, ModeIndicatorLayout modeLayout) {
+                             DarkModeTheme.State state, ModeIndicatorLayout modeLayout, int indicator,
+                             UiPreferences effective) {
         int contentHeight = modeLayout == null ? height : height - MODE_INDICATOR_RESERVE;
-        drawContent(graphics, x, y, width, contentHeight, textColor);
-        if (modeLayout != null) drawModeIndicators(graphics, modeLayout, state, textColor);
+        drawContent(graphics, x, y, width, contentHeight, textColor, effective);
+        if (modeLayout != null) drawModeIndicators(graphics, modeLayout, state, textColor, indicator);
     }
 
     ModeIndicatorLayout modeIndicatorLayout() {
@@ -288,13 +342,16 @@ public final class UiButton extends Button {
                 barWidth, barWidth + gap);
     }
 
-    private void drawModeIndicators(GuiGraphics graphics, ModeIndicatorLayout layout,
-                                    DarkModeTheme.State state, int textColor) {
-        int accent = switch (style) {
+    private int materialAccent(DarkModeTheme.State state) {
+        return switch (style) {
             case DEFAULT -> state.focusColor();
             case LIQUID_GLASS -> LiquidGlassTheme.accentColor();
             case NETWORK -> NetworkTheme.outline(true);
         };
+    }
+
+    private void drawModeIndicators(GuiGraphics graphics, ModeIndicatorLayout layout,
+                                    DarkModeTheme.State state, int textColor, int accent) {
         int selectedColor = state.enabled() && !state.highContrast() ? accent : textColor;
         float opacity = state.highContrast() ? 0.75f : state.enabled() ? 0.55f : 0.4f;
         int idleColor = GuiMotion.lerpColor(textColor & 0x00FFFFFF, textColor, opacity);
@@ -309,10 +366,11 @@ public final class UiButton extends Button {
 
     record ModeIndicatorLayout(int firstX, int bottomY, int barWidth, int step) {}
 
-    private void drawContent(GuiGraphics graphics, int x, int y, int width, int height, int textColor) {
+    private void drawContent(GuiGraphics graphics, int x, int y, int width, int height, int textColor,
+                             UiPreferences effective) {
         int iconSize = GraphicIcon.PIXELS;
         if (!iconWithLabel && icon != null && width >= iconSize && height >= iconSize) {
-            drawIcon(graphics, x + (width - iconSize) / 2, y, height, textColor);
+            drawIcon(graphics, x + (width - iconSize) / 2, y, height, textColor, effective);
             return;
         }
         var font = Minecraft.getInstance().font;
@@ -324,23 +382,23 @@ public final class UiButton extends Button {
             int textWidth = 0;
             for (int i = 0; i < count; i++) textWidth = Math.max(textWidth, font.width(lines.get(i)));
             contentX += (width - inset - textWidth) / 2;
-            drawIcon(graphics, contentX, y, height, textColor);
+            drawIcon(graphics, contentX, y, height, textColor, effective);
         }
         int textY = y + (height - count * font.lineHeight) / 2;
         for (int i = 0; i < count; i++) {
             var line = lines.get(i);
             int textX = inset > 0 ? contentX + inset : x + (width - font.width(line)) / 2;
             UiFormattedText.draw(graphics, font, line, textX, textY + i * font.lineHeight,
-                    textColor, false, preferences);
+                    textColor, false, effective);
         }
     }
 
-    private void drawIcon(GuiGraphics graphics, int x, int y, int height, int color) {
+    private void drawIcon(GuiGraphics graphics, int x, int y, int height, int color, UiPreferences effective) {
         int padding = (height - GraphicIcon.PIXELS) / 2;
         int travel = Math.max(0, padding - 1);
-        int offset = preferences.reducedMotion() || preferences.highContrast() ? 0
+        int offset = effective.reducedMotion() || effective.highContrast() ? 0
                 : UiMath.clamp(iconOffsetY, -travel, travel);
-        icon.draw(graphics, x, y + padding + offset, 1, color, preferences);
+        icon.draw(graphics, x, y + padding + offset, 1, color, effective);
     }
 
     int labelWidth(int width, int height) {

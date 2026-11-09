@@ -39,6 +39,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
+import com.dishanhai.sh_better_ui.config.DynamicThemeSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
 import com.dishanhai.sh_better_ui.config.ThemeOverrides;
 import com.google.gson.JsonParser;
@@ -172,6 +173,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private UiButton themeStage;
     private UiButton themeTemplate;
     private EditBox themeJson;
+    private EditBox dynamicThemeId;
     private UiButton themeMode;
     private UiTheme previewTheme;
     private DotMatrixProfile themedBackgroundProfile;
@@ -265,6 +267,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         themeStage = null;
         themeTemplate = null;
         themeJson = null;
+        dynamicThemeId = null;
         displayedAudioStatus = null;
         widgetBlur = null;
         shortcut = null;
@@ -284,7 +287,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         contentHeight = !configuration ? selectedArea == Area.DEVELOPER ? 120 : 0 : switch (selectedSection) {
             case GLASS -> sidePreview ? GLASS_SIDE_HEIGHT : GLASS_STACK_HEIGHT;
             case DISPLAY -> 250;
-            case FEEDBACK, TABS -> 120;
+            case FEEDBACK, TABS, DYNAMIC_THEME -> 120;
             case SHORTCUT -> 42;
         };
         contentWidth = panelWidth - 2 * PADDING
@@ -295,6 +298,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         else switch (selectedSection) {
             case GLASS -> addGlassControls(x);
             case DISPLAY -> addDisplayControls(x);
+            case DYNAMIC_THEME -> addDynamicThemeControls(x);
             case FEEDBACK -> addFeedbackControls(x);
             case TABS -> addTabControls(x);
             case SHORTCUT -> addShortcutControls(x);
@@ -367,6 +371,51 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         themeStage = row(button(x, 146, contentWidth, label("theme.stage"), GraphicIcon.SUCCESS, false,
                 this::stageThemeGroup));
         syncThemeEditor();
+    }
+
+    private void addDynamicThemeControls(int x) {
+        dynamicThemeId = row(new EditBox(font, x, 16, contentWidth, BUTTON_HEIGHT, label("dynamic_theme.id")));
+        dynamicThemeId.setMaxLength(256);
+        dynamicThemeId.setHint(label("dynamic_theme.follow_hint"));
+        dynamicThemeId.setValue(draft.settings().dynamicTheme().fixedTheme());
+        dynamicThemeId.setTooltip(Tooltip.create(label("dynamic_theme.id.tooltip")));
+        int half = (contentWidth - GAP) / 2;
+        row(button(x, 42, half, label("dynamic_theme.stage"), GraphicIcon.SUCCESS, false,
+                () -> stageDynamicTheme(dynamicThemeId.getValue().strip()))).setPreview(label("dynamic_theme.stage.tooltip"));
+        row(button(x + half + GAP, 42, contentWidth - half - GAP, label("dynamic_theme.next"), GraphicIcon.CUSTOM_THEME,
+                false, this::nextDynamicTheme)).setPreview(label("dynamic_theme.next.tooltip"));
+        optionSlider(x, 68, "dynamic_theme.speed", 0, DynamicThemeSettings.MAX_ANIMATION_PERCENT, 1,
+                () -> draft.settings().dynamicTheme().animationPercent(), value -> {
+                    var current = draft.settings().dynamicTheme();
+                    editDynamicTheme(new DynamicThemeSettings(current.fixedTheme(), value, current.lowPerformance()));
+                });
+        option(x, 94, "dynamic_theme.low_performance", () -> draft.settings().dynamicTheme().lowPerformance(), value -> {
+            var current = draft.settings().dynamicTheme();
+            editDynamicTheme(new DynamicThemeSettings(current.fixedTheme(), current.animationPercent(), value));
+        });
+    }
+
+    private void nextDynamicTheme() {
+        var choices = ShBetterUiApi.themes().registry().themes().keySet().stream().sorted().toList();
+        int next = choices.indexOf(draft.settings().dynamicTheme().fixedTheme()) + 1;
+        stageDynamicTheme(next < choices.size() ? choices.get(next) : "");
+    }
+
+    private void stageDynamicTheme(String id) {
+        if (!DynamicThemeSettings.validFixedTheme(id)) {
+            status = label("dynamic_theme.invalid");
+            return;
+        }
+        var current = draft.settings().dynamicTheme();
+        editDynamicTheme(new DynamicThemeSettings(id, current.animationPercent(), current.lowPerformance()));
+        dynamicThemeId.setValue(id);
+        status = id.isEmpty() ? label("dynamic_theme.follow")
+                : label(ShBetterUiApi.themes().registry().find(id).isPresent()
+                        ? "dynamic_theme.staged" : "dynamic_theme.unavailable", id);
+    }
+
+    private void editDynamicTheme(DynamicThemeSettings settings) {
+        edit(new Draft(draft.settings().withDynamicTheme(settings), draft.shortcut()));
     }
 
     private String themeGroupId() { return THEME_GROUPS.get(themeGroupIndex); }
@@ -618,6 +667,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         }
         status = null;
         syncThemeEditor();
+        if (dynamicThemeId != null) dynamicThemeId.setValue(draft.settings().dynamicTheme().fixedTheme());
         sliders.forEach((scale, slider) -> slider.setValue(scale.percent(draft.settings().backdrop())));
         optionSliders.forEach(option -> option.control().setValue(option.read().getAsInt()));
         refreshActions();
@@ -679,7 +729,8 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                 shortcut.setSelected(capturingShortcut);
                 clearShortcut.active = !capturingShortcut && !draft.shortcut().key().equals(InputConstants.UNKNOWN);
             }
-            case FEEDBACK, TABS -> options.forEach(option -> option.control().setValue(option.read().getAsBoolean()));
+            case FEEDBACK, TABS, DYNAMIC_THEME -> options.forEach(option ->
+                    option.control().setValue(option.read().getAsBoolean()));
         }
         boolean undo = beforeReset != null;
         reset.setMessage(label(undo ? "reset.undo" : "reset"));
@@ -1248,7 +1299,8 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         DISPLAY("display", GraphicIcon.MONITOR),
         FEEDBACK("feedback", GraphicIcon.ENABLE),
         TABS("tabs", GraphicIcon.MONITOR),
-        SHORTCUT("shortcut", GraphicIcon.KEYBOARD);
+        SHORTCUT("shortcut", GraphicIcon.KEYBOARD),
+        DYNAMIC_THEME("dynamic_theme", GraphicIcon.CUSTOM_THEME);
 
         private final UiSectionBar.Section tab;
 

@@ -13,8 +13,12 @@ public record FluidMorph(GuiRect rect, float radius) {
     }
 
     public static FluidMorph between(GuiRect capsule, GuiRect panel, float panelRadius, float progress) {
+        return between(capsule, panel, Math.min(capsule.getW(), capsule.getH()) * 0.5f, panelRadius, progress);
+    }
+
+    static FluidMorph between(GuiRect capsule, GuiRect panel, float capsuleRadius, float panelRadius, float progress) {
         float p = GuiMotion.clamp01(progress);
-        float from = Math.min(capsule.getW(), capsule.getH()) * 0.5f;
+        float from = RoundedCorners.fit(capsule.getW(), capsule.getH(), capsuleRadius);
         float to = RoundedCorners.fit(panel.getW(), panel.getH(), panelRadius);
         if (p == 0f) return new FluidMorph(capsule, from);
         if (p == 1f) return new FluidMorph(panel, to);

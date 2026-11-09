@@ -97,31 +97,43 @@ public final class DarkModeTheme {
 
     static void button(GuiGraphics g, int x, int y, int width, int height, State state,
                        boolean primary, boolean selected, float emphasis, boolean selectionMarker, Runnable content) {
+        button(g, x, y, width, height, state, primary, selected, emphasis, selectionMarker, null, content);
+    }
+
+    static void button(GuiGraphics g, int x, int y, int width, int height, State state,
+                       boolean primary, boolean selected, float emphasis, boolean selectionMarker,
+                       ThemeButtonStyle.Paint paint, Runnable content) {
         if (width <= 0 || height <= 0) return;
+        float radius = paint == null ? CONTROL_RADIUS : RoundedCorners.fit(width, height, paint.radius());
+        int focusColor = paint == null ? state.focusColor() : paint.focus();
+        int accent = paint == null ? accentColor() : paint.accent();
         GuiRenderUtil.withButtonMotion(g, x, y, width, height, state.buttonScale(), 0f, () -> {
-            if (state.enabled() && state.hover() > 0f) {
+            if (state.enabled() && state.hover() > 0f && (paint == null || !state.highContrast())) {
                 for (int spread = 3; spread >= 1; spread--) {
                     rounded(g, x - spread, y - spread, width + 2 * spread, height + 2 * spread,
-                            RoundedCorners.outsetRadius(width, height, CONTROL_RADIUS, spread), 1,
-                            opacity(accentColor(), state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
+                            RoundedCorners.outsetRadius(width, height, radius, spread), 1,
+                            opacity(accent, state.hover() * (1f - state.press()) * (4 - spread) / 10f), 0);
                 }
             }
-            rounded(g, x, y, width, height, CONTROL_RADIUS, 1,
-                    selected ? state.focusColor() : edge(state), state.buttonFill(primary, selected, emphasis));
-            if (width > 2 * CONTROL_RADIUS && height > 3) {
+            int border = paint == null ? (selected ? focusColor : edge(state)) : paint.border();
+            int fill = paint == null ? state.buttonFill(primary, selected, emphasis) : paint.fill();
+            rounded(g, x, y, width, height, radius, paint == null ? 1 : paint.borderWidth(), border, fill);
+            int inset = Math.round(radius);
+            if (width > 2 * inset && height > 3 && (paint == null || !state.highContrast())) {
                 int highlight = opacity(0xFFFFFFFF, (0.15f + 0.05f * state.hover()) * (1f - state.press()));
-                g.fill(x + CONTROL_RADIUS, y + 1, x + width - CONTROL_RADIUS, y + 2, highlight);
+                g.fill(x + inset, y + 1, x + width - inset, y + 2, highlight);
                 if (state.press() > 0f) {
                     rounded(g, x + 1, y + 1, width - 2, height - 2,
-                            RoundedCorners.insetRadius(width, height, CONTROL_RADIUS, 1), 1,
+                            RoundedCorners.insetRadius(width, height, radius, 1), 1,
                             opacity(SHADOW, 0.3f * state.press()), 0);
                 }
             }
             if (selected && selectionMarker && width > 4 && height > 3) {
-                g.fill(x + 2, y + height - 3, x + width - 2, y + height - 1, state.focusColor());
+                g.fill(x + 2, y + height - 3, x + width - 2, y + height - 1, focusColor);
             }
             content.run();
-            focus(g, x, y, width, height, CONTROL_RADIUS, state);
+            if (paint == null) focus(g, x, y, width, height, radius, state);
+            else if (state.focused()) focus(g, x, y, width, height, radius, focusColor, paint.background());
         });
     }
 
@@ -181,13 +193,17 @@ public final class DarkModeTheme {
         return GuiMotion.lerpColor(borderColor(), accentColor(), Math.max(state.hover(), state.press()));
     }
 
-    private static void focus(GuiGraphics g, int x, int y, int width, int height, int radius, State state) {
+    private static void focus(GuiGraphics g, int x, int y, int width, int height, float radius, State state) {
         if (!state.focused()) return;
+        focus(g, x, y, width, height, radius, state.focusColor(), backgroundColor());
+    }
+
+    private static void focus(GuiGraphics g, int x, int y, int width, int height, float radius, int color, int background) {
         int outer = FOCUS_OFFSET + FOCUS_WIDTH;
         rounded(g, x - outer, y - outer, width + 2 * outer, height + 2 * outer,
-                RoundedCorners.outsetRadius(width, height, radius, outer), FOCUS_WIDTH, state.focusColor(), 0);
+                RoundedCorners.outsetRadius(width, height, radius, outer), FOCUS_WIDTH, color, 0);
         rounded(g, x - FOCUS_OFFSET, y - FOCUS_OFFSET, width + 2 * FOCUS_OFFSET, height + 2 * FOCUS_OFFSET,
-                RoundedCorners.outsetRadius(width, height, radius, FOCUS_OFFSET), FOCUS_OFFSET, backgroundColor(), 0);
+                RoundedCorners.outsetRadius(width, height, radius, FOCUS_OFFSET), FOCUS_OFFSET, background, 0);
     }
 
     private static int opacity(int argb, float alpha) {
