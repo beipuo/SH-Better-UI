@@ -101,6 +101,12 @@ public final class UiApiContext implements UiApi, AutoCloseable {
     /** 每个独立查询槽创建一个实例，离开页面时自动失效。 */
     public <T> UiRequest<T> query() {
         requireOpen();
+    /** 创建随本次页面打开释放的碰撞布局，视口重建时可保留布局并重绑控件。 */
+    public UiCollisionLayout collisionLayout(Bounds viewport) {
+        requireOpen();
+        return manage(new UiCollisionLayout(viewport));
+    }
+
         return manage(UiClientApi.request(UiRequest.Mode.QUERY));
     }
 

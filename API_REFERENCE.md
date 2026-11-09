@@ -266,6 +266,7 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | 网络风格界面 | `NetworkScreen` 根据 `Tab` 与 `Field / Edit / Status / Toggle` 等行模型建立整页控件。已有页面可独立使用 `NetworkLayout.arrange()`、`NetworkTheme` 与 `NetworkToggle`。表单内容、权限判断和提交仍由宿主提供。 |
 
 [图形和布局源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/) · [格式化文字源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/text/) · [网络风格控件](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java)
+| 二维弹性挤压 | `UiApiContext.collisionLayout(viewport)` 创建页面布局。`world().add(shape)` 链式配置响应、分组、优先级、锚点和尺寸，`bind(body, widget)` 复用原生控件。绘制前调用 `update(frame)`。自绘控件使用绑定回调提供的 `Bounds` 和 `hitTest()`。见 [二维 UI 弹性挤压](docs/UI_COLLISION.md)。 |
 
 ## 动画与画面过渡
 
