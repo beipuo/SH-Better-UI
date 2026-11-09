@@ -102,6 +102,8 @@ addRenderableWidget(tabs);
 
 `sections` 为含本地化名称与图标的 `List<UiSectionBar.Section>`。默认标签宽度为 104 GUI 单位；工厂重载可显式传入 `TabScrollSettings` 与标签宽度。原有等宽 `UiSectionBar` 继续可用，适合不会溢出的少量标签。
 
+标签放不下且有空间容纳箭头时，标签栏两侧显示浏览按钮。箭头显示相邻标签并移动焦点，当前页保持不变；到达首尾时对应按钮禁用。
+
 宿主将 `mouseScrolled` 的单轴／双轴参数转给标签栏。鼠标按下立即反馈，放开提交选择，拖动不会切页；Tab 进入标签组后，用左右键／Home／End 定位并切换，Enter／空格提交当前焦点。若宿主继承原生 `Screen`，应将捕获期间的 `mouseReleased` 显式转给 `tabs`，确保在栏外放开也能结束；在调用 `super.keyPressed` 前让标签栏处理拖动期间的 Esc，避免关闭整个画面。关闭宿主时调用 `cancelDrag()`。主控面板包含这一接入实现。
 
 `select(index)` 更新已确认选择而不回调，`focus(index)` 移动键盘焦点并确保可见，`scrollTo(offset)` 与 `reveal(index)` 可接自定义输入，`setBounds(area)` 更新布局。绘制、鼠标命中和提示均限制在视口内。

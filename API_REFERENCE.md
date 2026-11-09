@@ -17,8 +17,10 @@
 | `materials()` | 玻璃主题、Slate、液态玻璃、槽位和圆角绘制 |
 | `blur()` | GUI 坐标即时模糊、像素坐标帧末请求、渐进清晰、渐变和前景回调 |
 | `graphics()` | 图标、文字、图文布局、网络风格界面、电光轮廓与反重力粒子 |
-| `motion()` | 时钟、弹簧、可打断动画、切页、胶囊过渡、点阵、图案波面、形状波面与帧时间轴 |
-| `audio()` | `systemOutput()` 显式开启 Windows 输出回环；`analyzer()` 独立分析 PCM，配合 `motion().musicMotion()` 驱动动效，详见 [音乐律动](docs/music-rhythm.md) |
+| `layout()` | [视觉对齐](VISUAL_ALIGNMENT.md)，包含光学度量、动态约束、像素吸附和调试叠层 |
+| `motion()` | 时钟、弹簧、可打断动画、切页、胶囊过渡、`screenCrossfade()` 旧页淡出、点阵、图案波面、形状波面与帧时间轴 |
+| `audio()` | `systemOutput()` 显式开启 Windows 输出回环，`analyzer()` 独立分析 PCM。`motion().musicMotion()` 映射单个频段，`motion().musicRhythm()` 提供多层律动帧，可配合 `MusicHud` 绘制像素面板，或配合 `MusicIsland` 绘制可展开的音乐胶囊。见 [音乐律动](docs/music-rhythm.md) |
+| `lyrics()` | `localFeed()`、`saltPlayer()`、`renderer()`、`draw()`、`settings()` 与 `position()`。支持逐字同步、译文与多行排版。见 [同步歌词](docs/lyrics.md) |
 | `platform()` | 当前加载器的 `fluid()`、`renderTooltip()` 与可选 `ldlib()` 桥接 |
 
 下面在 `Screen.init()` 中注册一个原生按钮。`label` 和 `onPress` 由宿主提供。
@@ -133,6 +135,7 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | 底线分页 | `controls().underlinedTabs()` 返回单个 `UiUnderlinedTabs`，注册后绘制标签行和当前短文字面板。自定义标签可用 `UiUnderlinedTabs.Tab(label, panel, enabled)`。 |
 | 编号步骤器 | `controls().stepper()` 返回单个 `UiStepper`。宿主验证通过后调用 `progress().advance()`，也可传入自己的步骤名称和 `UiStepperState`。 |
 | 原页覆层 | 每个宿主持有一个 `UiOverlayHost`，用 `showNotice()/showDialog()/showActions()/showBubble()` 打开提示、确认、动作菜单或跟随控件的气泡。`showDialogFrom()` 从源按钮展开，关闭后归还有效焦点。`UiConfirmation.open()` 也可开启独立的模态 `Screen`。 |
+| 局部模态扩展 | 每个 `Screen` 保留一个 `interactions().localModal(screen, preferences)`。从原生 `UiButton` 的回调调用 `openSlide()` 或 `open()`，由前景层绘制并拦截当前轮廓内的输入。 |
 | 抽屉、下拉刷新与滑动确认 | `UiBottomSheet` 按 `0..1` 的递增比例定义档位，用最近一次 `render()` 的 `Frame` 调用 `beginCaptured()`。`UiPullRefresh` 用 `requestRefresh()` 或拖拽启动，`createButton()` 提供键盘入口。回执通过 `complete(requestId, tone, nowMs)` 匹配，收到成功且该方法返回 `true` 后应用结果，移除或换数据源时 `reset()`。`UiSlideConfirm` 可直接注册，拖到终点松开后确认，支持键盘和 `reset()`。**工作区新增** `UiBottomSheet.capsule()` 与 `UiSlideConfirm`。 |
 | 拖拽、缩放与换页 | `PointerDrag.begin()/move()/release()/cancel()` 维护手势。`UiPointerCapture.start()` 绑定原生 Screen 的拖动、释放与取消。独立按下监听可用 `registerPress()`，持有返回的注册对象并在控件移除时关闭。`ViewportTransform.zoomAt()` 保留指针锚点，`GuiRenderUtil.applyViewport()` 与 `contentX()/contentY()` 对应绘制和命中。`ScrollPageTurn.dragOffset()/targetPage()` 处理拖动边界和滚轮换页。 |
 | 逐步显示与撤销 | `UiDisclosure.button()` 提供可聚焦的展开入口。`UiTextDetails.layout()/inlineButton()/pageButton()/page()` 用于长文本截断、原处展开与独立详情。`UiHistory<S>.remember()/restore()` 保存宿主自己的返回或撤销快照。**工作区新增** `UiTextDetails.pageFrom()` 和 `page(..., returnFocus)`。 |
@@ -140,6 +143,31 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | 等待与进度 | `UiSkeleton.card()/draw()` 按实际区域绘制占位。`UiLoading.spinner()/edgeSpinner()/topBar()/progressBar()` 支持等待提示或真实进度。**工作区新增** `UiSkeleton.draw(..., opacity)` 淡出重载。 |
 
 [控件与交互源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [覆层、抽屉与刷新接入示例](SCREEN_INTERACTIONS.md) · [按钮和注意力反馈](docs/attention-feedback.md)
+
+### 局部模态扩展
+
+将 `UiButton` 注册为画面的普通控件。源按钮在展开时保留在布局和焦点顺序中，其绘制交给前景层。
+
+```java
+private final UiLocalModal local = ShBetterUiApi.interactions().localModal(this, UiPreferences.configured());
+
+private void addExpandable(int x, int y, Component actionLabel, Runnable onConfirm) {
+    addRenderableWidget(new UiButton(x, y, 64, 22, actionLabel,
+            source -> local.openSlide((UiButton) source, new Bounds(0, 0, width, height),
+                    UiExpansionController.anchored(180, 22, 0, 0),
+                    UiExpansionController.Config.DEFAULT, UiSlideConfirm.LocalConfig.DEFAULT,
+                    Component.translatable("sh_better_ui.slide_confirm.label"), onConfirm)));
+}
+```
+
+- `Placement` 以绝对 GUI 坐标接收源矩形和可用视口。使用 `anchored(width, height, anchorX, anchorY)` 时，锚点可取 `0`（左或上）、`0.5`（中心）、`1`（右或下）。目标在视口内优先保留锚点，空间不足时调整位置和尺寸。滑动条至少需要 20 高和 64 的可滑动距离。
+- `UiExpansionController.Config` 可分别指定提升、展开、确认、回弹、收缩的 `Phase(durationMs, easing)`，以及中间轮廓的 `Morph` 和圆角半径。默认时长为 100、220、160、160、220 毫秒。提升和展开同时开始，默认轮廓以浮点 GUI 坐标绘制及命中。减少动效时几何切换立即完成，成功反馈静态显示。
+- 轮廓从 `ACTIVATING → EXPANDING → ACTIVE` 展开，确认和取消分别经 `CONFIRMING` 或 `CANCELLING` 进入 `COLLAPSING → IDLE`。展开中按 Esc 从当前轮廓收回。收合期间的重复打开请求返回 `false`。同一画面中，相交的预留区域由先打开的会话占用，互不相交的会话可以共存。
+- 滑动条在展开后从滑钮开始拖动，移出轮廓后继续捕获该手势。聚焦源按钮时也可长按右方向键。松开时按最终位置判断阈值，默认拖到终点。 `LocalConfig(threshold, keyTravelMs)` 可设置阈值与键盘行程。确认回调在状态进入 `CONFIRMING` 后执行一次。
+- `open()` 接收自定义 `Content` 工厂，内容通过 `Session.confirm()`、`Session.cancel()` 结束交互，并可在 `Content.close()` 释放资源。内容可通过 `animatesContents()` 使用滑动条的交叉淡化。过渡期间按目标坐标绘制，管理器缩放并裁切到当前轮廓。已注册的底层控件保留原有数据，屏幕级路由负责点击、拖动、滚轮和放开。 `UiScreen` 与图库已屏蔽被覆盖的 hover。独立 `Screen` 的自绘组件用 `blocksPointer()` 过滤 hover 坐标，用 `filterPointer()` 过滤轮询快照。
+- Forge 与 NeoForge 的 Screen 事件处理关闭、窗口失焦、重布局及源按钮移除。若宿主在同一个 Screen 内切换页面或滚动重建布局，可在切换前调用 `local.interrupt()` 立即中断。
+
+游戏内可从「主控面板 → 开发者面板 → 控件图库 → 局部模态扩展」查看双向展开、区域冲突、覆盖外计数和可复制代码。 [交互实现](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiLocalModal.java) · [画廊示例](src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/LocalModalGalleryPreview.java)
 
 ### 底线分页与编号步骤器
 
@@ -232,7 +260,7 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | --- | --- |
 | 图标与动效 | `GraphicIcon` 提供内置 16×16 图标，也可传自定义贴图。`withMotion(GraphicIconMotion)` 配置动作，`withShader(GraphicIconShader)` 配置着色器。自定义着色器由宿主在客户端注册，使用 `POSITION_TEX`。 |
 | 图文列表、网格与分页 | `GraphicDisplayLayout.arrange()/pageCapacity()` 计算 `Bounds`、单元格和翻页区域。`GraphicDisplay.drawRows()/drawRowTooltip()/drawPageNumber()/pageButton()` 负责绘制或创建控件，宿主提供 `Entry` 及页数据。 |
-| 自绘排版与文字效果 | `UiLayout.align()/row()/column()` 计算边界，`UiText.drawLeft()/drawCentered()/drawRight()` 在区域内绘制对齐文字。`UiFormattedText.draw()/colorize()` 处理格式化文字；`UiTextEffects.apply()/parse()` 套用逐字效果，`registerPalette()/registerEffect()` 扩展效果。 |
+| 自绘排版与文字效果 | `UiLayout.align()/row()/column()` 计算边界，`UiText.drawLeft()/drawCentered()/drawRight()` 在区域内绘制对齐文字。`UiFormattedText.draw()/colorize()` 处理格式化文字，`graphics().colorizeLyricText()` 为 FCS 提供逐字进度色；`UiTextEffects.apply()/parse()` 套用逐字效果，`registerPalette()/registerEffect()` 扩展效果。 |
 | 网络风格界面 | `NetworkScreen` 根据 `Tab` 与 `Field / Edit / Status / Toggle` 等行模型建立整页控件。已有页面可独立使用 `NetworkLayout.arrange()`、`NetworkTheme` 与 `NetworkToggle`。表单内容、权限判断和提交仍由宿主提供。 |
 
 [图形和布局源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/) · [格式化文字源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/text/) · [网络风格控件](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java)
@@ -246,11 +274,29 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | 页签提示与局部效果 | `UiAttention.select()/sample()` 提供选区移动和目标提示。`ClickRipple.trigger()/sample()` 配合 `GlassEffectRenderer.drawRipple()` 绘制点击折射，`drawFlowBorder()/drawBreathingGlow()` 提供边框与聚焦效果。`GlassEffectMotion` 和 `RoundedCorners` 可供自绘复用。 |
 | 单页和双页切换 | `UiPageSlide.start()/sample()/draw()` 用于四方向单页进入，可叠加立体倾斜和模糊。`UiRecipePageTransition.start()/sample()/draw()` 用于新旧页衔接。交互命中使用绘制时同一帧的新页位移。 |
 | 胶囊展开与返回 | `UiCapsuleReveal.startFrom()/startAt()` 记录起点，`render()` 绘制展开，`close(preferences, onClosed)` 收回后执行一次返回动作。`UiScreenReturn.prepare()/render()` 用现有父 Screen 实例预绘返回层，父界面可实现 `Target.prepareReturnLayer()`。`FluidMorph.seed()/between()` 计算小胶囊起点和变形轮廓。**工作区新增** `UiCapsuleReveal`、`UiScreenReturn` 与公开的 `FluidMorph`。 |
+| 旧页淡出 | **工作区新增** `ShBetterUiApi.motion().screenCrossfade(owner, previous, preferences)` 在切换前尝试捕获旧页。新页通过 `renderCrossfade()` 用自己的进度合成背景，切换完成或页面移除时调用 `clearHandoff()`。 |
 | 帧时间轴 | **工作区新增** `UiTimeline(fps, durationFrames)` 提供 `play()/pause()/seek()/reset()/sample()`，`Frame.interpolate()` 根据当前帧计算属性，`Sequence` 用于判断子区间。每帧取一个快照供同次绘制复用，减少动效由宿主决定如何跳帧。 |
 | 点阵背景 | **工作区新增** `UiDotMatrix.render()/pulse()` 绘制背景并接收波纹触发。`DotMatrixProfile` 配置色板、网格、渐变、淡出、运动与互动。先画点阵，再画原生控件。 |
 | 电光轮廓 | **工作区新增** `ElectricLogo` 以图片轮廓绘制电丝与电弧，`setTexture()` 切换贴图，`draw()` 接受 `ElectricLogoProfile`，`pulse()` 接收宿主点击。每个视图持有独立实例，`draw()` 返回 `false` 时可画后备内容，移除视图时在渲染线程 `close()`。 |
 
 `UiCapsuleReveal.setSkeletonLayout(target -> blocks)` 适用于 `render()` 和 `renderInset()`。占位块使用与正文一致的 Screen 坐标。回调会读取当前目标区域，适合随窗口尺寸和控件布局变化重新计算。正文开始淡入后，占位块与正文共用当前轮廓的裁切区。
+
+### 旧页淡出
+
+在 `previous` 仍是当前屏幕时创建交接，由新页持有返回的 `UiScreenReturn`。每帧传入当前动画的进度，在正文和控件之前合成底层。下面的 `owner` 是新页，`drawBackground` 绘制覆盖视口的目标背景。
+
+```java
+// 在切换 Screen 前捕获当前画面。
+var transition = ShBetterUiApi.motion().screenCrossfade(owner, previous, preferences);
+
+// 新页在过渡期间绘制。此例在动画走到 65% 时完成旧页淡出。
+transition.renderCrossfade(previous, graphics, partialTick, preferences, progress, 0.65f, drawBackground);
+
+// 本次过渡结束后及 Screen.removed() 时释放快照。
+transition.clearHandoff();
+```
+
+进度从 `0` 到 `1`，允许中途反向。`fadeEnd` 取值 `(0, 1]`。省略时，有父页的胶囊过渡会在正文出现前完成淡出，从游戏进入时背景随完整进度淡入。快照不可用时，库会预绘旧页并给 `drawBackground` 设置当前帧的透明度，自定义着色器需遵循该透明度。减少动效时直接绘制目标背景。KubeJS 可通过 `SHUI.motion().screenCrossfade(...)` 调用同一入口。[淡出实现](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiScreenReturn.java)
 
 点阵跟随波纹通过 `profile.withPointerWave(new DotMatrixProfile.PointerWave(radius, lift))` 单独开启，半径和抬升高度均为 GUI 单位。每帧把同一坐标系下的指针坐标传给 `UiDotMatrix.render()`。需要独立采集时，可复用 `UiMouseState.read()` 的 `x()/y()`。指针不可用或被模态层遮挡时传入 `Double.NaN`。减少动效时保留环形高亮，半径设为零时关闭。
 

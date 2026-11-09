@@ -148,9 +148,15 @@ button.setMessage(UiTextEffects.apply(Component.translatable("your_mod.status.ac
 ```
 
 - `&~$山海朝霞-文字` 选择色板并添加纵向波动。`全` 依序切换色板，`随机` 打乱每轮色板并自动添加逐字效果，`全随机` 产生逐字随机颜色。
+- `parse` 支持同一字符串中的多个 FCS 段，以及 `{fire}文字{/}`、`{{fire}}文字{{/}}`、`<fire>文字</>`。`&r` 和 `§r` 结束旧效果段，`全` 保留原有明确颜色。未识别的标记保持字面值。
 - `normalize(Component)` 保留当前语言的样式与文字分段，剥离识别到的旧格式码。语言切换后可从原翻译组件重新生成。
-- `colorize(sequence, argb, timeMillis, preferences)` 生成当前颜色帧，可交给原版 tooltip。需要位移或描边时使用 `UiFormattedText.draw`。
+- 原版字体量宽、换行和批次绘制接入 FCS，包括物品 tooltip。装有 `gt_shanhai` 时由它接管旧标记和第三方旧格式，SHBUI 绘制自己的标记。原版带背景色的字体批次保留背景和着色。可选的 FTB Library 和 GuideME 适配随目标方法加载。
+- `colorize(sequence, argb, timeMillis, preferences)` 生成当前颜色帧。`colorizeLines` 让相邻行边界上的同一效果段共享视觉码点索引。用 `Timing` 设置毫秒步长和反向流动，给多段传同一个时间戳即可对齐相位。需要逐字位移和描边时可用带时钟参数的 `draw`。
+- `paletteColor` 可读取指定位置的取样色，`gradientFiller` 可生成首尾色之间的填充文字，`reveal` 支持逐字显现和末端混淆。
+- `registerPalette` 可指定 `PaletteAnimation`，`registerPaletteVariants` 一次注册多个变体。`styleNames` 枚举内置名称、别名和运行时样式，`unregister` 移除运行时项。
 - 色板和回调共享 ID 空间，重复注册会被拒绝。回调在绘制时执行，可读取码点、段内位置、段长度、时间和减少动效偏好。高对比模式使用原生样式。
+
+客户端 KubeJS 可用 `SHUI.text().fcs("~", text, "rainbow")` 构造文本，或用 `SHUI.text().kjsRegister("my_palette", [0x65d9bf, 0x7ac9f5], false, "CYCLE")` 注册当前脚本世代的色板。脚本重载会释放这些注册。未加载 `gt_shanhai` 时，客户端同时提供 `ShanhaiText` 和 `ShanhaiStyleRegistry` 兼容绑定。可迁移的构造入口包括 `fcs`、`styled`、`body`、`format`、`inline`、`fromLegacy` 和元色板快捷方法。
 
 ## 验证边界
 
