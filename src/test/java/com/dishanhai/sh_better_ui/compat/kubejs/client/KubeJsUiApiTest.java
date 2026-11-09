@@ -17,6 +17,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** 山海：脚本世代撤销注册及失效门面的拒绝行为，不加载 KubeJS 或启动客户端。 */
 class KubeJsUiApiTest {
     @Test
+    void closingGenerationReleasesScriptPalettesForReload() {
+        var first = new KubeJsUiApi();
+        try {
+            var text = first.text();
+            text.kjsRegister("reload_palette", new int[]{0x123456}, false, "static");
+            assertTrue(text.kjsGetAllNames().contains("kubejs:reload_palette"));
+            assertEquals("示例", text.format("&$reload_palette-示例").getString());
+        } finally {
+            first.close();
+        }
+        var second = new KubeJsUiApi();
+        try {
+            assertFalse(second.text().kjsGetAllNames().contains("kubejs:reload_palette"));
+            assertDoesNotThrow(() -> second.text().kjsRegister("reload_palette", new int[]{0x654321},
+                    false, "cycle"));
+        } finally {
+            second.close();
+        }
+    }
+
+    @Test
     void closingGenerationSynchronouslyUnregistersItsFactories() {
         var oldGeneration = new KubeJsUiApi();
         var replacement = new KubeJsUiApi();

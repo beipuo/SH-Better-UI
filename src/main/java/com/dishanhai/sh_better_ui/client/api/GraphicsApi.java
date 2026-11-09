@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.IntToDoubleFunction;
 
 /** 山海：图标、图文排版、逐字效果与网络风格界面的共用入口。 */
 public final class GraphicsApi {
@@ -189,6 +190,38 @@ public final class GraphicsApi {
         return UiFormattedText.colorize(text, argb, timeMillis, preferences);
     }
 
+    public int drawFormattedText(GuiGraphics graphics, Font font, FormattedCharSequence text, float x, float y,
+                                 int argb, boolean shadow, UiPreferences preferences, long timeMillis,
+                                 UiTextEffects.Timing timing) {
+        return UiFormattedText.draw(graphics, font, text, x, y, argb, shadow, preferences, timeMillis, timing);
+    }
+
+    public List<FormattedCharSequence> colorizeTextLines(List<FormattedCharSequence> lines,
+            int argb, long timeMillis, UiPreferences preferences, UiTextEffects.Timing timing) {
+        return UiFormattedText.colorizeLines(lines, argb, timeMillis, preferences, timing);
+    }
+
+    public FormattedCharSequence revealText(FormattedCharSequence text, int revealed, int obfuscatedTail,
+                                             long timeMillis, UiPreferences preferences) {
+        return UiFormattedText.reveal(text, revealed, obfuscatedTail, timeMillis, preferences);
+    }
+
+    public FormattedCharSequence gradientText(FormattedCharSequence text, int startRgb, int endRgb) {
+        return UiFormattedText.gradientFiller(text, startRgb, endRgb);
+    }
+
+    /** 返回可直接交给原版文字接口的一帧歌词颜色，保留源文字样式。 */
+    public FormattedCharSequence colorizeLyricText(FormattedCharSequence text, float progress,
+                                                  int sungRgb, int unsungRgb) {
+        return UiFormattedText.colorizeLyric(text, progress, sungRgb, unsungRgb);
+    }
+
+    /** glyphProgress 以视觉顺序中的码点序号为输入，返回该字当前的进度。 */
+    public FormattedCharSequence colorizeLyricText(FormattedCharSequence text, IntToDoubleFunction glyphProgress,
+                                                  int sungRgb, int unsungRgb) {
+        return UiFormattedText.colorizeLyric(text, glyphProgress, sungRgb, unsungRgb);
+    }
+
     public Component applyTextEffect(Component text, ResourceLocation id) {
         return UiTextEffects.apply(text, id);
     }
@@ -219,6 +252,11 @@ public final class GraphicsApi {
 
     public void registerTextPalette(ResourceLocation id, boolean body, int... rgb) {
         UiTextEffects.registerPalette(id, body, rgb);
+    }
+
+    public void registerTextPalette(ResourceLocation id, boolean body, UiTextEffects.PaletteAnimation animation,
+                                    int... rgb) {
+        UiTextEffects.registerPalette(id, body, animation, rgb);
     }
 
     public void registerTextEffect(ResourceLocation id, UiTextEffects.Effect effect) {

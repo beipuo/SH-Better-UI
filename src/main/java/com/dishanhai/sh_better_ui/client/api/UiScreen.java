@@ -4,6 +4,7 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.text.UiFormattedText;
 import net.minecraft.client.Minecraft;
@@ -273,7 +274,12 @@ public final class UiScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (disposed || removed) return;
-        var frame = context().frame(graphics, viewport(), partialTick);
+        var original = context().frame(graphics, viewport(), partialTick);
+        var modal = UiLocalModal.current(this);
+        var mouse = modal == null ? original.mouse() : modal.filterPointer(original.mouse());
+        var frame = mouse == original.mouse() ? original
+                : new UiFrame(graphics, original.viewport(), mouse, original.preferences(), original.nowMs(), partialTick);
+        boolean blocked = modal != null && modal.blocksPointer(mouseX, mouseY);
         if (definition.onRender() == null) {
             DarkModeTheme.background(graphics, 0, 0, width, height);
         }
@@ -282,7 +288,7 @@ public final class UiScreen extends Screen {
         try {
             if (definition.onRender() != null) runCallback(() -> definition.onRender().draw(this, frame));
             if (disposed || removed) return;
-            boolean overContent = viewport.contains(mouseX, mouseY);
+            boolean overContent = !blocked && viewport.contains(mouseX, mouseY);
             super.render(graphics, overContent ? mouseX : -1, overContent ? mouseY : -1, partialTick);
             runCallback(() -> definition.onForeground().draw(this, frame));
         } finally {
@@ -291,7 +297,7 @@ public final class UiScreen extends Screen {
         if (disposed || removed) return;
         if (back != null) {
             graphics.fill(0, 0, width, barHeight(), DarkModeTheme.surfaceColor());
-            back.render(graphics, mouseX, mouseY, partialTick);
+            back.render(graphics, blocked ? -1 : mouseX, blocked ? -1 : mouseY, partialTick);
             int titleX = back.getX() + back.getWidth() + inset();
             int availableWidth = width - inset() - titleX;
             if (availableWidth > 0 && barHeight() >= font.lineHeight) {

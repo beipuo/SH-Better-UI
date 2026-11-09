@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.compat.kubejs;
 
+import com.dishanhai.sh_better_ui.client.gui.text.VanillaTextEffects;
 import com.dishanhai.sh_better_ui.compat.kubejs.client.KubeJsUiApi;
 import dev.latvian.mods.kubejs.KubeJSPlugin;
 import dev.latvian.mods.kubejs.script.BindingsEvent;
@@ -16,6 +17,10 @@ public final class ShBetterUiKubeJsPlugin extends KubeJSPlugin {
         if (clientApi != null) clientApi.close();
         clientApi = new KubeJsUiApi();
         event.add("SHUI", clientApi);
+        if (VanillaTextEffects.handlesLegacy()) {
+            event.add("ShanhaiText", clientApi.text());
+            event.add("ShanhaiStyleRegistry", clientApi.text());
+        }
     }
 
     @Override

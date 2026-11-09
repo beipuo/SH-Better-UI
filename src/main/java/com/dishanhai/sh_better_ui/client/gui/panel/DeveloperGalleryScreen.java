@@ -23,6 +23,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiFrameHandoff;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiMouseState;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
@@ -49,8 +50,8 @@ import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.l
 
 /** 山海：注册式控件与材质画廊，负责预览布局、输入、代码抽屉和页面过渡。 */
 final class DeveloperGalleryScreen extends Screen {
-    private static final int MIN_PANEL_HEIGHT = 218;
-    private static final int MAX_PANEL_HEIGHT = 272;
+    private static final int MIN_PANEL_HEIGHT = 148;
+    private static final int MAX_PANEL_HEIGHT = 344;
     private static final int MAX_PANEL_WIDTH = 600;
     private static final int PADDING = 12;
     private static final int BUTTON_HEIGHT = 22;
@@ -63,7 +64,7 @@ final class DeveloperGalleryScreen extends Screen {
     private static final int PREVIEW_HEIGHT = 46;
     private static final int FOOTER_GAP = 5;
     private static final int CODE_PADDING = 4;
-    private static final int MIN_DRAWER_HEIGHT = 58;
+    private static final int MIN_DRAWER_HEIGHT = 68;
     private static final int DRAWER_HEADER_ALLOWANCE = 18;
     private static final Component BACK = Component.translatable("gui.back");
     private static final Component TOO_SMALL = Component.translatable("sh_better_ui.picker.too_small");
@@ -101,6 +102,8 @@ final class DeveloperGalleryScreen extends Screen {
     private UiTextDetails.Layout codeLayout;
     private UiButton previousSample;
     private UiButton nextSample;
+    private UiButton directoryButton;
+    private UiButton retryButton;
     private UiButton fullscreenButton;
     private UiButton codeToggle;
     private UiButton codeDetailsButton;
@@ -125,6 +128,10 @@ final class DeveloperGalleryScreen extends Screen {
     private boolean returningToParent;
     private boolean triedMissingPreviewReturn;
     private boolean failed;
+    private boolean retryQueued;
+    private boolean previewNeedsFullscreen;
+    private DeveloperPreviewDirectory directory;
+    private boolean leavingForDirectory;
 
     DeveloperGalleryScreen(DeveloperPanelScreen parent, UiPreferences preferences, PreviewSpec.Category category,
                            String sampleId, Supplier<UiButton> source) {
@@ -200,9 +207,14 @@ final class DeveloperGalleryScreen extends Screen {
         fullscreenButton = null;
         previousSample = null;
         nextSample = null;
+        directoryButton = null;
+        retryButton = null;
         codeToggle = null;
+        codeDetailsButton = null;
+        copyButton = null;
         codeFrame = null;
-        compact = width < 240 || height < (fullscreen ? MIN_FULLSCREEN_HEIGHT : MIN_PANEL_HEIGHT + 8);
+        previewNeedsFullscreen = false;
+        compact = width < 212 || height < (fullscreen ? MIN_FULLSCREEN_HEIGHT : MIN_PANEL_HEIGHT + 8);
         if (compact) {
             suspendScene();
             entrance.finish();
@@ -222,39 +234,60 @@ final class DeveloperGalleryScreen extends Screen {
         }
 
         panelWidth = Math.min(width - 16, MAX_PANEL_WIDTH);
-        int frameHeight = Math.min(height - 8, MAX_PANEL_HEIGHT);
-        int fixedHeight = PREVIEW_Y + 2 * FOOTER_GAP + PADDING + BUTTON_HEIGHT + MIN_DRAWER_HEIGHT;
-        int previewHeight = Math.min(selected == null ? PREVIEW_HEIGHT : selected.preferredHeight(),
-                frameHeight - fixedHeight);
+        int preferredHeight = selected == null ? PREVIEW_HEIGHT : selected.preferredHeight();
+        var fit = fitPreview(width, height, preferredHeight, hasCode(), selected != null);
+        previewNeedsFullscreen = fit.needsFullscreen();
         left = (width - panelWidth) / 2;
-        top = (height - frameHeight) / 2;
+        top = fit.top();
         int contentX = left + PADDING;
         int contentRight = left + panelWidth - PADDING;
         int contentWidth = contentRight - contentX;
-        preview = new Bounds(contentX, top + PREVIEW_Y, contentWidth, previewHeight);
+        preview = new Bounds(contentX, top + PREVIEW_Y, contentWidth, fit.previewHeight());
         toolbar = new Bounds(contentX, top + 5, contentWidth, BUTTON_HEIGHT);
         int footerY = preview.bottom() + FOOTER_GAP;
         int drawerY = footerY + BUTTON_HEIGHT + PADDING + FOOTER_GAP;
-        codeViewport = new Bounds(contentX, drawerY, contentWidth, top + frameHeight - drawerY);
+        codeViewport = fit.inlineCode() ? new Bounds(contentX, drawerY, contentWidth, MIN_DRAWER_HEIGHT) : null;
 
         previousSample = addArrow(contentX, top + SAMPLE_Y, false, "gallery.previous_sample", () -> requestStep(-1));
+        Bounds title = sampleTitleBounds();
+        directoryButton = addButton(title.x(), title.y(), title.width(), sampleTitle(), GraphicIcon.LIST,
+                this::openDirectory);
+        directoryButton.setPreview(label("gallery.directory_hint", sampleTitle()));
         nextSample = addArrow(contentRight - NAV_WIDTH, top + SAMPLE_Y, true, "gallery.next_sample", () -> requestStep(1));
         updateSampleArrows(sampleIndex);
-        layoutScene();
-        addFooter(contentX, contentRight, footerY);
+        if (previewNeedsFullscreen) suspendScene();
+        else layoutScene();
+        addRetryButton();
+        addFooter(contentX, contentRight, footerY, fit.inlineCode());
         restoreSceneFocus();
     }
+
+    static PreviewFit fitPreview(int width, int height, int preferredHeight, boolean hasCode, boolean hasSample) {
+        int frameHeight = Math.min(height - 8, MAX_PANEL_HEIGHT);
+        int chromeHeight = PREVIEW_Y + FOOTER_GAP + BUTTON_HEIGHT + PADDING;
+        int previewHeight = Math.min(preferredHeight, frameHeight - chromeHeight);
+        boolean needsFullscreen = hasSample && (previewHeight < preferredHeight || width < 240);
+        if (needsFullscreen) previewHeight = Math.min(previewHeight, 64);
+        int panelHeight = chromeHeight + previewHeight;
+        int drawerHeight = FOOTER_GAP + MIN_DRAWER_HEIGHT;
+        boolean inlineCode = hasCode && frameHeight - panelHeight >= drawerHeight;
+        int top = Math.min((height - panelHeight) / 2, height - 4 - panelHeight - (inlineCode ? drawerHeight : 0));
+        return new PreviewFit(top, previewHeight, inlineCode, needsFullscreen);
+    }
+
+    record PreviewFit(int top, int previewHeight, boolean inlineCode, boolean needsFullscreen) {}
 
     private void initFullscreen() {
         top = 0;
         preview = new Bounds(FULLSCREEN_INSET, FULLSCREEN_TOOLBAR, width - 2 * FULLSCREEN_INSET,
                 height - FULLSCREEN_TOOLBAR - FULLSCREEN_INSET);
-        fullscreenButton = addButton(FULLSCREEN_INSET, FULLSCREEN_INSET, 100,
-                fullscreenOnly ? BACK : label("gallery.exit_fullscreen"),
-                fullscreenOnly ? GraphicIcon.BACK : GraphicIcon.COLLAPSE, this::onClose);
+        Component exit = fullscreenOnly ? BACK : label("gallery.exit_fullscreen");
+        int exitWidth = Math.min(width / 2, Math.max(100, font.width(exit) + 34));
+        fullscreenButton = addButton(FULLSCREEN_INSET, FULLSCREEN_INSET, exitWidth, exit, GraphicIcon.BACK, this::onClose);
         int toolbarX = fullscreenTitleX();
         toolbar = new Bounds(toolbarX, FULLSCREEN_INSET, preview.right() - toolbarX, BUTTON_HEIGHT);
         layoutScene();
+        addRetryButton();
         setInitialFocus(fullscreenButton);
         restoreSceneFocus();
     }
@@ -267,19 +300,87 @@ final class DeveloperGalleryScreen extends Screen {
         return fullscreenButton.getX() + fullscreenButton.getWidth() + FULLSCREEN_INSET;
     }
 
-    private void addFooter(int x, int right, int footerY) {
+    private void addFooter(int x, int right, int footerY, boolean inlineCode) {
         int fullscreenX = right - 74 - NAV_WIDTH;
-        if (selected != null) {
+        if (previewNeedsFullscreen) {
+            fullscreenButton = addPreviewAction("gallery.fullscreen", GraphicIcon.SCALE, this::openFullscreen);
+        } else if (selected != null) {
             fullscreenButton = addButton(fullscreenX, footerY, NAV_WIDTH, label("gallery.fullscreen"),
-                    null, () -> {
-                        if (!sampleTransitioning() && !overlays.isModalOpen()) {
-                            changeFullscreen = true;
-                        }
-                    });
-            fullscreenButton.setIcon(GraphicIcon.EXPAND);
+                    null, this::openFullscreen);
+            fullscreenButton.setIcon(GraphicIcon.SCALE);
         }
-        if (hasCode()) addCodeDrawer(x, right, footerY, fullscreenX);
+        if (hasCode()) {
+            if (inlineCode) addCodeDrawer(x, right, footerY, fullscreenX);
+            else {
+                openCodeOnEntry = false;
+                var details = new UiTextDetails(label("gallery.code_title"), Component.literal(selected.code()), 1);
+                codeDetailsButton = addButton(x, footerY, fullscreenX - NAV_WIDTH - 2 * FOOTER_GAP - x,
+                        label("gallery.code_open"), GraphicIcon.CODE, () -> minecraft.setScreen(
+                                details.pageFrom(this, preferences, codeDetailsButton, this::codeReturnFocus)));
+                copyButton = addButton(fullscreenX - NAV_WIDTH - FOOTER_GAP, footerY, NAV_WIDTH,
+                        label("gallery.copy"), null, this::copyCode);
+                updateCopyFeedback();
+            }
+        }
         addButton(right - 68, footerY, 68, BACK, GraphicIcon.BACK, this::onClose);
+    }
+
+    private void openFullscreen() {
+        if (!sampleTransitioning() && !overlays.isModalOpen()) changeFullscreen = true;
+    }
+
+    private void addRetryButton() {
+        if (selected == null || previewNeedsFullscreen) return;
+        retryButton = addPreviewAction("gallery.retry_preview", GraphicIcon.RESET, () -> retryQueued = true);
+        retryButton.visible = failed;
+    }
+
+    private UiButton addPreviewAction(String key, GraphicIcon icon, Runnable action) {
+        int buttonWidth = Math.min(140, preview.width());
+        return addButton(preview.x() + (preview.width() - buttonWidth) / 2,
+                preview.y() + (preview.height() - BUTTON_HEIGHT) / 2 + 10, buttonWidth, label(key), icon, action);
+    }
+
+    private void retryPreview() {
+        retryQueued = false;
+        if (!failed || !selectedRegistered()) return;
+        closeScene();
+        remounts.remove(selected);
+        failed = false;
+        rebuildWidgets();
+        var target = failed ? retryButton : fullscreen ? fullscreenButton : directoryButton;
+        if (target != null) setInitialFocus(target);
+    }
+
+    private void openDirectory() {
+        if (sampleTransitioning() || overlays.isModalOpen()) return;
+        if (directory == null) directory = new DeveloperPreviewDirectory(this, preferences, category, registry);
+        directory.open(selected);
+        leavingForDirectory = true;
+        try {
+            minecraft.setScreen(directory);
+        } finally {
+            leavingForDirectory = false;
+        }
+    }
+
+    void returnFromDirectory(String id) {
+        if (id != null) {
+            PreviewSpec previous = selected;
+            if (previous != null && !previous.id().equals(id)) rememberScene();
+            selectFromRegistry(registry.entries(), id);
+            if (previous != selected) {
+                restoreSceneFocus = null;
+                resetPreviewState();
+            }
+        }
+        minecraft.setScreen(this);
+        if (isActiveOwner() && directoryButton != null) setInitialFocus(directoryButton);
+    }
+
+    void abandonDirectory() {
+        closeScene();
+        failed = false;
     }
 
     private boolean hasCode() {
@@ -297,11 +398,10 @@ final class DeveloperGalleryScreen extends Screen {
                 GraphicIcon.EXPAND, () -> setCodeDrawerOpen(codeDrawer.targetAnchor() == 0));
         codeDetailsButton = addButton(x + CODE_PADDING, actionY, actionWidth, label("gallery.code_details"),
                 GraphicIcon.NEXT, () -> minecraft.setScreen(details.pageFrom(
-                        this, preferences, codeDetailsButton, () -> codeDetailsButton)));
-        Component copyLabel = label("gallery.copy");
+                        this, preferences, codeDetailsButton, this::codeReturnFocus)));
         copyButton = addButton(right - CODE_PADDING - actionWidth, actionY, actionWidth,
-                copied ? label("gallery.copied") : copyLabel, GraphicIcon.COPY, this::copyCode);
-        copyButton.setPreview(copyLabel);
+                label("gallery.copy"), null, this::copyCode);
+        updateCopyFeedback();
         updateCodeDrawerControls(codeDrawer.sample(codeViewport, PageTransition.nowMs(), preferences));
     }
 
@@ -329,8 +429,20 @@ final class DeveloperGalleryScreen extends Screen {
     private void copyCode() {
         minecraft.keyboardHandler.setClipboard(selected.code());
         copied = true;
-        copyButton.setMessage(label("gallery.copied"));
+        updateCopyFeedback();
         minecraft.getNarrator().say(label("copied"));
+    }
+
+    private void updateCopyFeedback() {
+        copyButton.setMessage(label(copied ? "gallery.copied" : "gallery.copy"));
+        copyButton.setPreview(null);
+        var icon = copied ? GraphicIcon.SUCCESS : GraphicIcon.COPY;
+        if (codeToggle == null) copyButton.setIcon(icon);
+        else copyButton.setLeadingIcon(icon);
+    }
+
+    private UiButton codeReturnFocus() {
+        return codeDetailsButton != null && codeDetailsButton.visible ? codeDetailsButton : codeToggle;
     }
 
     private UiButton addButton(int x, int y, int buttonWidth, Component text, GraphicIcon icon, Runnable action) {
@@ -363,6 +475,8 @@ final class DeveloperGalleryScreen extends Screen {
         if (previousSample == null) return;
         previousSample.active = index > 0;
         nextSample.active = index + 1 < samples.size();
+        directoryButton.setMessage(sampleTitle());
+        directoryButton.setPreview(label("gallery.directory_hint", sampleTitle()));
     }
 
     private void queueChanges() {
@@ -382,6 +496,7 @@ final class DeveloperGalleryScreen extends Screen {
                 returnToParent();
             } else if (changeFullscreen) applyFullscreenChange();
             else if (pendingStep != 0) applyPendingStep();
+            else if (retryQueued) retryPreview();
         });
     }
 
@@ -454,11 +569,13 @@ final class DeveloperGalleryScreen extends Screen {
     private void resetPreviewState() {
         closeScene();
         failed = false;
+        retryQueued = false;
         copied = false;
         if (!hasCode()) setCodeDrawerOpen(false);
     }
 
     private void cancelGestures() {
+        UiLocalModal.interrupt(this);
         UiPointerCapture.cancel(this);
         setDragging(false);
         codeDrawer.cancelGesture(PageTransition.nowMs());
@@ -511,11 +628,13 @@ final class DeveloperGalleryScreen extends Screen {
             return;
         }
         try {
-            renderScreen(graphics, mouseX, mouseY, partialTick);
+            var local = UiLocalModal.current(this);
+            boolean blocked = local != null && local.blocksPointer(mouseX, mouseY);
+            renderScreen(graphics, blocked ? -1 : mouseX, blocked ? -1 : mouseY, partialTick);
         } finally {
             returning.renderHandoff(graphics, preferences);
         }
-        if (changeFullscreen || pendingStep != 0 || registryEntries != registry.entries()
+        if (changeFullscreen || pendingStep != 0 || retryQueued || registryEntries != registry.entries()
                 || needsMissingPreviewReturn()) queueChanges();
         LayoutContext layout = currentLayout();
         if (layout != null && !layout.pendingWidgets.isEmpty()) {
@@ -553,6 +672,7 @@ final class DeveloperGalleryScreen extends Screen {
             }
         }
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (!compact && !fullscreen) sampleTitleHandoff.render(graphics, preferences);
         LayoutContext layout = currentLayout();
         if (layout != null && layout.isCurrent() && !failed) {
             try {
@@ -568,7 +688,8 @@ final class DeveloperGalleryScreen extends Screen {
     }
 
     private Bounds panelBounds() {
-        return new Bounds(left, top, panelWidth, codeViewport.y() - top - FOOTER_GAP);
+        int bottom = preview.bottom() + FOOTER_GAP + BUTTON_HEIGHT + PADDING;
+        return new Bounds(left, top, panelWidth, bottom - top);
     }
 
     private void renderBackgroundLayer(GuiGraphics graphics) {
@@ -599,6 +720,8 @@ final class DeveloperGalleryScreen extends Screen {
             else {
                 LiquidGlassTheme.popover(graphics, panel.x(), panel.y(), panel.width(), panel.height(), preferences);
                 renderPanelTitles(graphics);
+                var title = sampleTitleBounds();
+                drawCentered(graphics, sampleTitle(), title.x(), title.y(), title.width());
                 renderPreviewBorder(graphics);
             }
             UiSkeleton.draw(graphics, panel, inactiveBlocks, 0L, preferences, 1f);
@@ -622,8 +745,6 @@ final class DeveloperGalleryScreen extends Screen {
         } finally {
             graphics.disableScissor();
         }
-        var title = sampleTitleBounds();
-        drawCentered(graphics, sampleTitle(), title.x(), title.y(), title.width());
     }
 
     private void renderPanelContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -633,7 +754,6 @@ final class DeveloperGalleryScreen extends Screen {
             renderPreviewBorder(graphics);
             renderPreviewContent(graphics, mouseX, mouseY, partialTick);
         }
-        sampleTitleHandoff.render(graphics, preferences);
         samplePreviewHandoff.render(graphics, preferences);
     }
 
@@ -644,10 +764,16 @@ final class DeveloperGalleryScreen extends Screen {
     }
 
     private void renderPreviewContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (previewNeedsFullscreen) {
+            drawCentered(graphics, label("gallery.preview_needs_fullscreen"), preview.x() + 8,
+                    preview.y() + (preview.height() - BUTTON_HEIGHT) / 2 - 12, preview.width() - 16);
+            return;
+        }
         LayoutContext layout = currentLayout();
         if (layout == null || !layout.isCurrent() || failed) {
             drawCentered(graphics, label(failed ? "gallery.preview_failed" : "gallery.empty"),
-                    preview.x(), preview.y() + (preview.height() - BUTTON_HEIGHT) / 2, preview.width());
+                    preview.x() + 8, preview.y() + (preview.height() - BUTTON_HEIGHT) / 2 - (failed ? 12 : 0),
+                    preview.width() - 16);
             return;
         }
         boolean interactive = previewInteractive() && mouseX >= 0 && mouseY >= 0;
@@ -848,16 +974,20 @@ final class DeveloperGalleryScreen extends Screen {
                 int index = sceneChildren(layout).indexOf(clicking == null ? getFocused() : clicking);
                 restoreSceneFocus = index < 0 ? null : new SceneFocus(selected, index);
             }
-            rememberScene();
+            if (!leavingForDirectory) rememberScene();
         }
         inactiveBlocks = skeletonBlocks(children());
         changeFullscreen = false;
         changesQueued = false;
+        retryQueued = false;
         pendingStep = 0;
         returning.clearHandoff();
         clearSampleHandoff();
-        closeScene();
-        failed = false;
+        if (leavingForDirectory) suspendScene();
+        else {
+            closeScene();
+            failed = false;
+        }
         super.removed();
     }
 
@@ -1029,6 +1159,7 @@ final class DeveloperGalleryScreen extends Screen {
 
     private void reportFailure(String phase, Throwable error) {
         failed = true;
+        if (retryButton != null) retryButton.visible = true;
         ShBetterUi.LOGGER.warn("Could not {} developer preview {}", phase, selected == null ? null : selected.id(), error);
     }
 

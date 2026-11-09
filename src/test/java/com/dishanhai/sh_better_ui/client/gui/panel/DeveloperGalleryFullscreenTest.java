@@ -20,7 +20,8 @@ class DeveloperGalleryFullscreenTest {
         var registry = ShBetterUiApi.developerPreviews();
         var ids = settings.developerSampleIds();
         assertEquals(List.of("underlined_tabs", "stepper"), ids.subList(0, 2));
-        assertTrue(ids.containsAll(List.of("bottom_sheet", "interruptible_animation", "electric_logo", "status_icon")));
+        assertTrue(ids.containsAll(List.of("bottom_sheet", "interruptible_animation", "electric_logo", "status_icon",
+                "code_rain", "laser_flow")));
         assertEquals(registry.ids(), ids);
         assertEquals(ids.size(), new HashSet<>(ids).size());
 
@@ -31,6 +32,28 @@ class DeveloperGalleryFullscreenTest {
         }
         assertThrows(IllegalArgumentException.class,
                 () -> settings.developerSampleFullscreen(null, "missing", UiPreferences.DEFAULT));
+    }
+
+    @Test
+    void previewHeightTakesPriorityOverTheCodeDrawer() {
+        var tight = DeveloperGalleryScreen.fitPreview(300, 244, 130, true, true);
+        assertEquals(130, tight.previewHeight());
+        assertFalse(tight.inlineCode());
+        assertFalse(tight.needsFullscreen());
+
+        var roomy = DeveloperGalleryScreen.fitPreview(300, 360, 130, true, true);
+        assertEquals(130, roomy.previewHeight());
+        assertTrue(roomy.inlineCode());
+        assertFalse(roomy.needsFullscreen());
+
+        var tooShort = DeveloperGalleryScreen.fitPreview(300, 244, 166, true, true);
+        assertTrue(tooShort.needsFullscreen());
+        assertTrue(tooShort.previewHeight() >= 46);
+        assertTrue(tooShort.top() >= 4);
+
+        var noCode = DeveloperGalleryScreen.fitPreview(300, 360, 46, false, true);
+        assertFalse(noCode.inlineCode());
+        assertTrue(noCode.top() > roomy.top());
     }
 
     @Test

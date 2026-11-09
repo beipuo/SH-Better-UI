@@ -14,8 +14,10 @@ public final class ShBetterUiApi {
     private static final MaterialsApi MATERIALS = new MaterialsApi();
     private static final BlurApi BLUR = new BlurApi();
     private static final GraphicsApi GRAPHICS = new GraphicsApi();
+    private static final LayoutApi LAYOUT = new LayoutApi();
     private static final MotionApi MOTION = new MotionApi();
     private static final AudioApi AUDIO = new AudioApi();
+    private static final LyricApi LYRICS = new LyricApi();
     private static final PlatformUiApi PLATFORM = new PlatformUiApi();
     private static final UiExtensionRegistry EXTENSIONS = new UiExtensionRegistry();
     private static final UiClientApi CLIENT = new UiClientApi();
@@ -78,12 +80,21 @@ public final class ShBetterUiApi {
         return GRAPHICS;
     }
 
+    /** 创建页面持有的视觉布局，或使用 Minecraft 渲染和资源适配。 */
+    public static LayoutApi layout() {
+        return LAYOUT;
+    }
+
     public static MotionApi motion() {
         return MOTION;
     }
 
     public static AudioApi audio() {
         return AUDIO;
+    }
+
+    public static LyricApi lyrics() {
+        return LYRICS;
     }
 
     public static PlatformUiApi platform() {

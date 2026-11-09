@@ -8,8 +8,10 @@ import com.dishanhai.sh_better_ui.client.api.UiScreen;
 import com.dishanhai.sh_better_ui.client.api.UiScreenBuilder;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
+import com.dishanhai.sh_better_ui.client.gui.text.UiTextEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,7 +27,19 @@ public final class KubeJsUiApi extends UiClientApi implements AutoCloseable {
     private final List<Runnable> unregister = new ArrayList<>();
     private final Set<UiApiContext> contexts = new LinkedHashSet<>();
     private final Set<UiScreen> screens = Collections.newSetFromMap(new WeakHashMap<>());
+    private final KubeJsTextApi text = new KubeJsTextApi(this);
     private volatile boolean closed;
+
+    public KubeJsTextApi text() {
+        requireOpen();
+        return text;
+    }
+
+    synchronized void registerTextPalette(ResourceLocation id, boolean body, UiTextEffects.PaletteAnimation animation,
+                                          int[] colors) {
+        requireOpen();
+        unregister.add(UiTextEffects.registerScopedPalette(id, body, animation, colors));
+    }
 
     /** 注册跟随当前脚本世代的扩展，工厂通过上下文复用其他分组与扩展。 */
     public synchronized UiExtensionRegistry.Registration registerExtension(

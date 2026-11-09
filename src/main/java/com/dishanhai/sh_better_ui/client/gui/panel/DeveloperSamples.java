@@ -179,6 +179,28 @@ enum DeveloperSamples {
                 super.removed();
             }
             """),
+    LOCAL_MODAL("local_modal", 25, LocalModalGalleryPreview.HEIGHT, LocalModalGalleryPreview::new, """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiExpansionController;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlideConfirm;
+            import net.minecraft.network.chat.Component;
+
+            private final UiLocalModal local = ShBetterUiApi.interactions().localModal(this, UiPreferences.configured());
+
+            private void addExpandButton(int x, int y, Runnable onConfirm) {
+                var button = new UiButton(x, y, 62, 22,
+                        Component.translatable("sh_better_ui.panel.developer.gallery.local_modal_left"),
+                        source -> local.openSlide((UiButton) source, new Bounds(0, 0, width, height),
+                                UiExpansionController.anchored(180, 22, 0, 0),
+                                UiExpansionController.Config.DEFAULT, UiSlideConfirm.LocalConfig.DEFAULT,
+                                Component.translatable("sh_better_ui.slide_confirm.label"), onConfirm));
+                addRenderableWidget(button);
+            }
+            """),
     SLIDE_CONFIRM("slide_confirm", 13, ControlPreviewScenes.SlideConfirm::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
@@ -422,6 +444,70 @@ enum DeveloperSamples {
             """),
     DIALOG("dialog", 23, () -> ControlPreviewScenes::dialog, DeveloperPanelScreen.DIALOG_CODE),
     TOAST("toast", 24, 64, ControlPreviewScenes.Toast::new, DeveloperPanelScreen.TOAST_CODE),
+    MUSIC_HUD("music_hud", MATERIALS, 13, MusicHudGalleryPreview.HEIGHT, 0, MusicHudGalleryPreview::new, """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.api.UiFrame;
+            import com.dishanhai.sh_better_ui.client.audio.AudioFrame;
+            import com.dishanhai.sh_better_ui.client.audio.MusicRhythm;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.MusicHud;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+
+            private final MusicRhythm rhythm = ShBetterUiApi.motion().musicRhythm();
+
+            private void drawHud(UiFrame ui, AudioFrame audio, Bounds scope, UiButton button) {
+                var prefs = ui.preferences();
+                var frame = rhythm.sample(audio, ui.nowMs(), prefs.reducedMotion() || prefs.highContrast());
+                MusicHud.drawPanel(ui.graphics(), ui.viewport(), frame, prefs);
+                MusicHud.drawScope(ui.graphics(), scope, frame, prefs);
+                button.setIconOffsetY(-Math.round(2 * frame.lift(0.4f)));
+                // Draw text and controls after the decorations.
+            }
+            """),
+    MUSIC_ISLAND("music_island", MATERIALS, 14, MusicIslandGalleryPreview.HEIGHT, 0, MusicIslandGalleryPreview::new, """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.audio.AudioFrame;
+            import com.dishanhai.sh_better_ui.client.audio.MusicRhythm;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.MusicIsland;
+
+            private final MusicRhythm rhythm = ShBetterUiApi.motion().musicRhythm();
+
+            // Keep compactBounds and waveBounds fixed while playing.
+            var prefs = ui.preferences();
+            var motion = rhythm.sample(playing ? audio : AudioFrame.silence(ui.nowMs()),
+                    ui.nowMs(), prefs.reducedMotion() || prefs.highContrast());
+            var outline = MusicIsland.outline(compactBounds, panelBounds, expansionProgress);
+            MusicIsland.drawShell(ui.graphics(), outline, prefs, hovered);
+            MusicIsland.drawWaveform(ui.graphics(), waveBounds, motion, trackAccent, prefs);
+            // Draw localized metadata and native playback controls on top.
+            """),
+    LYRICS("lyrics", MATERIALS, 15, LyricGalleryPreview.HEIGHT, 0, LyricGalleryPreview::new, """
+            // Adapted from Link-Lyric by beipuo
+            // https://github.com/beipuo/Link-Lyric
+            import com.dishanhai.sh_better_ui.client.api.LyricApi;
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.api.UiFrame;
+            import com.dishanhai.sh_better_ui.client.lyrics.common.hud.FloatingLyricRenderer;
+            import com.dishanhai.sh_better_ui.client.lyrics.common.hud.LocalLyricFeed;
+            import com.dishanhai.sh_better_ui.client.lyrics.core.lyric.LyricTimeline;
+            import com.dishanhai.sh_better_ui.client.lyrics.core.sync.TrackIdentity;
+            import net.minecraft.client.gui.Font;
+            import net.minecraft.util.FormattedCharSequence;
+
+            private final LyricApi lyrics = ShBetterUiApi.lyrics();
+            private final LocalLyricFeed feed = lyrics.localFeed("example:player");
+            private final FloatingLyricRenderer renderer = lyrics.renderer(feed);
+
+            private void drawLyrics(UiFrame frame, Font font, TrackIdentity track,
+                                    LyricTimeline timeline, long positionMs, boolean playing) {
+                feed.publish(track, timeline, positionMs, playing);
+                lyrics.draw(renderer, frame, font, frame.viewport());
+            }
+
+            private FormattedCharSequence colorize(FormattedCharSequence text, float progress) {
+                return ShBetterUiApi.graphics().colorizeLyricText(text, progress, 0x7FDBFF, 0x91A4BE);
+            }
+            """),
     DOT_MATRIX("dot_matrix", MATERIALS, 0, DEFAULT_HEIGHT + DotMatrixGalleryPreview.PREVIEW_EXTRA,
             DotMatrixGalleryPreview.TOOLBAR_INSET, DotMatrixGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
@@ -562,7 +648,31 @@ enum DeveloperSamples {
     RESET_ICON("reset_icon", 7, GraphicIcon.RESET, "RESET"),
     SETTINGS_ICON("settings_icon", 8, GraphicIcon.SETTINGS, "SETTINGS"),
     COPY_ICON("copy_icon", 9, GraphicIcon.COPY, "COPY"),
-    STATUS_ICON("status_icon", 10, GraphicIcon.STATUS_PENDING, "STATUS_PENDING");
+    STATUS_ICON("status_icon", 10, GraphicIcon.STATUS_PENDING, "STATUS_PENDING"),
+    CODE_RAIN("code_rain", MATERIALS, 16, MaterialPreviewScenes.EFFECT_HEIGHT, 0,
+            MaterialPreviewScenes.CodeRainPreview::new, """
+            import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRain;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRainEffects;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.CodeRainProfile;
+
+            private final CodeRain rain = new CodeRain(CodeRainProfile.DEFAULT,
+                    CodeRainEffects.interaction(true, CodeRainEffects.Click.WAVE, .18f));
+
+            // 在底板之后、前景控件之前调用；关闭画面时调用 rain.suspend()。
+            rain.draw(graphics, font, bounds);
+            """),
+    LASER_FLOW("laser_flow", MATERIALS, 17, MaterialPreviewScenes.EFFECT_HEIGHT, 0,
+            MaterialPreviewScenes.LaserFlowPreview::new, """
+            import com.dishanhai.sh_better_ui.client.gui.scaled.LaserFlow;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.LaserFlowProfile;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.LaserFlowSurface;
+
+            private final LaserFlow laser = new LaserFlow(
+                    LaserFlowProfile.builder().mouseInteraction(true).build());
+
+            // cardBounds 与 bounds 使用同一 GUI 坐标系。
+            laser.draw(graphics, bounds, new LaserFlowSurface(cardBounds, 6), null);
+            """);
 
     final PreviewSpec spec;
 

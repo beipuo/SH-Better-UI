@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.api;
 
 import com.dishanhai.sh_better_ui.client.audio.AudioBand;
 import com.dishanhai.sh_better_ui.client.audio.MusicMotion;
+import com.dishanhai.sh_better_ui.client.audio.MusicRhythm;
 import com.dishanhai.sh_better_ui.client.glass.GlassMotion;
 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
@@ -43,6 +44,11 @@ public final class MotionApi {
         return new MusicMotion(band, attackMs, releaseMs);
     }
 
+    /** 独立的多频段律动状态，输入一帧音频即可同时驱动多层视觉。 */
+    public MusicRhythm musicRhythm() {
+        return new MusicRhythm();
+    }
+
     public long nowMs() {
         return PageTransition.nowMs();
     }
@@ -75,6 +81,13 @@ public final class MotionApi {
 
     public UiScreenReturn screenReturn(Screen owner) {
         return new UiScreenReturn(owner);
+    }
+
+    /** 在旧页仍显示时创建独立的屏幕交接。进入新页后用 renderCrossfade 绘制底层。 */
+    public UiScreenReturn screenCrossfade(Screen owner, Screen previous, UiPreferences preferences) {
+        var transition = screenReturn(owner);
+        transition.beginHandoff(previous, preferences);
+        return transition;
     }
 
     public GuiRect capsuleSeed(float centerX, float centerY) {

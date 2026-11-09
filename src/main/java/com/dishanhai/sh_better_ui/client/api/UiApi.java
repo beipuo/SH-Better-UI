@@ -18,6 +18,8 @@ public interface UiApi {
 
     default GraphicsApi graphics() { return ShBetterUiApi.graphics(); }
 
+    default LayoutApi layout() { return ShBetterUiApi.layout(); }
+
     default MotionApi motion() { return ShBetterUiApi.motion(); }
 
     default AudioApi audio() { return ShBetterUiApi.audio(); }

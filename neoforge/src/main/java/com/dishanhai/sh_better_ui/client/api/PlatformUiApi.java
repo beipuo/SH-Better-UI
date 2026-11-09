@@ -24,6 +24,12 @@ import java.time.Duration;
 
 /** 山海：NeoForge 1.21.1 的原生类型与可选 LDLib2 接入。 */
 public final class PlatformUiApi {
+    /** GT 山海在场时由它负责旧格式的原版接入。 */
+    public static boolean handlesLegacyText() {
+        var mods = net.neoforged.fml.ModList.get();
+        return mods != null && !mods.isLoaded("gt_shanhai");
+    }
+
     PlatformUiApi() {}
 
     /** 山海：统一两平台原生控件的提示延迟，单位为毫秒。 */

@@ -4,9 +4,12 @@ import com.dishanhai.sh_better_ui.ShBetterUi;
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
 import com.dishanhai.sh_better_ui.client.gui.panel.ControlPanelScreen;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSwipeToast;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
+import com.dishanhai.sh_better_ui.client.lyrics.LyricClient;
+import com.dishanhai.sh_better_ui.client.lyrics.render.LyricView;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -19,6 +22,8 @@ import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
+import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.client.event.RenderTooltipEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
@@ -38,13 +43,21 @@ public final class UiClient {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || controlPanelKey == null) return;
+        if (event.phase != TickEvent.Phase.END) return;
         Minecraft minecraft = Minecraft.getInstance();
+        LyricClient.tick(minecraft);
+        UiLocalModal.current(minecraft.screen);
+        if (controlPanelKey == null) return;
         while (controlPanelKey.consumeClick()) {
             if (minecraft.player != null && minecraft.screen == null && minecraft.getOverlay() == null) {
                 minecraft.setScreen(createControlPanel(null));
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onLyricCommands(RegisterClientCommandsEvent event) {
+        LyricClient.registerCommands(event.getDispatcher());
     }
 
     private static Screen createControlPanel(Screen parent) {
@@ -59,6 +72,11 @@ public final class UiClient {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onFrameEnd(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.END) UiClientRendering.endFrame();
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onScreenRenderPre(ScreenEvent.Render.Pre event) {
+        UiClientRendering.prepareScreenOverlays(event.getScreen());
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -76,7 +94,10 @@ public final class UiClient {
         }
         UiPointerCapture.beforePress(event.getScreen(), event.getButton());
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
         if (overlay != null && overlay.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton())) {
+            event.setCanceled(true);
+        } else if (local != null && local.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton())) {
             event.setCanceled(true);
         } else if (UiSwipeToast.handleOverlayPress(event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton())
                 || UiPointerCapture.press(event.getScreen(), event.getButton(), event.getMouseX(), event.getMouseY())) {
@@ -86,30 +107,40 @@ public final class UiClient {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseButtonReleased(ScreenEvent.MouseButtonReleased.Pre event) {
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
         if (UiPointerCapture.release(event.getScreen(), event.getButton(), event.getMouseX(), event.getMouseY())) {
             event.setCanceled(true);
             return;
         }
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null && overlay.mouseReleased(event.getMouseX(), event.getMouseY(), event.getButton())) {
+        if ((overlay != null && overlay.mouseReleased(event.getMouseX(), event.getMouseY(), event.getButton()))
+                || (local != null && local.mouseReleased(event.getMouseX(), event.getMouseY(), event.getButton()))) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseDragged(ScreenEvent.MouseDragged.Pre event) {
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
         if (UiPointerCapture.drag(event.getScreen(), event.getMouseButton(), event.getMouseX(), event.getMouseY())) {
             event.setCanceled(true);
             return;
         }
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null && overlay.mouseDragged(event.getMouseX(), event.getMouseY(), event.getMouseButton(), event.getDragX(), event.getDragY())) {
+        if ((overlay != null && overlay.mouseDragged(event.getMouseX(), event.getMouseY(), event.getMouseButton(),
+                event.getDragX(), event.getDragY()))
+                || (local != null && local.mouseDragged(event.getMouseX(), event.getMouseY(), event.getMouseButton()))) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMouseScrolled(ScreenEvent.MouseScrolled.Pre event) {
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
+        if (local != null && local.mouseScrolled(event.getMouseX(), event.getMouseY(), 0, event.getScrollDelta())) {
+            event.setCanceled(true);
+            return;
+        }
         if (event.getScrollDelta() != 0) UiPointerCapture.cancel(event.getScreen());
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
         if (overlay != null && overlay.mouseScrolled(event.getMouseX(), event.getMouseY(), event.getScrollDelta())) {
@@ -125,7 +156,10 @@ public final class UiClient {
             return;
         }
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
         if (overlay != null && overlay.keyPressed(event.getKeyCode(), event.getScanCode(), event.getModifiers())) {
+            event.setCanceled(true);
+        } else if (local != null && local.keyPressed(event.getKeyCode(), event.getScanCode(), event.getModifiers())) {
             event.setCanceled(true);
         } else if (event.getKeyCode() == GLFW.GLFW_KEY_ESCAPE
                 && (UiPointerCapture.cancel(event.getScreen()) || UiSwipeToast.handleEscape(event.getScreen()))) {
@@ -136,7 +170,9 @@ public final class UiClient {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onKeyReleased(ScreenEvent.KeyReleased.Pre event) {
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null && overlay.keyReleased(event.getKeyCode(), event.getScanCode(), event.getModifiers())) {
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
+        if ((overlay != null && overlay.keyReleased(event.getKeyCode(), event.getScanCode(), event.getModifiers()))
+                || (local != null && local.keyReleased(event.getKeyCode(), event.getScanCode(), event.getModifiers()))) {
             event.setCanceled(true);
         }
     }
@@ -144,24 +180,33 @@ public final class UiClient {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onCharacterTyped(ScreenEvent.CharacterTyped.Pre event) {
         UiOverlayHost overlay = UiOverlayHost.current(event.getScreen());
-        if (overlay != null && overlay.charTyped(event.getCodePoint(), event.getModifiers())) {
+        UiLocalModal local = UiLocalModal.current(event.getScreen());
+        if ((overlay != null && overlay.charTyped(event.getCodePoint(), event.getModifiers()))
+                || (local != null && local.focusedCovered())) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onTooltip(RenderTooltipEvent.Pre event) {
-        UiOverlayHost overlay = UiOverlayHost.current(Minecraft.getInstance().screen);
-        if (overlay != null && overlay.isModalOpen()) event.setCanceled(true);
+        var client = Minecraft.getInstance();
+        UiOverlayHost overlay = UiOverlayHost.current(client.screen);
+        UiLocalModal local = UiLocalModal.current(client.screen);
+        if ((overlay != null && overlay.isModalOpen())
+                || (local != null && client.getLastInputType().isKeyboard() && local.hidesFocusedTooltip())) {
+            event.setCanceled(true);
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onHudRenderPost(RenderGuiEvent.Post event) {
+        LyricClient.renderHud(Minecraft.getInstance(), event.getGuiGraphics());
         UiClientRendering.renderHudOverlay(event.getGuiGraphics());
     }
 
     @SubscribeEvent
     public static void onScreenInit(ScreenEvent.Init.Post event) {
+        UiLocalModal.interrupt(event.getScreen());
         UiPointerCapture.cancel(event.getScreen());
         if (GaussBlur.isAllowed(event.getScreen())) GaussBlur.warmUp();
     }
@@ -197,6 +242,11 @@ public final class UiClient {
             ModList.get().getModContainerById(ShBetterUi.MOD_ID).ifPresent(container ->
                     container.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
                             () -> new ConfigScreenHandler.ConfigScreenFactory(UiClient::createControlPanel)));
+        }
+
+        @SubscribeEvent
+        public static void onRegisterLyricShader(RegisterShadersEvent event) {
+            LyricView.registerShader(event.getResourceProvider(), event::registerShader);
         }
 
         @SubscribeEvent

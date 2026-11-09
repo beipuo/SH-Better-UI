@@ -13,6 +13,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiBottomSheet;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiConfirmation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiFullscreenPreview;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiHistory;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiMouseState;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
@@ -43,6 +44,11 @@ public final class InteractionApi {
 
     public UiOverlayHost currentOverlays(Screen owner) {
         return UiOverlayHost.current(owner);
+    }
+
+    /** 每个 Screen 保留一个管理器，供布局内的多个按钮请求临时扩展。 */
+    public UiLocalModal localModal(Screen owner, UiPreferences preferences) {
+        return new UiLocalModal(owner, preferences);
     }
 
     /** 创建全屏预览页，调用方可用 Minecraft.setScreen 显示。 */

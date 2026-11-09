@@ -114,8 +114,8 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
             .withPointerLens(DotMatrixProfile.PointerLens.DEFAULT)
             .withGradient(DotMatrixProfile.Gradient.RAINBOW);
     private final UiDotMatrix background = ShBetterUiApi.graphics().dotMatrix(backgroundProfile);
-    private final UiCapsuleReveal entrance = new UiCapsuleReveal();
-    private final UiScreenReturn returning = new UiScreenReturn(this);
+    private final UiCapsuleReveal entrance = ShBetterUiApi.motion().capsuleReveal();
+    private final UiScreenReturn returning;
     private final UiFrameHandoff pageHandoff = new UiFrameHandoff();
     private final InterruptibleAnimation pageMorph = new InterruptibleAnimation(Spring.FLUID_PANEL, 1f);
     private final InterruptibleAnimation pageOrigin = new InterruptibleAnimation(Spring.INDICATOR);
@@ -188,6 +188,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         draft = saved;
         updateThemePreview(draft.settings().theme());
         preferences = UiPreferences.fromSettings(draft.settings());
+        returning = ShBetterUiApi.motion().screenCrossfade(this, parent, preferences);
     }
 
     @Override
@@ -208,6 +209,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         if (!fits) {
             stopBackgroundMusic();
             entrance.finish();
+            returning.clearHandoff();
             if (width >= 32 && height >= 34) {
                 int backWidth = Math.min(width - 8, 96);
                 addRenderableWidget(button((width - backWidth) / 2, height - 26, backWidth,
@@ -1022,6 +1024,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     public void removed() {
         themeEffectPreview.close();
         pageHandoff.clear();
+        returning.clearHandoff();
         stopBackgroundMusic();
         background.clearPulse();
         super.removed();
@@ -1055,23 +1058,16 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         } else {
             var panel = new Bounds(left, top, panelWidth, panelHeight);
             if (entrance.render(graphics, panel, preferences,
-                    progress -> renderTransitionBackground(graphics, partialTick, progress),
+                    progress -> returning.renderCrossfade(parent, graphics, partialTick, preferences, progress,
+                            () -> renderDotBackground(graphics, false)),
                     () -> renderContent(graphics, -1, -1, partialTick))) return;
+            returning.clearHandoff();
             renderDotBackground(graphics, true);
             LiquidGlassTheme.popover(graphics, left, top, panelWidth, panelHeight, preferences);
             renderContent(graphics, mouseX, mouseY, partialTick);
             return;
         }
         super.render(graphics, mouseX, mouseY, partialTick);
-    }
-
-    private void renderTransitionBackground(GuiGraphics graphics, float partialTick, float progress) {
-        returning.prepare(parent, width, height);
-        returning.renderBackdrop(graphics, width, height, partialTick);
-        if (progress > 0f) {
-            GuiRenderUtil.withAttentionContent(graphics, GuiRenderUtil.easeOut(progress), 0f,
-                    () -> renderDotBackground(graphics, false));
-        }
     }
 
     private void renderDotBackground(GuiGraphics graphics, boolean allowPointer) {

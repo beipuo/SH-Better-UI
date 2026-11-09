@@ -12,5 +12,6 @@ public final class BuiltinPreviews {
         }
         DeveloperBottomSheetPreview.registerInto(registry);
         DeveloperAnimationPreview.registerInto(registry);
+        VisualAlignmentPreview.registerInto(registry);
     }
 }
