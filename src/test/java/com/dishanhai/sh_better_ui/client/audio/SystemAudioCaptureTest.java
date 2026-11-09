@@ -62,6 +62,38 @@ class SystemAudioCaptureTest {
         }
     }
 
+    @Test
+    void requestStopReturnsWhileWorkerIsStillInsideDevicePoll() throws Exception {
+        var unblock = new CountDownLatch(1);
+        var source = new FakeSource() {
+            @Override public Block poll() {
+                super.poll();
+                try {
+                    if (!unblock.await(4, TimeUnit.SECONDS)) throw new IllegalStateException("poll was not released");
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(error);
+                }
+                return new Block(new float[2048], 48000, false);
+            }
+        };
+        try (var capture = new SystemAudioCapture(source)) {
+            capture.start();
+            try {
+                assertTrue(source.polled.await(2, TimeUnit.SECONDS));
+                assertTimeoutPreemptively(java.time.Duration.ofMillis(500), capture::requestStop);
+                assertEquals(SystemAudioCapture.Status.STOPPING, capture.status());
+                assertEquals(0, capture.sample().rms());
+                assertFalse(capture.start());
+            } finally {
+                unblock.countDown();
+            }
+            capture.close();
+            assertTrue(source.closed);
+            assertEquals(SystemAudioCapture.Status.CLOSED, capture.status());
+        }
+    }
+
     static class FakeSource implements LoopbackSource {
         final CountDownLatch polled = new CountDownLatch(1);
         final CountDownLatch released = new CountDownLatch(1);

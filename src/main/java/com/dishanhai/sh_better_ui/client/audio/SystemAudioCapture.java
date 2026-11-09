@@ -72,38 +72,52 @@ public final class SystemAudioCapture implements AutoCloseable {
                 }
             }
         } catch (Exception | LinkageError error) {
-            failure = error;
-            status = error instanceof UnsupportedOperationException ? Status.UNSUPPORTED : Status.FAILED;
+            publishFailure(error);
         } finally {
             try {
                 source.close();
             } catch (RuntimeException | LinkageError error) {
-                if (failure == null) failure = error;
-                else failure.addSuppressed(error);
-                status = Status.FAILED;
+                publishFailure(error);
             }
             analyzer.reset();
-            if (closing) status = Status.CLOSED;
+            synchronized (this) {
+                if (closing) status = Status.CLOSED;
+            }
         }
+    }
+
+    private synchronized void publishFailure(Throwable error) {
+        if (failure == null) failure = error;
+        else failure.addSuppressed(error);
+        if (!closing) status = error instanceof UnsupportedOperationException ? Status.UNSUPPORTED : Status.FAILED;
+    }
+
+    /** 立即停止发布音频并通知工作线程释放设备，不等待系统调用返回。 */
+    public void requestStop() {
+        stopWorker();
     }
 
     /** 发出停止信号；最多等待一秒，由工作线程释放 COM，不从渲染线程跨线程释放。 */
     @Override public void close() {
+        Thread active = stopWorker();
+        if (active != null && active != Thread.currentThread()) {
+            try { active.join(1000); }
+            catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+        }
+    }
+
+    private Thread stopWorker() {
         Thread active;
         synchronized (this) {
             closing = true;
             active = worker;
-            if (active == null || !active.isAlive()) {
+            if (status == Status.CLOSED || active == null || !active.isAlive()) {
                 status = Status.CLOSED;
-                return;
+                return null;
             }
             status = Status.STOPPING;
         }
         LockSupport.unpark(active);
-        if (active != Thread.currentThread()) {
-            try { active.join(1000); }
-            catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
-        }
-        if (!active.isAlive()) status = Status.CLOSED;
+        return active;
     }
 }

@@ -38,6 +38,47 @@ audio.close();
 
 `MusicMotion.sample()` 返回平滑的 0–1 强度，`value()` 映射到指定区间；减少动效时立即返回静止值。每个动效持有自己的平滑状态，同一时刻重复取样不会加速。静音或采集停止时回到原始动画状态，宿主仍可显示静态的音频状态。
 
+## 像素音乐律动 HUD
+
+在 **开发者面板 → 材质图库 → 像素音乐律动** 可以切换内嵌或全屏预览。默认运行无声的演示信号，约 15 秒经历一次舒缓、渐强、高潮和回落；点「采集系统声音」才开启真实采集。暂停演示、停止采集和返回均可用键盘操作。
+
+消费方可直接使用底板和波形，也可以只取律动数值，自行绘制特效。每个画面持有独立的 `MusicRhythm`，一帧取样一次并共享给多个区域。以下方法接收宿主提供的 `GuiGraphics`、GUI 区域和 `AudioFrame`：
+
+```java
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+import com.dishanhai.sh_better_ui.client.audio.MusicRhythm;
+import com.dishanhai.sh_better_ui.client.gui.scaled.MusicHud;
+
+private final MusicRhythm rhythm = ShBetterUiApi.motion().musicRhythm();
+
+// 绘制时，audio 可以来自采集器、PCM 分析器或宿主自己的数据源。
+var prefs = ShBetterUiApi.settings().preferences();
+var motion = rhythm.sample(audio, ShBetterUiApi.motion().nowMs(),
+        prefs.reducedMotion() || prefs.highContrast());
+MusicHud.drawPanel(graphics, panelBounds, motion, prefs);
+MusicHud.drawScope(graphics, scopeBounds, motion, prefs);
+button.setIconOffsetY(-Math.round(2 * motion.lift(0.4f)));
+// 底板和波形画完后，再绘制文字、按钮和焦点。按钮热区无需变换。
+```
+
+| 帧信号 | 用法 |
+| --- | --- |
+| `bass()` | 驱动底板呼吸、局部光晕和图标抬升。 |
+| `mid()` / `wave(offset)` | 中频振幅与有符号波形。以不同弧度偏移错开图标和装饰线。 |
+| `treble()` / `sparkle(offset)` | 高频强度与局部亮度。为各像素提供独立偏移。 |
+| `energy()` | 慢速变化的整体能量，适合渐变和柔光增益。 |
+| `pulses()` / `impact()` | 新鲜强拍的扩散进度和透明度，以及带衰减回弹的有符号冲击。相邻强拍可各自淡出；跳帧时不补播积压节拍。 |
+
+`sample()` 只读取信号，采集由宿主管理。采集器、分析器和渲染使用同一单调时钟；换音源、跳转播放位置或离开画面时调用 `rhythm.reset()`。`drawPanel()` 和 `drawScope()` 支持静态样式，高对比使用实色轮廓；消费方的自绘动效也应传入同一偏好。`UiButton.setIconOffsetY()` 在按钮内最多移动两个 GUI 像素，保留原生焦点、文字和热区。
+
+## 音乐胶囊
+
+在 **开发者面板 → 材质图库 → 音乐胶囊** 点击胶囊，底板以同一条轮廓展开，曲名与波形留在原位。展开后可拖动进度、暂停或播放、切换三段无声演示曲目。Tab 移动焦点，Enter 或空格操作按钮，进度条使用方向键。空间不足时可从图库打开全屏。
+
+`MusicIsland.outline(compact, panel, progress)` 返回共用轮廓，推荐让两种状态共用上边缘和水平中心。`drawShell()` 绘制深色半透明底板，展开进度由交互驱动。`drawWaveform()` 读取同一份 `MusicRhythm.Frame`，在至少 26×3 GUI 单位的区域居中绘制七根像素柱。左右两端偏重低频和高频，中间响应中频，各列有独立相位。高对比模式使用纯色轮廓，减少动效时直接切换布局并保留静态基线。
+
+暂停时继续用单调时钟向 `MusicRhythm.sample()` 传入 `AudioFrame.silence(now)`，让各频段的包络逐渐收敛。若换曲需要保持波形连续，可以沿用同一 `MusicRhythm` 并直接传入新曲的音频帧，同时插值曲目主题色。胶囊只消费音频帧与展开进度，播放、切曲和音频来源由宿主管理。
+
 ## 独立分析
 
 ```java
@@ -67,7 +108,7 @@ long onsets = frame.beatCount();
 
 `READY → STARTING → RUNNING`，调用 `close()` 后经过 `STOPPING` 到 `CLOSED`。非 Windows 返回 `UNSUPPORTED`，无输出设备、格式不可用或设备移除返回 `FAILED`；`failure()` 提供供日志使用的技术异常。界面显示状态使用本地化键，不直接显示异常字符串。
 
-不会自动切换播放设备或重新启动。默认设备切换时，旧会话仍属于原设备；宿主应关闭旧会话，再创建并启动新会话。`close()` 最多等待工作线程一秒，若系统调用仍未返回则保持 `STOPPING`，待线程退出自行释放 COM；采集停止请求后不再对外发布音频强度。采集工作在守护线程中，渲染只读取数值。
+不会自动切换播放设备或重新启动。默认设备切换时，旧会话仍属于原设备；宿主应关闭旧会话，再创建并启动新会话。`requestStop()` 可从界面调用，立即停止对外发布音频并安排后台释放设备。需要等待释放时用 `close()`，它最多等待工作线程一秒；若系统调用仍未返回则保持 `STOPPING`，待线程退出自行释放 COM。采集工作在守护线程中，渲染只读取数值。
 
 开发接入应分别验证开启、停止、静音、移除设备、切换输出、重复关闭和画面关闭，并按消费场景测试 GUI 缩放与减少动效。
 
