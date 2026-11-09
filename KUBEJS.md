@@ -67,6 +67,7 @@ global.openShuiWaves = () => {
 | `SHUI.search()` / `ingredients()` | 搜索、筛选和素材选择 |
 | `SHUI.platform()` | 当前加载器的适配接口 |
 | `SHUI.registerExtension(id, factory)` | 按脚本周期管理自定义扩展 |
+| `SHUI.registerDeveloperPreview(spec)` | 按脚本周期登记开发者图库示例 |
 | `SHUI.context()` | 创建需要自行关闭的独立上下文 |
 | `SHUI.run(task)` | 在客户端线程执行回调 |
 | `SHUI.open(screen)` | 打开现成的客户端界面 |
@@ -78,7 +79,7 @@ global.openShuiWaves = () => {
 - `onInit` 可能执行多次，在其中按当前区域重建控件。界面同一次停留期间共用上下文，尺寸变化保留扩展状态。
 - 离开界面后执行 `onRemoved` 并关闭上下文，返回该界面时创建新上下文。跨页面保存的业务草稿放在调用方持有的对象中。
 - 返回 `AutoCloseable` 的 Java 扩展会自动释放。其他资源通过 `screen.context().manage(resource)` 登记，按创建依赖的相反顺序释放。
-- 脚本重载同步撤销 `registerExtension` 登记，随后在客户端线程释放旧界面及上下文，旧世代排队中的 `SHUI.run` 回调会跳过。父子界面一并失效，返回最近的有效父页。
+- 脚本重载同步撤销扩展和开发者预览登记，随后在客户端线程释放旧界面及上下文，旧世代排队中的 `SHUI.run` 回调会跳过。父子界面一并失效，返回最近的有效父页。图库在帧尾清理已撤销的预览，`PreviewSpec` 的字段参见 [登记开发者预览](API_REFERENCE.md#登记开发者预览)。
 - 构建器生命周期及 `screen.button(...)` 回调发生脚本运行时异常时，默认记录日志、关闭出错页面并释放上下文。可用 `onError((screen, failure) => ...)` 自定义报告。直接调用其他 API 时由调用方处理其异常。
 - `SHUI.context()` 创建的独立上下文应在使用完后 `close()`。`SHUI.extensions().register(...)` 是底层注册接口，返回的句柄由调用方管理。脚本通常使用带重载清理的 `SHUI.registerExtension(...)`。
 

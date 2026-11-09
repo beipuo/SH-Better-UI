@@ -469,6 +469,13 @@ AI 服务入口可用 `CHATGPT`、`CLAUDE`、`DEEPSEEK`、`GROK` 和 `GEMINI`。
 
 通用入口可用 `MUSIC`（音乐）、`APP`（应用）、`QUESTION`（疑问）、`CALCULATE`（计算）、`CPU`、`GPU`（显卡）、`DISK`（磁盘）和 `MAP`（地图）。AE2 的 ME 网络频道使用 `AE_CHANNEL`，图案取自智能线缆的频道指示线。
 
+- 商店和奖励入口使用 `SHOP`（商店）、`BANK`（银行）、`MEMBERSHIP`（会员）、`POINTS`（积分）、`REDEEM`（兑换）、`COUPON`（优惠券）、`POWER`（电力）、`SPARK`（星火）和 `CURRENCY`（货币）。
+- 交易和账务操作使用 `TRADE`（交易）、`PAYMENT`（支付）、`BILL`（账单）、`SETTLEMENT`（结算）、`WITHDRAW`（提现）、`TRANSFER`（转账）、`BALANCE`（余额）、`BUY`（购买）和 `SELL`（出售）。
+
+- 内容字段可用 `TITLE`（标题）、`TAG`（标签）、`COVER`（封面）、`CATEGORY`（分类）、`CHINESE`（中文）、`SUMMARY`（简述）、`BODY_TEXT`（正文）和 `TEXTURE`（材质）。
+- 模组入口可用 `SOPHISTICATED_BACKPACKS`（精妙背包）和 `SHBUI`（焕界 UI 库）。`SHBUI` 的白色轮廓取自模组彩色封面 `cover.png`。
+- 主题入口可用 `DARK_MODE`（深色模式）、`LIGHT_MODE`（浅色模式）和 `CUSTOM_THEME`（自定义主题）。
+
 ```java
 // 面板内框使用 Screen 的逻辑坐标。entries 是当前页的 List<GraphicDisplay.Entry>。
 var area = new GraphicDisplayLayout.Bounds(x, y, width, height);

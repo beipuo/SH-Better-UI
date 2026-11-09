@@ -40,6 +40,31 @@ ingredients.openPicker(this, request, this::currentPickerButton, this::applySele
 
 枚举、请求、布局和配置继续使用已有类型。`platform().ldlib()` 下的方法按各端安装的 LDLib 版本调用，常用分组在 JEI 和 LDLib 缺席时也可加载。[共享分组源码](src/main/java/com/dishanhai/sh_better_ui/client/api/) · [NeoForge 平台分组](neoforge/src/main/java/com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java)
 
+## 全库客户端主题
+
+在控制面板的「配置 → 显示」切换深色、浅色或自定义主题。面板立即预览草稿，点击「应用」后，Slate、液态玻璃、网络控件及读取共用材质的画面会使用新配色。自定义主题从深色或浅色基底继承未填写的颜色。
+
+```java
+var settings = ShBetterUiApi.settings();
+var materials = ShBetterUiApi.materials();
+
+boolean saved = settings.saveTheme(settings.theme().withMode(ThemeSettings.Mode.LIGHT));
+var palette = materials.theme(); // 读取当前绘制用配色，供自绘标题和底板使用
+var icon = materials.themeIcon(settings.theme().mode());
+```
+
+通过 `settings.saveTheme(new ThemeSettings(mode, base, background, surface, border, text, accent))` 保存自定义主题。颜色接受六位 RGB，例如 `#F6EFE6`，空字符串继承基底。也可编辑 `config/sh_better_ui-client.toml` 的 `[ui]` 段，其中包含 `themeMode`、`themeCustomBase` 及五个 `themeCustom*` 色值。自绘画面可调用 `materials.resolveTheme(settings)` 获取预览配色。显式选择的 `GlassTheme.CLASSIC`、`GLASS` 和 `SMOKE` 各有独立的材质覆写分组。
+
+在控制面板的「配置 → 显示」选中自定义，切换分组并填写 JSON。可填入模板查看全部字段，删掉要继承默认值的字段。点击「预览分组设置」将当前内容存入草稿，最后点击「应用」。空对象 `{}` 会清除该组覆写。
+
+全量分组由 `settings.themeGroups()` 列出，`settings.themeTemplate(group)` 返回对应字段。TOML 的 `[ui].themeCustomEffects` 储存一份分组 JSON，例如：
+
+```toml
+themeCustomEffects = '{"glass":{"strength":0.65},"dotMatrix":{"grid":{"spacing":12},"palette":{"dotArgb":"#7755AA"}}}'
+```
+
+`settings.saveTheme(theme.withEffects(new ThemeOverrides(json)))` 校验并保存。通过 `materials.themedProfile(group, fallback)` 可将自定义值合并进宿主显式提供的 Profile。空字段继承传入值，深色和浅色模式保留自定义配置供稍后切回。
+
 ## 通用接入与 API 协作
 
 `ShBetterUiApi.client()` 返回可传递的 `UiClientApi` 实例，Java 与 KubeJS 共用 `UiApi` 分组访问契约。需要增加独立能力时，可通过 `extensions()` 注册工厂，再由 `UiApiContext` 取得实例。现有分组保持类型化调用。
@@ -105,6 +130,8 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | --- | --- |
 | 按钮、图标与模式 | `UiButton` 支持 `setSelected()`、`setPreview()`、`setIcon()`、`setLeadingIcon()`、`setModeIndicators()`。液态玻璃按钮可用 `setBackgroundBlurRadius()` 调整 GUI 单位半径。`UiToggleButton.button()` 返回可注册的双态控件，`UiSectionBar.buttons()` 和 `select()` 用于分区页签。 |
 | 数值滑块 | `UiSlider` 传入范围、步长、当前值和变更回调，用 `value()/setValue()` 读取或同步数值。 |
+| 底线分页 | `controls().underlinedTabs()` 返回单个 `UiUnderlinedTabs`，注册后绘制标签行和当前短文字面板。自定义标签可用 `UiUnderlinedTabs.Tab(label, panel, enabled)`。 |
+| 编号步骤器 | `controls().stepper()` 返回单个 `UiStepper`。宿主验证通过后调用 `progress().advance()`，也可传入自己的步骤名称和 `UiStepperState`。 |
 | 原页覆层 | 每个宿主持有一个 `UiOverlayHost`，用 `showNotice()/showDialog()/showActions()/showBubble()` 打开提示、确认、动作菜单或跟随控件的气泡。`showDialogFrom()` 从源按钮展开，关闭后归还有效焦点。`UiConfirmation.open()` 也可开启独立的模态 `Screen`。 |
 | 抽屉、下拉刷新与滑动确认 | `UiBottomSheet` 按 `0..1` 的递增比例定义档位，用最近一次 `render()` 的 `Frame` 调用 `beginCaptured()`。`UiPullRefresh` 用 `requestRefresh()` 或拖拽启动，`createButton()` 提供键盘入口。回执通过 `complete(requestId, tone, nowMs)` 匹配，收到成功且该方法返回 `true` 后应用结果，移除或换数据源时 `reset()`。`UiSlideConfirm` 可直接注册，拖到终点松开后确认，支持键盘和 `reset()`。**工作区新增** `UiBottomSheet.capsule()` 与 `UiSlideConfirm`。 |
 | 拖拽、缩放与换页 | `PointerDrag.begin()/move()/release()/cancel()` 维护手势。`UiPointerCapture.start()` 绑定原生 Screen 的拖动、释放与取消。独立按下监听可用 `registerPress()`，持有返回的注册对象并在控件移除时关闭。`ViewportTransform.zoomAt()` 保留指针锚点，`GuiRenderUtil.applyViewport()` 与 `contentX()/contentY()` 对应绘制和命中。`ScrollPageTurn.dragOffset()/targetPage()` 处理拖动边界和滚轮换页。 |
@@ -113,6 +140,20 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | 等待与进度 | `UiSkeleton.card()/draw()` 按实际区域绘制占位。`UiLoading.spinner()/edgeSpinner()/topBar()/progressBar()` 支持等待提示或真实进度。**工作区新增** `UiSkeleton.draw(..., opacity)` 淡出重载。 |
 
 [控件与交互源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [覆层、抽屉与刷新接入示例](SCREEN_INTERACTIONS.md) · [按钮和注意力反馈](docs/attention-feedback.md)
+
+### 底线分页与编号步骤器
+
+在 `Screen.init()` 中分别注册需要的控件。
+
+```java
+var controls = ShBetterUiApi.controls();
+var tabs = addRenderableWidget(controls.underlinedTabs(tabsBounds, index -> {}));
+var steps = addRenderableWidget(controls.stepper(stepperBounds, 0, index -> showStep(index)));
+```
+
+- 底线分页默认提供 Overview、Billing、Settings。首项默认选中。聚焦标签栏后，左右键循环切换并跳过停用项。自定义时传入至少一个可用的 `Tab`，初始下标须指向可用项。建议给短文字面板预留至少 44 个 GUI 单位的总高度。
+- 步骤器默认提供 Cart、Address、Payment、Review。示例从 Cart 开始。宿主验证当前步骤后可调用 `steps.progress().advance()`，返回 `true` 时再用 `currentIndex()` 更新宿主内容。回看已完成的步骤时，已解锁的后续步骤仍可返回。较窄布局可增加高度，以容纳换行后的步骤名称。
+- 下标从 `0` 开始。控件的 `onSelect` 只在键鼠实际切换后触发。宿主可独立使用 `UiTabSelection` 和 `UiStepperState`，也可通过 `tabs.selection()` 或 `steps.progress()` 同步，直接更新状态时由宿主负责同步自己的内容。
 
 ### 全屏预览
 
@@ -130,6 +171,47 @@ Minecraft.getInstance().setScreen(preview); // 客户端线程
 ```
 
 只需要原生控件时，在 `layout()` 中用 `addWidget.accept(widget)` 注册并返回 `null`。关闭时切回原父 `Screen` 实例，默认恢复创建预览时的焦点。宿主重建控件时，可用带 `Supplier<? extends GuiEventListener> returnFocus` 的重载取得新的焦点入口。`parent` 可为 `null`，此时由 Minecraft 决定返回目标。
+
+开发者面板的控件与材质图库均可通过预览下方的展开图标放大当前示例。用 Esc 或「退出全屏」回到同一个图库示例。底线分页和编号步骤器位于控件图库前两项。需要从自己的界面直接打开内置示例时，可用以下入口。
+
+```java
+var settings = ShBetterUiApi.settings();
+var sampleIds = settings.developerSampleIds();
+Minecraft.getInstance().setScreen(settings.developerSampleFullscreen(this, "underlined_tabs"));
+```
+
+`developerSampleIds()` 返回依图库顺序排列的只读 ID 列表，覆盖控件和材质两组。`developerSampleFullscreen()` 直接创建指定示例的交互界面，关闭后回到传入的父页。若父页会重建入口控件，可额外传入 `UiPreferences` 和 `returnFocus` Supplier。内置示例接受原有短 ID，扩展示例使用带命名空间的 ID。通用 `interactions().fullscreenPreview()` 仍用于接入自定义内容。
+
+### 登记开发者预览
+
+在客户端初始化时登记一次。开发者图库和全屏入口会读取同一条目，排序依次使用分类、`order` 和 ID。下例在控件分类显示一个能切换选中状态的按钮，标题和按钮标签由资源包提供。
+
+```java
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
+import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+import net.minecraft.network.chat.Component;
+
+var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSpec(
+        "your_mod:sample_button", PreviewSpec.Category.CONTROLS, 100,
+        "your_mod.preview.sample_button", () -> host -> {
+            var area = host.viewport();
+            int width = Math.min(140, area.width() - 12);
+            host.add(ShBetterUiApi.controls().button(
+                    new Bounds(area.x() + (area.width() - width) / 2, area.y() + 6, width, 22),
+                    Component.translatable("gui.done"),
+                    pressed -> {
+                        var button = (UiButton) pressed;
+                        button.setSelected(!button.isSelected());
+                    }, host.preferences(), false, UiStyle.DEFAULT));
+        }));
+```
+
+目录只读取声明。打开条目才创建 `PreviewScene`，缩放和图库内全屏切换会对同一个场景调用 `layout()`。自绘场景从 `render(UiFrame)` 取预览区域、鼠标和帧时间，资源可用 `host.context().manage(...)` 登记。离开条目时释放场景和上下文。需要在同一图库返回条目后恢复设置时，可用 `saveForRemount()` 保存参数。调用 `registration.close()` 撤销条目，正在显示该条目的图库在帧尾切换到可用项。
+
+同一顶层渲染内，`UiFrame.nowMs()` 和 `motion().nowMs()` 共享单调时间。需要等待绘制结束再切屏时，用 `UiFrameScheduler.afterFrame(owner, action)`，动作提交和执行时均核对当前画面。网络请求期限继续按独立的实时单调时间推进。
 
 ## 搜索、JEI 与素材选取
 
