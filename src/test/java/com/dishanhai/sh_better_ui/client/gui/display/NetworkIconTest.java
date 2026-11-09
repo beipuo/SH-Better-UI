@@ -34,6 +34,23 @@ class NetworkIconTest {
     }
 
     @Test
+    void graphicEditingIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.COPY, GraphicIcon.MOVE, GraphicIcon.SCALE, GraphicIcon.ROTATE,
+                GraphicIcon.CUT, GraphicIcon.MIRROR, GraphicIcon.SYMMETRY, GraphicIcon.FILL, GraphicIcon.STROKE,
+                GraphicIcon.FILTER, GraphicIcon.WARP, GraphicIcon.BLUR, GraphicIcon.PASTE));
+    }
+
+    @Test
+    void navigationGameAndTimingIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.VISIT, GraphicIcon.PIN, GraphicIcon.SHARE, GraphicIcon.LINK,
+                GraphicIcon.WINDOW, GraphicIcon.ARCHIVE, GraphicIcon.CHAT, GraphicIcon.HELP, GraphicIcon.SUPPORT,
+                GraphicIcon.CLOCK, GraphicIcon.CALENDAR, GraphicIcon.PLAYER, GraphicIcon.MOB, GraphicIcon.ENTITY,
+                GraphicIcon.TICK, GraphicIcon.TPS, GraphicIcon.MSPT, GraphicIcon.JEI));
+        assertSame(GraphicIcon.BUBBLE, GraphicIcon.CHAT);
+        assertSame(GraphicIcon.QUESTION, GraphicIcon.HELP);
+    }
+
+    @Test
     void severityAndMaintenanceIconsAreTransparentSixteenPixelTextures() throws IOException {
         assertIconTextures(List.of(GraphicIcon.WARNING, GraphicIcon.CRITICAL_WARNING, GraphicIcon.CANCEL,
                 GraphicIcon.CRITICAL_CANCEL, GraphicIcon.REPAIR, GraphicIcon.RESET, GraphicIcon.DISABLE,
@@ -134,6 +151,27 @@ class NetworkIconTest {
         assertIconTextures(List.of(GraphicIcon.MUSIC, GraphicIcon.APP, GraphicIcon.QUESTION,
                 GraphicIcon.CALCULATE, GraphicIcon.CPU, GraphicIcon.GPU, GraphicIcon.DISK,
                 GraphicIcon.MAP, GraphicIcon.AE_CHANNEL));
+    }
+
+    @Test
+    void commerceIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.SHOP, GraphicIcon.BANK, GraphicIcon.MEMBERSHIP,
+                GraphicIcon.POINTS, GraphicIcon.REDEEM, GraphicIcon.COUPON, GraphicIcon.POWER,
+                GraphicIcon.SPARK, GraphicIcon.CURRENCY, GraphicIcon.TRADE, GraphicIcon.PAYMENT,
+                GraphicIcon.BILL, GraphicIcon.SETTLEMENT, GraphicIcon.WITHDRAW, GraphicIcon.TRANSFER,
+                GraphicIcon.BALANCE, GraphicIcon.BUY, GraphicIcon.SELL));
+    }
+
+    @Test
+    void contentAndModIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.TITLE, GraphicIcon.TAG, GraphicIcon.COVER,
+                GraphicIcon.CATEGORY, GraphicIcon.CHINESE, GraphicIcon.SUMMARY, GraphicIcon.BODY_TEXT,
+                GraphicIcon.SOPHISTICATED_BACKPACKS, GraphicIcon.TEXTURE, GraphicIcon.SHBUI));
+    }
+
+    @Test
+    void themeIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.DARK_MODE, GraphicIcon.LIGHT_MODE, GraphicIcon.CUSTOM_THEME));
     }
 
     private static void assertIconTextures(List<GraphicIcon> icons) throws IOException {
