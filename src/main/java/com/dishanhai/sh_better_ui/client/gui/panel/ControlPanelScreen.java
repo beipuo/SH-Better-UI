@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.audio.AudioBand;
 import com.dishanhai.sh_better_ui.client.audio.MusicMotion;
@@ -784,7 +785,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     }
 
     private void scrollTo(int offset) {
-        scroll = Math.clamp(offset, 0, maxScroll());
+        scroll = UiMath.clamp(offset, 0, maxScroll());
         if (selectedArea == Area.CONFIGURATION) sectionScroll[selectedSection.ordinal()] = scroll;
         else areaScroll[selectedArea.ordinal()] = scroll;
         rows.forEach((widget, y) -> widget.setY(bodyTop + y - scroll));

@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.ShBetterUi;
 import com.dishanhai.sh_better_ui.client.UiFrameScheduler;
 import com.dishanhai.sh_better_ui.client.api.PlatformUiApi;
@@ -61,7 +62,7 @@ final class DeveloperGalleryScreen extends Screen {
     private static final int MIN_FULLSCREEN_HEIGHT = 124;
     private static final int SAMPLE_Y = 28;
     private static final int PREVIEW_Y = 59;
-    private static final int PREVIEW_HEIGHT = 46;
+    private static final int STANDARD_PREVIEW_HEIGHT = 166;
     private static final int FOOTER_GAP = 5;
     private static final int CODE_PADDING = 4;
     private static final int MIN_DRAWER_HEIGHT = 68;
@@ -234,8 +235,7 @@ final class DeveloperGalleryScreen extends Screen {
         }
 
         panelWidth = Math.min(width - 16, MAX_PANEL_WIDTH);
-        int preferredHeight = selected == null ? PREVIEW_HEIGHT : selected.preferredHeight();
-        var fit = fitPreview(width, height, preferredHeight, hasCode(), selected != null);
+        var fit = fitPreview(width, height, selected == null ? 0 : selected.preferredHeight(), hasCode());
         previewNeedsFullscreen = fit.needsFullscreen();
         left = (width - panelWidth) / 2;
         top = fit.top();
@@ -262,17 +262,17 @@ final class DeveloperGalleryScreen extends Screen {
         restoreSceneFocus();
     }
 
-    static PreviewFit fitPreview(int width, int height, int preferredHeight, boolean hasCode, boolean hasSample) {
+    static PreviewFit fitPreview(int width, int height, int preferredHeight, boolean hasCode) {
         int frameHeight = Math.min(height - 8, MAX_PANEL_HEIGHT);
         int chromeHeight = PREVIEW_Y + FOOTER_GAP + BUTTON_HEIGHT + PADDING;
-        int previewHeight = Math.min(preferredHeight, frameHeight - chromeHeight);
-        boolean needsFullscreen = hasSample && (previewHeight < preferredHeight || width < 240);
-        if (needsFullscreen) previewHeight = Math.min(previewHeight, 64);
+        int previewHeight = Math.min(STANDARD_PREVIEW_HEIGHT, frameHeight - chromeHeight);
+        boolean needsFullscreen = preferredHeight > 0 && (previewHeight < preferredHeight || width < 240);
         int panelHeight = chromeHeight + previewHeight;
         int drawerHeight = FOOTER_GAP + MIN_DRAWER_HEIGHT;
-        boolean inlineCode = hasCode && frameHeight - panelHeight >= drawerHeight;
-        int top = Math.min((height - panelHeight) / 2, height - 4 - panelHeight - (inlineCode ? drawerHeight : 0));
-        return new PreviewFit(top, previewHeight, inlineCode, needsFullscreen);
+        // Reserve the same drawer space on every page so the panel stays put when changing samples.
+        boolean roomForDrawer = frameHeight - panelHeight >= drawerHeight;
+        int top = Math.min((height - panelHeight) / 2, height - 4 - panelHeight - (roomForDrawer ? drawerHeight : 0));
+        return new PreviewFit(top, previewHeight, hasCode && roomForDrawer, needsFullscreen);
     }
 
     record PreviewFit(int top, int previewHeight, boolean inlineCode, boolean needsFullscreen) {}
@@ -459,7 +459,7 @@ final class DeveloperGalleryScreen extends Screen {
     private void requestStep(int direction) {
         if (!isActiveOwner() || fullscreen || changeFullscreen || selected == null) return;
         int requested = sampleIndex + pendingStep;
-        int next = Math.clamp(requested + direction, 0, samples.size() - 1);
+        int next = UiMath.clamp(requested + direction, 0, samples.size() - 1);
         if (next == requested) return;
         if (pendingStep == 0) {
             continueSampleReveal = sampleTransitioning();
@@ -507,7 +507,7 @@ final class DeveloperGalleryScreen extends Screen {
         if (selected != null) triedMissingPreviewReturn = false;
         if (previous == selected) {
             if (!samples.isEmpty()) {
-                pendingStep = Math.clamp(sampleIndex + pendingStep, 0, samples.size() - 1) - sampleIndex;
+                pendingStep = UiMath.clamp(sampleIndex + pendingStep, 0, samples.size() - 1) - sampleIndex;
             }
             updateSampleArrows(sampleIndex + pendingStep);
             return false;

@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.PlatformUiApi;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.api.UiFrame;
@@ -51,7 +52,7 @@ final class MusicIslandGalleryPreview implements PreviewScene {
     private List<UiButton> transport = List.of();
     private UiButton toggle;
     private int track;
-    private int fromAccent = TRACKS.getFirst().accent();
+    private int fromAccent = TRACKS.get(0).accent();
     private long elapsed, lastMs = Long.MIN_VALUE;
     private boolean playing = true, expanded;
     private Component title;
@@ -73,7 +74,7 @@ final class MusicIslandGalleryPreview implements PreviewScene {
         int availableWidth = (area.width() - 4) & ~1;
         int width = Math.min(148, availableWidth);
         int panelWidth = Math.min(204, availableWidth);
-        int y = area.y() + Math.clamp((area.height() - PANEL_HEIGHT) / 2, 1, 10);
+        int y = area.y() + UiMath.clamp((area.height() - PANEL_HEIGHT) / 2, 1, 10);
         compact = new Bounds(area.x() + (area.width() - width) / 2, y, width, COMPACT_HEIGHT);
         panel = new Bounds(area.x() + (area.width() - panelWidth) / 2, y, panelWidth, PANEL_HEIGHT);
         boolean fits = panel.bottom() < area.bottom();
@@ -242,7 +243,7 @@ final class MusicIslandGalleryPreview implements PreviewScene {
 
         private boolean withinCapsule(double x, double y) {
             double radius = COMPACT_HEIGHT * .5;
-            double dx = x - Math.clamp(x, compact.x() + radius, compact.right() - radius);
+            double dx = x - UiMath.clamp(x, compact.x() + radius, compact.right() - radius);
             double dy = y - (compact.y() + radius);
             return dx * dx + dy * dy <= radius * radius;
         }

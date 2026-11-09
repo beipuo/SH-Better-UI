@@ -263,8 +263,9 @@ final class DotMatrixGalleryPreview implements PreviewScene {
         private static List<ColorStop> reverseRainbow() {
             List<ColorStop> rainbow = Gradient.RAINBOW.stops();
             List<ColorStop> reversed = new ArrayList<>(rainbow.size());
-            reversed.add(rainbow.getFirst());
-            for (ColorStop stop : rainbow.subList(1, rainbow.size()).reversed()) {
+            reversed.add(rainbow.get(0));
+            for (int i = rainbow.size() - 1; i > 0; i--) {
+                ColorStop stop = rainbow.get(i);
                 reversed.add(new ColorStop(1f - stop.position(), stop.argb()));
             }
             return List.copyOf(reversed);

@@ -5,7 +5,11 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/** 山海：开发者图库的一条声明，只有打开该示例时才创建交互场景。 */
+/**
+ * 山海：开发者图库的一条声明，只有打开该示例时才创建交互场景。
+ *
+ * @param preferredHeight 演示所需的最小内嵌高度，单位为 GUI 逻辑像素。共享预览区高度不足时，图库提供全屏入口。
+ */
 public record PreviewSpec(String id, Category category, int order, String titleKey, int preferredHeight,
                           int toolbarRightInset, String code, Supplier<? extends PreviewScene> factory) {
     public enum Category {

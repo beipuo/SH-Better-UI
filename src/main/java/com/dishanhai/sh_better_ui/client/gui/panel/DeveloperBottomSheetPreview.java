@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.UiFrame;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
@@ -188,7 +189,7 @@ final class DeveloperBottomSheetPreview implements PreviewScene {
                 default -> 0;
             };
             if (step == 0) return false;
-            sheet.animateTo(Math.clamp(sheet.targetAnchor() + step, 0, HEIGHTS.length - 1), PageTransition.nowMs());
+            sheet.animateTo(UiMath.clamp(sheet.targetAnchor() + step, 0, HEIGHTS.length - 1), PageTransition.nowMs());
             return true;
         }
 

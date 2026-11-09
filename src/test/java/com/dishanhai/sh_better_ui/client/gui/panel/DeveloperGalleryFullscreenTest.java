@@ -36,24 +36,37 @@ class DeveloperGalleryFullscreenTest {
 
     @Test
     void previewHeightTakesPriorityOverTheCodeDrawer() {
-        var tight = DeveloperGalleryScreen.fitPreview(300, 244, 130, true, true);
-        assertEquals(130, tight.previewHeight());
+        var tight = DeveloperGalleryScreen.fitPreview(427, 240, 114, true);
         assertFalse(tight.inlineCode());
         assertFalse(tight.needsFullscreen());
 
-        var roomy = DeveloperGalleryScreen.fitPreview(300, 360, 130, true, true);
-        assertEquals(130, roomy.previewHeight());
+        var roomy = DeveloperGalleryScreen.fitPreview(427, 360, 166, true);
         assertTrue(roomy.inlineCode());
         assertFalse(roomy.needsFullscreen());
 
-        var tooShort = DeveloperGalleryScreen.fitPreview(300, 244, 166, true, true);
+        var tooShort = DeveloperGalleryScreen.fitPreview(427, 240, 166, true);
         assertTrue(tooShort.needsFullscreen());
-        assertTrue(tooShort.previewHeight() >= 46);
-        assertTrue(tooShort.top() >= 4);
+        assertEquals(tight.previewHeight(), tooShort.previewHeight());
+        assertEquals(tight.top(), tooShort.top());
 
-        var noCode = DeveloperGalleryScreen.fitPreview(300, 360, 46, false, true);
-        assertFalse(noCode.inlineCode());
-        assertTrue(noCode.top() > roomy.top());
+        var narrow = DeveloperGalleryScreen.fitPreview(220, 360, 46, false);
+        assertTrue(narrow.needsFullscreen());
+        assertEquals(roomy.previewHeight(), narrow.previewHeight());
+        assertEquals(roomy.top(), narrow.top());
+    }
+
+    @Test
+    void everyGallerySampleKeepsTheSamePanelGeometryAtEachWindowSize() {
+        for (int height : List.of(156, 240, 360, 720)) {
+            var empty = DeveloperGalleryScreen.fitPreview(427, height, 0, false);
+            assertTrue(empty.previewHeight() >= 46);
+            assertTrue(empty.top() >= 4);
+            for (var spec : ShBetterUiApi.developerPreviews().entries()) {
+                var fit = DeveloperGalleryScreen.fitPreview(427, height, spec.preferredHeight(), !spec.code().isBlank());
+                assertEquals(empty.previewHeight(), fit.previewHeight(), spec.id());
+                assertEquals(empty.top(), fit.top(), spec.id());
+            }
+        }
     }
 
     @Test

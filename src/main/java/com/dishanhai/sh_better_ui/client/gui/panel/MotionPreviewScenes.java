@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.UiFrame;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
@@ -251,7 +252,7 @@ final class MotionPreviewScenes {
 
         private UiDynamicStatus.Snapshot sample(long now) {
             if (status != Status.PENDING) return new UiDynamicStatus.Snapshot(status);
-            int progress = (int) Math.clamp((now - startedAt) / 40L, 0L, 100L);
+            int progress = (int) UiMath.clamp((now - startedAt) / 40L, 0L, 100L);
             return progress < 100 ? new UiDynamicStatus.Snapshot(status, progress)
                     : new UiDynamicStatus.Snapshot(Status.SUCCEEDED);
         }

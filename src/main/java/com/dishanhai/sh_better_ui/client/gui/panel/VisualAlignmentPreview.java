@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiMath;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.api.UiFrame;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
@@ -114,7 +115,7 @@ final class VisualAlignmentPreview implements PreviewScene {
     public void close() { expand.close(); layout = null; }
 
     private AlignmentFrame panel(double progress) {
-        double width = 28 + (fullWidth - 28) * Math.clamp(progress, 0, 1);
+        double width = 28 + (fullWidth - 28) * UiMath.clamp(progress, 0, 1);
         return AlignmentFrame.box(new Rect(0, 0, Math.round(width), PANEL_HEIGHT));
     }
 
