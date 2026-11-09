@@ -178,6 +178,7 @@ public record GraphicIcon(ResourceLocation texture, GraphicIconShader shader, Gr
     public static final GraphicIcon BALANCE = builtIn("balance");
     public static final GraphicIcon BUY = builtIn("buy");
     public static final GraphicIcon SELL = builtIn("sell");
+    public static final GraphicIcon SHOPPING_CART = builtIn("shopping_cart");
     public static final GraphicIcon TITLE = builtIn("title");
     public static final GraphicIcon TAG = builtIn("tag");
     public static final GraphicIcon COVER = builtIn("cover");

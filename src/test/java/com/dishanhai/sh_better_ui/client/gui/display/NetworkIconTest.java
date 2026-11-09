@@ -166,7 +166,7 @@ class NetworkIconTest {
                 GraphicIcon.POINTS, GraphicIcon.REDEEM, GraphicIcon.COUPON, GraphicIcon.POWER,
                 GraphicIcon.SPARK, GraphicIcon.CURRENCY, GraphicIcon.TRADE, GraphicIcon.PAYMENT,
                 GraphicIcon.BILL, GraphicIcon.SETTLEMENT, GraphicIcon.WITHDRAW, GraphicIcon.TRANSFER,
-                GraphicIcon.BALANCE, GraphicIcon.BUY, GraphicIcon.SELL));
+                GraphicIcon.BALANCE, GraphicIcon.BUY, GraphicIcon.SELL, GraphicIcon.SHOPPING_CART));
     }
 
     @Test

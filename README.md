@@ -476,6 +476,7 @@ AI 服务入口可用 `CHATGPT`、`CLAUDE`、`DEEPSEEK`、`GROK` 和 `GEMINI`。
 
 - 商店和奖励入口使用 `SHOP`（商店）、`BANK`（银行）、`MEMBERSHIP`（会员）、`POINTS`（积分）、`REDEEM`（兑换）、`COUPON`（优惠券）、`POWER`（电力）、`SPARK`（星火）和 `CURRENCY`（货币）。
 - 交易和账务操作使用 `TRADE`（交易）、`PAYMENT`（支付）、`BILL`（账单）、`SETTLEMENT`（结算）、`WITHDRAW`（提现）、`TRANSFER`（转账）、`BALANCE`（余额）、`BUY`（购买）和 `SELL`（出售）。
+- 商业导航可用 `CURRENCY`（货币中心）、`REDEEM`（兑换中心）、`MEMBERSHIP`（银行会员中心）和 `SHOPPING_CART`（购物车）。收藏和筛选使用 `FAVORITE` 和 `FILTER`。
 
 - 内容字段可用 `TITLE`（标题）、`TAG`（标签）、`COVER`（封面）、`CATEGORY`（分类）、`CHINESE`（中文）、`SUMMARY`（简述）、`BODY_TEXT`（正文）和 `TEXTURE`（材质）。
 - 模组入口可用 `SOPHISTICATED_BACKPACKS`（精妙背包）和 `SHBUI`（焕界 UI 库）。`SHBUI` 的白色轮廓取自模组彩色封面 `cover.png`。
