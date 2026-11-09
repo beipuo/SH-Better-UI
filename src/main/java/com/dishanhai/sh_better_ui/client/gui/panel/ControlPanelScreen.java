@@ -29,6 +29,8 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiConfirmation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerTracker;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.client.gui.scaled.UiTheme;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiScrollableSectionBar;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
@@ -36,6 +38,10 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
+import com.dishanhai.sh_better_ui.config.ThemeSettings;
+import com.dishanhai.sh_better_ui.config.ThemeOverrides;
+import com.google.gson.JsonParser;
+import net.minecraft.client.gui.components.EditBox;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
 import com.dishanhai.sh_better_ui.config.TabScrollSettings;
@@ -99,14 +105,15 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private SystemAudioCapture backgroundAudio;
     private float backgroundBeat;
     private final UiPointerTracker backgroundPointer = ShBetterUiApi.interactions().pointerTracker();
-    private final UiDotMatrix background = ShBetterUiApi.graphics().dotMatrix(DotMatrixProfile.VIOLET
+    private final DotMatrixProfile backgroundProfile = DotMatrixProfile.VIOLET
             .withPalette(new DotMatrixProfile.Palette(0xFF0B101B, 0x72FFFFFF, 0xFFFFFFFF, 0f))
             .withGrid(new DotMatrixProfile.Grid(8, 2, 1f, 27L))
             .withMotion(new DotMatrixProfile.Motion(this::backgroundBrightness, BACKGROUND_MOTION.periodMs(),
                     0f, 0, 0f))
             .withInteraction(new DotMatrixProfile.Interaction(0, DotMatrixProfile.VIOLET.interaction().rippleRadius()))
             .withPointerLens(DotMatrixProfile.PointerLens.DEFAULT)
-            .withGradient(DotMatrixProfile.Gradient.RAINBOW));
+            .withGradient(DotMatrixProfile.Gradient.RAINBOW);
+    private final UiDotMatrix background = ShBetterUiApi.graphics().dotMatrix(backgroundProfile);
     private final UiCapsuleReveal entrance = new UiCapsuleReveal();
     private final UiScreenReturn returning = new UiScreenReturn(this);
     private final UiFrameHandoff pageHandoff = new UiFrameHandoff();
@@ -157,6 +164,16 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private Bounds visiblePage;
     private boolean sidePreview;
     private boolean fits;
+    private static final List<String> THEME_GROUPS = List.copyOf(ThemeEffects.groups());
+    private final ThemeEffectPreview themeEffectPreview = new ThemeEffectPreview();
+    private int themeGroupIndex;
+    private UiButton themeGroup;
+    private UiButton themeStage;
+    private UiButton themeTemplate;
+    private EditBox themeJson;
+    private UiButton themeMode;
+    private UiTheme previewTheme;
+    private DotMatrixProfile themedBackgroundProfile;
     private int layoutWidth;
     private int layoutHeight;
 
@@ -169,6 +186,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                 new Shortcut(keyMapping.getDefaultKey(), keyMapping.getDefaultKeyModifier().name()));
         saved = new Draft(ClientUiSettings.current(), new Shortcut(keyMapping.getKey(), keyMapping.getKeyModifier().name()));
         draft = saved;
+        updateThemePreview(draft.settings().theme());
         preferences = UiPreferences.fromSettings(draft.settings());
     }
 
@@ -239,6 +257,11 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         contrast = null;
         motion = null;
         musicToggle = null;
+        themeMode = null;
+        themeGroup = null;
+        themeStage = null;
+        themeTemplate = null;
+        themeJson = null;
         displayedAudioStatus = null;
         widgetBlur = null;
         shortcut = null;
@@ -257,7 +280,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         bodyTop = top + (configuration ? CONFIG_HEADER_HEIGHT : HEADER_HEIGHT);
         contentHeight = !configuration ? selectedArea == Area.DEVELOPER ? 120 : 0 : switch (selectedSection) {
             case GLASS -> sidePreview ? GLASS_SIDE_HEIGHT : GLASS_STACK_HEIGHT;
-            case DISPLAY -> 68;
+            case DISPLAY -> 250;
             case FEEDBACK, TABS -> 120;
             case SHORTCUT -> 42;
         };
@@ -312,6 +335,67 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         musicToggle = toggle(x, 42, contentWidth, "background_music",
                 value -> label("background_music", onOff(value)), this::setBackgroundMusic);
         musicToggle.button().setLeadingIcon(GraphicIcon.MUSIC);
+        var mode = draft.settings().theme().mode();
+        themeMode = row(button(x, 68, contentWidth, themeLabel(mode), UiTheme.icon(mode), false, () -> {
+            var settings = draft.settings();
+            var next = switch (settings.theme().mode()) {
+                case DARK -> ThemeSettings.Mode.LIGHT;
+                case LIGHT -> ThemeSettings.Mode.CUSTOM;
+                case CUSTOM -> ThemeSettings.Mode.DARK;
+            };
+            edit(new Draft(settings.withTheme(settings.theme().withMode(next)), draft.shortcut()));
+        }));
+        themeMode.setPreview(label("theme.tooltip"));
+        addThemeEditor(x);
+    }
+
+    private void addThemeEditor(int x) {
+        int half = (contentWidth - GAP) / 2;
+        themeGroup = row(button(x, 94, half, themeGroupName(), GraphicIcon.CUSTOM_THEME, false, () -> {
+            themeGroupIndex = (themeGroupIndex + 1) % THEME_GROUPS.size();
+            syncThemeEditor();
+        }));
+        themeGroup.setPreview(label("theme.group.tooltip"));
+        themeTemplate = row(button(x + half + GAP, 94, contentWidth - half - GAP, label("theme.template"),
+                GraphicIcon.RESET, false, () -> themeJson.setValue(ThemeEffects.template(themeGroupId()).toString())));
+        themeJson = row(new EditBox(font, x, 120, contentWidth, BUTTON_HEIGHT, label("theme.json")));
+        themeJson.setMaxLength(ThemeOverrides.MAX_LENGTH);
+        themeJson.setTooltip(Tooltip.create(label("theme.json.tooltip")));
+        themeStage = row(button(x, 146, contentWidth, label("theme.stage"), GraphicIcon.SUCCESS, false,
+                this::stageThemeGroup));
+        syncThemeEditor();
+    }
+
+    private String themeGroupId() { return THEME_GROUPS.get(themeGroupIndex); }
+
+    private Component themeGroupName() { return label("theme.group." + themeGroupId()); }
+
+    private void syncThemeEditor() {
+        if (themeJson == null) return;
+        var theme = draft.settings().theme();
+        themeGroup.setMessage(themeGroupName());
+        themeJson.setValue(theme.effects().group(themeGroupId()).toString());
+    }
+
+    private void stageThemeGroup() {
+        var settings = draft.settings();
+        try {
+            var values = JsonParser.parseString(themeJson.getValue()).getAsJsonObject();
+            ThemeEffects.validate(themeGroupId(), values);
+            var next = settings.theme().effects().withGroup(themeGroupId(), values);
+            edit(new Draft(settings.withTheme(settings.theme().withEffects(next)), draft.shortcut()));
+            status = label("theme.staged");
+        } catch (RuntimeException error) {
+            status = label("theme.invalid");
+        }
+    }
+
+    private static Component themeLabel(ThemeSettings.Mode mode) {
+        return label(switch (mode) {
+            case DARK -> "theme.dark";
+            case LIGHT -> "theme.light";
+            case CUSTOM -> "theme.custom";
+        });
     }
 
     private boolean musicMotionAllowed() {
@@ -530,13 +614,25 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
             beforeReset = null;
         }
         status = null;
+        syncThemeEditor();
         sliders.forEach((scale, slider) -> slider.setValue(scale.percent(draft.settings().backdrop())));
         optionSliders.forEach(option -> option.control().setValue(option.read().getAsInt()));
         refreshActions();
     }
 
+    private void updateThemePreview(ThemeSettings settings) {
+        UiTheme next = UiTheme.resolve(settings);
+        if (next.equals(previewTheme)) return;
+        previewTheme = next;
+        var palette = backgroundProfile.palette();
+        themedBackgroundProfile = backgroundProfile.withPalette(new DotMatrixProfile.Palette(
+                next.background(palette.backgroundArgb()), next.text(palette.dotArgb()),
+                next.text(palette.highlightArgb()), palette.glow()));
+    }
+
     private void refreshActions() {
         var settings = draft.settings();
+        updateThemePreview(settings.theme());
         var nextPreferences = UiPreferences.fromSettings(settings);
         sections.setSettings(settings.tabs());
         navigation.setSettings(settings.tabs());
@@ -564,6 +660,15 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                 contrast.setValue(settings.highContrast());
                 motion.setValue(settings.reducedMotion());
                 refreshMusicToggle();
+                var mode = settings.theme().mode();
+                themeMode.setMessage(themeLabel(mode));
+                themeMode.setLeadingIcon(UiTheme.icon(mode));
+                boolean custom = mode == ThemeSettings.Mode.CUSTOM;
+                themeGroup.active = custom;
+                themeTemplate.active = custom;
+                themeJson.active = custom;
+                themeJson.setEditable(custom);
+                themeStage.active = custom;
             }
             case SHORTCUT -> {
                 shortcut.setMessage(capturingShortcut ? label("shortcut.capture") : label("shortcut.binding",
@@ -915,6 +1020,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
 
     @Override
     public void removed() {
+        themeEffectPreview.close();
         pageHandoff.clear();
         stopBackgroundMusic();
         background.clearPulse();
@@ -932,13 +1038,18 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        ThemeEffects.preview(draft.settings(),
+                () -> UiTheme.preview(previewTheme, () -> renderWithTheme(graphics, mouseX, mouseY, partialTick)));
+    }
+
+    private void renderWithTheme(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!fits) {
             renderDotBackground(graphics, true);
             var lines = font.split(Component.translatable("sh_better_ui.picker.too_small"), Math.max(1, width - 8));
             int y = 6;
             for (var line : lines) {
                 if (y + font.lineHeight > height - 27) break;
-                graphics.drawCenteredString(font, line, width / 2, y, LiquidGlassTheme.TEXT);
+                graphics.drawCenteredString(font, line, width / 2, y, LiquidGlassTheme.textColor());
                 y += font.lineHeight;
             }
         } else {
@@ -981,6 +1092,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         } else {
             backgroundPointer.reset();
         }
+        background.setProfile(ThemeEffects.profile("dotMatrix", themedBackgroundProfile));
         background.render(graphics, bounds, pointer, now, preferences);
     }
 
@@ -994,11 +1106,11 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         int x = left + PADDING;
         long now = PageTransition.nowMs();
         if (selectedArea == Area.OVERVIEW && now >= nextOverviewRefresh) refreshOverview(now);
-        graphics.drawString(font, title, x, top + 15, LiquidGlassTheme.TEXT, false);
+        graphics.drawString(font, title, x, top + 15, LiquidGlassTheme.textColor(), false);
         renderBody(graphics, x, mouseX, mouseY, partialTick);
         pageHandoff.render(graphics, preferences);
         Component message = status != null ? status : !draft.equals(saved) ? label("unsaved") : null;
-        if (message != null) graphics.drawString(font, message, x, bodyBottom + 3, LiquidGlassTheme.TEXT_MUTED, false);
+        if (message != null) graphics.drawString(font, message, x, bodyBottom + 3, LiquidGlassTheme.mutedTextColor(), false);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
@@ -1006,14 +1118,14 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         long now = PageTransition.nowMs();
         float progress = GuiMotion.clamp01(pageMorph.sample(now, preferences));
         var viewport = new Bounds(x - 3, bodyTop, panelWidth - 2 * PADDING + 6, bodyBottom - bodyTop);
-        int surface = preferences.highContrast() ? DarkModeTheme.BACKGROUND : DarkModeTheme.SURFACE;
+        int surface = preferences.highContrast() ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor();
         var panel = new GuiRect(viewport.x(), viewport.y(), viewport.width(), viewport.height());
         float center = pageOrigin.sample(now, preferences);
         var capsule = FluidMorph.seed(center, bodyTop + 5f);
         var frame = FluidMorph.between(capsule, panel, BODY_RADIUS, progress);
         var rect = frame.rect();
-        int edge = preferences.highContrast() ? LiquidGlassTheme.TEXT
-                : GuiMotion.lerpColor(0xA0000000 | (LiquidGlassTheme.ACCENT & 0xFFFFFF), DarkModeTheme.BORDER, progress);
+        int edge = preferences.highContrast() ? LiquidGlassTheme.textColor()
+                : GuiMotion.lerpColor(0xA0000000 | (LiquidGlassTheme.accentColor() & 0xFFFFFF), DarkModeTheme.borderColor(), progress);
 
         graphics.enableScissor(viewport.x(), viewport.y(), viewport.right(), viewport.bottom());
         try {
@@ -1053,7 +1165,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                     int thumbY = thumbTop();
                     graphics.fill(trackX + 1, bodyTop, trackX + SCROLLBAR_WIDTH - 1, bodyBottom, 0x544A5565);
                     graphics.fill(trackX, thumbY, trackX + SCROLLBAR_WIDTH, thumbY + thumbHeight(),
-                            LiquidGlassTheme.TEXT_MUTED);
+                            LiquidGlassTheme.mutedTextColor());
                 }
                 if (opacity < 1f) {
                     graphics.fill(clip.x(), clip.y(), clip.right(), clip.bottom(),
@@ -1080,11 +1192,17 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         int origin = bodyTop - scroll;
         if (selectedArea != Area.OVERVIEW) {
             graphics.drawString(font, selectedArea == Area.CONFIGURATION ? selectedSection.tab.label() : selectedArea.tab.label(),
-                    x, origin + 4, LiquidGlassTheme.ACCENT, false);
+                    x, origin + 4, LiquidGlassTheme.accentColor(), false);
         }
         if (selectedArea == Area.CONFIGURATION && selectedSection == Section.GLASS) renderPreview(graphics, x, origin);
+        if (selectedArea == Area.CONFIGURATION && selectedSection == Section.DISPLAY
+                && draft.settings().theme().mode() == ThemeSettings.Mode.CUSTOM && ThemeEffectPreview.supports(themeGroupId())
+                && origin + 248 > bodyTop && origin + 172 < bodyBottom) {
+            themeEffectPreview.draw(themeGroupId(), graphics, font, new Bounds(x, origin + 172, contentWidth, 76),
+                    themeGroupName(), mouseX, mouseY, preferences);
+        }
         if (selectedArea == Area.DEVELOPER) {
-            graphics.drawString(font, label("developer_config.tools"), x, origin + 78, LiquidGlassTheme.TEXT_MUTED, false);
+            graphics.drawString(font, label("developer_config.tools"), x, origin + 78, LiquidGlassTheme.mutedTextColor(), false);
         }
         for (AbstractWidget widget : rows.keySet()) {
             int y = widget.getY();
@@ -1103,13 +1221,13 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         int sampleHeight = sidePreview ? 36 : 28;
         drawSample(graphics, originalX, originalY, sampleWidth, sampleHeight);
         drawSample(graphics, previewX, previewY, sampleWidth, sampleHeight);
-        var backdrop = draft.settings().backdrop();
+        var backdrop = ThemeEffects.glass();
         boolean sampled = GlassBlur.tryBackdrop(graphics, new GuiRect(previewX, previewY, sampleWidth, sampleHeight),
                 1f, GlassStyle.LIQUID_REGULAR, 9f, 6f, backdrop);
         Component previewLabel = sampled ? label("preview")
                 : label(backdrop.enabled() && backdrop.strength() > 0.01f ? "preview.unavailable" : "preview.off");
-        graphics.drawString(font, label("original"), originalX, originalY - 12, LiquidGlassTheme.TEXT_MUTED, false);
-        graphics.drawString(font, previewLabel, previewX, previewY - 12, LiquidGlassTheme.TEXT_MUTED, false);
+        graphics.drawString(font, label("original"), originalX, originalY - 12, LiquidGlassTheme.mutedTextColor(), false);
+        graphics.drawString(font, previewLabel, previewX, previewY - 12, LiquidGlassTheme.mutedTextColor(), false);
     }
 
     private static void drawSample(GuiGraphics graphics, int x, int y, int width, int height) {

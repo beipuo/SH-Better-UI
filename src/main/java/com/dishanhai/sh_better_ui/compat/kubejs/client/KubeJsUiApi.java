@@ -6,6 +6,8 @@ import com.dishanhai.sh_better_ui.client.api.UiClientApi;
 import com.dishanhai.sh_better_ui.client.api.UiExtensionRegistry;
 import com.dishanhai.sh_better_ui.client.api.UiScreen;
 import com.dishanhai.sh_better_ui.client.api.UiScreenBuilder;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewRegistry;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -20,7 +22,7 @@ import java.util.function.Function;
 
 /** 山海：每代客户端脚本独立持有的门面，重载时撤销注册并释放仍存活的界面与上下文。 */
 public final class KubeJsUiApi extends UiClientApi implements AutoCloseable {
-    private final List<UiExtensionRegistry.Registration> registrations = new ArrayList<>();
+    private final List<Runnable> unregister = new ArrayList<>();
     private final Set<UiApiContext> contexts = new LinkedHashSet<>();
     private final Set<UiScreen> screens = Collections.newSetFromMap(new WeakHashMap<>());
     private volatile boolean closed;
@@ -34,7 +36,20 @@ public final class KubeJsUiApi extends UiClientApi implements AutoCloseable {
             requireOpen();
             return factory.apply(context);
         });
-        registrations.add(registration);
+        unregister.add(registration::close);
+        return registration;
+    }
+
+    @Override
+    public synchronized PreviewRegistry.Registration registerDeveloperPreview(PreviewSpec spec) {
+        requireOpen();
+        Objects.requireNonNull(spec);
+        var registration = super.registerDeveloperPreview(new PreviewSpec(spec.id(), spec.category(), spec.order(),
+                spec.titleKey(), spec.preferredHeight(), spec.toolbarRightInset(), spec.code(), () -> {
+                    requireOpen();
+                    return spec.factory().get();
+                }));
+        unregister.add(registration::close);
         return registration;
     }
 
@@ -85,8 +100,8 @@ public final class KubeJsUiApi extends UiClientApi implements AutoCloseable {
         synchronized (this) {
             if (closed) return;
             closed = true;
-            for (var registration : registrations) registration.close();
-            registrations.clear();
+            unregister.forEach(Runnable::run);
+            unregister.clear();
             var screenSnapshot = screens.stream().filter(screen -> !screen.isDisposed()).toList();
             if (!screenSnapshot.isEmpty()) {
                 cleanup.add(() -> UiScreen.disposeAll(screenSnapshot));

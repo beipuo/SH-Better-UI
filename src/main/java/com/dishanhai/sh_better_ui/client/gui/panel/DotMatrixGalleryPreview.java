@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
@@ -32,11 +34,12 @@ import java.util.function.Supplier;
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
 /** 山海：材质图库中的实时点阵预览，重建控件时保留调节值。 */
-final class DotMatrixGalleryPreview {
+final class DotMatrixGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 68;
     static final int SETTINGS_WIDTH = 72;
     private static final int GAP = 4;
     private static final int WAVE_TOGGLE_WIDTH = 70;
+    static final int TOOLBAR_INSET = SETTINGS_WIDTH + GAP + WAVE_TOGGLE_WIDTH;
     private static final int MAX_FLOATING = 128;
     private static final int INITIAL_HUE = 280;
     private static final String TEXT = "gallery.dot_matrix.";
@@ -55,8 +58,50 @@ final class DotMatrixGalleryPreview {
     private boolean pointerWave = true;
     private final UiDotMatrix matrix = new UiDotMatrix(profile());
 
+    DotMatrixGalleryPreview() {}
+
+    private DotMatrixGalleryPreview(Settings saved) {
+        hue = saved.hue();
+        chance = saved.chance();
+        maxFloating = saved.maxFloating();
+        mode = saved.mode();
+        fadeChance = saved.fadeChance();
+        seconds = saved.seconds();
+        colorway = saved.colorway();
+        direction = saved.direction();
+        motionSettings = saved.motionSettings();
+        pointerWave = saved.pointerWave();
+        matrix.setProfile(profile());
+    }
+
+    @Override
+    public void layout(PreviewContext host) {
+        var toolbar = host.toolbar();
+        var settings = new Bounds(toolbar.right() - SETTINGS_WIDTH, toolbar.y(), SETTINGS_WIDTH, toolbar.height());
+        int waveWidth = Math.min(WAVE_TOGGLE_WIDTH, toolbar.width() - SETTINGS_WIDTH - GAP);
+        widgets(host.viewport(), settings, host.preferences(), host::interactive, waveWidth).forEach(host::add);
+    }
+
+    @Override
+    public void suspend() { matrix.clearPulse(); }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        var saved = new Settings(hue, chance, maxFloating, mode, fadeChance, seconds, colorway, direction,
+                motionSettings, pointerWave);
+        return () -> new DotMatrixGalleryPreview(saved);
+    }
+
+    private record Settings(int hue, int chance, int maxFloating, Mode mode, int fadeChance, int seconds,
+                            Colorway colorway, Direction direction, boolean motionSettings, boolean pointerWave) {}
+
     List<AbstractWidget> widgets(Bounds area, Bounds settingsArea, UiPreferences preferences,
                                  BooleanSupplier pointerEnabled) {
+        return widgets(area, settingsArea, preferences, pointerEnabled, WAVE_TOGGLE_WIDTH);
+    }
+
+    private List<AbstractWidget> widgets(Bounds area, Bounds settingsArea, UiPreferences preferences,
+                                         BooleanSupplier pointerEnabled, int waveWidth) {
         matrix.clearPulse();
         int gap = area.height() < 80 ? 2 : GAP;
         int controlHeight = area.height() < 80 ? 16 : area.height() < 100 ? 18 : 22;
@@ -100,8 +145,8 @@ final class DotMatrixGalleryPreview {
                     showSettings.run();
                     pressed.setMessage(settingsLabel());
                 });
-        var waveToggle = DeveloperPanelScreen.button(settingsArea.x() - GAP - WAVE_TOGGLE_WIDTH, settingsArea.y(),
-                WAVE_TOGGLE_WIDTH, settingsArea.height(), pointerWaveLabel(), null, preferences, pressed -> {
+        var waveToggle = DeveloperPanelScreen.button(settingsArea.x() - GAP - waveWidth, settingsArea.y(),
+                waveWidth, settingsArea.height(), pointerWaveLabel(), null, preferences, pressed -> {
                     pointerWave = !pointerWave;
                     matrix.setProfile(profile());
                     pressed.setMessage(pointerWaveLabel());
@@ -266,18 +311,18 @@ final class DotMatrixGalleryPreview {
             boolean available = pointerEnabled.getAsBoolean() && Minecraft.getInstance().isWindowActive();
             matrix.render(graphics, area, available ? mouseX : Double.NaN, available ? mouseY : Double.NaN,
                     PageTransition.nowMs(), preferences);
-            int edge = isFocused() || preferences.highContrast() ? DarkModeTheme.TEXT
-                    : isHovered() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
+            int edge = isFocused() || preferences.highContrast() ? DarkModeTheme.textColor()
+                    : isHovered() ? DarkModeTheme.hoverBorderColor() : DarkModeTheme.borderColor();
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), edge);
             if (preferences.highContrast()) {
                 var font = Minecraft.getInstance().font;
                 graphics.drawCenteredString(font, label(TEXT + "contrast"), area.x() + area.width() / 2,
-                        area.y() + (area.height() - font.lineHeight) / 2, DarkModeTheme.TEXT);
+                        area.y() + (area.height() - font.lineHeight) / 2, DarkModeTheme.textColor());
             } else {
                 int inset = Math.min(GAP, Math.max(0, (area.height() - GraphicIcon.PIXELS) / 2));
                 GraphicIcon.INTERACTION.draw(graphics, area.right() - GraphicIcon.PIXELS - GAP,
                         area.bottom() - GraphicIcon.PIXELS - inset, 1,
-                        isHoveredOrFocused() ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_MUTED, preferences);
+                        isHoveredOrFocused() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), preferences);
             }
         }
     }

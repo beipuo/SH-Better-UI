@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.compat.kubejs.client;
 
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.api.UiScreen;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +50,30 @@ class KubeJsUiApiTest {
         assertThrows(IllegalStateException.class, () -> api.run(() -> {}));
         assertThrows(IllegalStateException.class,
                 () -> api.registerExtension("sh_better_ui_test:closed_generation", context -> new Object()));
+    }
+
+    @Test
+    void closingGenerationRemovesItsDeveloperPreviews() {
+        var oldGeneration = new KubeJsUiApi();
+        var replacement = new KubeJsUiApi();
+        var spec = new PreviewSpec("sh_better_ui_test:preview_generation", PreviewSpec.Category.CONTROLS, 0,
+                "gui.done", () -> host -> {});
+        try {
+            var oldRegistration = oldGeneration.registerDeveloperPreview(spec);
+            assertTrue(ShBetterUiApi.developerPreviews().find(spec.id()).isPresent());
+
+            oldGeneration.close();
+            assertTrue(ShBetterUiApi.developerPreviews().find(spec.id()).isEmpty());
+            assertThrows(IllegalStateException.class, () -> oldGeneration.registerDeveloperPreview(spec));
+
+            replacement.registerDeveloperPreview(spec);
+            oldRegistration.close();
+            assertTrue(ShBetterUiApi.developerPreviews().find(spec.id()).isPresent());
+        } finally {
+            oldGeneration.close();
+            replacement.close();
+        }
+        assertTrue(ShBetterUiApi.developerPreviews().find(spec.id()).isEmpty());
     }
 
     @Test

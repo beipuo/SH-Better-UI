@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogo;
 import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogoProfile;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
@@ -17,11 +19,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
 /** 山海：用可聚焦的画布演示悬停、点击波纹和贴图过渡。 */
-final class ElectricLogoGalleryPreview {
+final class ElectricLogoGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 68;
     private static final String TEXT = "gallery.electric_logo.";
     private static final int GAP = 4;
@@ -33,6 +36,15 @@ final class ElectricLogoGalleryPreview {
 
     private ElectricLogo logo;
     private int selected;
+
+    ElectricLogoGalleryPreview() { this(0); }
+
+    private ElectricLogoGalleryPreview(int selected) { this.selected = selected; }
+
+    @Override
+    public void layout(PreviewContext host) {
+        widgets(host.viewport(), host.preferences()).forEach(host::add);
+    }
 
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences) {
         if (logo == null) logo = new ElectricLogo(IMAGES.get(selected).texture());
@@ -58,7 +70,16 @@ final class ElectricLogoGalleryPreview {
         return label(TEXT + "change", label(TEXT + IMAGES.get(selected).name()));
     }
 
-    void release() {
+    @Override
+    public void suspend() { release(); }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        int saved = selected;
+        return () -> new ElectricLogoGalleryPreview(saved);
+    }
+
+    private void release() {
         if (logo == null) return;
         logo.close();
         logo = null;
@@ -104,16 +125,16 @@ final class ElectricLogoGalleryPreview {
                 var lines = font.split(label(TEXT + "unavailable"), area.width() - 2 * GAP);
                 int y = area.y() + (area.height() - lines.size() * font.lineHeight) / 2;
                 for (var line : lines) {
-                    graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.TEXT);
+                    graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.textColor());
                     y += font.lineHeight;
                 }
             } else {
                 GraphicIcon.INTERACTION.draw(graphics, area.right() - GraphicIcon.PIXELS - GAP,
                         area.bottom() - GraphicIcon.PIXELS - GAP, 1,
-                        isHoveredOrFocused() ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_MUTED, preferences);
+                        isHoveredOrFocused() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), preferences);
             }
-            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.TEXT
-                    : isHovered() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
+            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.textColor()
+                    : isHovered() ? DarkModeTheme.hoverBorderColor() : DarkModeTheme.borderColor();
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), border);
             if (isFocused()) {
                 graphics.renderOutline(area.x() + 1, area.y() + 1, area.width() - 2, area.height() - 2, border);

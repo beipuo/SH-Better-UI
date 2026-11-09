@@ -1,13 +1,22 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec.Category;
 import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 
+import java.util.function.Supplier;
+
+import static com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec.Category.CONTROLS;
+import static com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec.Category.MATERIALS;
+import static com.dishanhai.sh_better_ui.client.gui.panel.GalleryPreviewLayout.DEFAULT_HEIGHT;
+
 /** 山海：开发者图库使用的控件、材质和对应 Java 接入示例。 */
 enum DeveloperSamples {
-    BUTTON("button", UiStyle.DEFAULT),
-    TOGGLE("toggle", """
+    BUTTON("button", CONTROLS, 2, UiStyle.DEFAULT),
+    TOGGLE("toggle", 3, ControlPreviewScenes.Toggle::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.NetworkToggle;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -21,7 +30,7 @@ enum DeveloperSamples {
                 addRenderableWidget(toggle);
             }
             """),
-    SECTIONS("sections", """
+    SECTIONS("sections", 4, ControlPreviewScenes.Sections::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiSectionBar;
@@ -37,7 +46,32 @@ enum DeveloperSamples {
                 bar.buttons().forEach(this::addRenderableWidget);
             }
             """),
-    DISCLOSURE("disclosure", """
+    UNDERLINED_TABS("underlined_tabs", 0, 60, ControlPreviewScenes.Tabs::new, """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+
+            private void addTabs(int x, int y) {
+                addRenderableWidget(ShBetterUiApi.controls().underlinedTabs(
+                        new Bounds(x, y, 200, 48), index -> {}));
+            }
+            """),
+    STEPPER("stepper", 1, 60, ControlPreviewScenes.Stepper::new, """
+            import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+            import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
+            import com.dishanhai.sh_better_ui.client.gui.scaled.UiStepper;
+
+            private UiStepper steps;
+
+            private void addStepper(int x, int y) {
+                steps = addRenderableWidget(ShBetterUiApi.controls().stepper(
+                        new Bounds(x, y, 200, 44), 0, index -> {}));
+            }
+
+            private void onValidated() {
+                steps.progress().advance();
+            }
+            """),
+    DISCLOSURE("disclosure", 5, ControlPreviewScenes.Disclosure::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiDisclosure;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import net.minecraft.network.chat.Component;
@@ -55,7 +89,7 @@ enum DeveloperSamples {
                 return disclosure.expanded();
             }
             """),
-    TEXT_DETAILS("text_details", """
+    TEXT_DETAILS("text_details", 6, 72, ControlPreviewScenes.TextDetails::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiTextDetails;
             import net.minecraft.client.gui.GuiGraphics;
@@ -81,7 +115,7 @@ enum DeveloperSamples {
                 detailsLayout.render(graphics, font, x, y, 0xFFFFFFFF, false, UiPreferences.configured());
             }
             """),
-    SLIDER("slider", """
+    SLIDER("slider", 7, ControlPreviewScenes.Slider::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
@@ -97,7 +131,7 @@ enum DeveloperSamples {
                 addRenderableWidget(slider);
             }
             """),
-    FRAME_TIMELINE("frame_timeline", """
+    FRAME_TIMELINE("frame_timeline", 8, DEFAULT_HEIGHT + FrameTimelineGalleryPreview.PREVIEW_EXTRA, FrameTimelineGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiTimeline;
 
@@ -119,7 +153,7 @@ enum DeveloperSamples {
                 // Pause when the screen is removed. Reduced motion: seek(119).
             }
             """),
-    ELECTRIC_LOGO("electric_logo", """
+    ELECTRIC_LOGO("electric_logo", 9, DEFAULT_HEIGHT + ElectricLogoGalleryPreview.PREVIEW_EXTRA, ElectricLogoGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogo;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
             import net.minecraft.client.gui.GuiGraphics;
@@ -145,7 +179,7 @@ enum DeveloperSamples {
                 super.removed();
             }
             """),
-    SLIDE_CONFIRM("slide_confirm", """
+    SLIDE_CONFIRM("slide_confirm", 13, ControlPreviewScenes.SlideConfirm::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
@@ -164,7 +198,7 @@ enum DeveloperSamples {
                 addRenderableWidget(reset);
             }
             """),
-    CAPSULE_TOGGLE("capsule_toggle", """
+    CAPSULE_TOGGLE("capsule_toggle", 14, ControlPreviewScenes.Capsule::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -188,7 +222,7 @@ enum DeveloperSamples {
                 addRenderableWidget(capsule.button());
             }
             """),
-    MODE_INDICATORS("mode_indicators", """
+    MODE_INDICATORS("mode_indicators", 15, ControlPreviewScenes.Mode::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
@@ -212,7 +246,7 @@ enum DeveloperSamples {
                 return Component.translatable("sh_better_ui.panel.developer.gallery.mode", mode + 1);
             }
             """),
-    PAGE_SLIDE("page_slide", """
+    PAGE_SLIDE("page_slide", 16, MotionPreviewScenes.HEIGHT, MotionPreviewScenes.PageSlide::new, """
             import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
@@ -253,7 +287,7 @@ enum DeveloperSamples {
                 });
             }
             """),
-    RECIPE_TRANSITION("recipe_transition", """
+    RECIPE_TRANSITION("recipe_transition", 17, MotionPreviewScenes.HEIGHT, MotionPreviewScenes.RecipeSlide::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPageSlide.Direction;
@@ -273,7 +307,7 @@ enum DeveloperSamples {
                 UiRecipePageTransition.draw(graphics, viewport, frame, prefs, oldPage, newPage);
             }
             """),
-    DYNAMIC_STATUS("dynamic_status", """
+    DYNAMIC_STATUS("dynamic_status", 18, MotionPreviewScenes.DynamicStatus::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.ButtonFeedback.Status;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiDynamicStatus;
@@ -295,7 +329,7 @@ enum DeveloperSamples {
                 indicator.render(graphics, font, area, UiPreferences.configured());
             }
             """),
-    LOADING_SPINNER("loading_spinner", """
+    LOADING_SPINNER("loading_spinner", 19, MotionPreviewScenes.HEIGHT, MotionPreviewScenes.Spinner::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading;
@@ -314,7 +348,7 @@ enum DeveloperSamples {
                 UiLoading.spinner(graphics, iconArea, progress, UiPreferences.configured());
             }
             """),
-    LOADING_PROGRESS("loading_progress", """
+    LOADING_PROGRESS("loading_progress", 20, MotionPreviewScenes.HEIGHT, MotionPreviewScenes.Progress::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading;
@@ -333,7 +367,7 @@ enum DeveloperSamples {
                 }
             }
             """),
-    LOADING_SKELETON("loading_skeleton", """
+    LOADING_SKELETON("loading_skeleton", 21, MotionPreviewScenes.HEIGHT, MotionPreviewScenes.Skeleton::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -348,7 +382,7 @@ enum DeveloperSamples {
                 }
             }
             """),
-    SEARCH("search", """
+    SEARCH("search", 22, ControlPreviewScenes.Search::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
             import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
@@ -386,9 +420,10 @@ enum DeveloperSamples {
                         || super.keyPressed(key, scan, modifiers);
             }
             """),
-    DIALOG("dialog", DeveloperPanelScreen.DIALOG_CODE),
-    TOAST("toast", DeveloperPanelScreen.TOAST_CODE),
-    DOT_MATRIX("dot_matrix", """
+    DIALOG("dialog", 23, () -> ControlPreviewScenes::dialog, DeveloperPanelScreen.DIALOG_CODE),
+    TOAST("toast", 24, 64, ControlPreviewScenes.Toast::new, DeveloperPanelScreen.TOAST_CODE),
+    DOT_MATRIX("dot_matrix", MATERIALS, 0, DEFAULT_HEIGHT + DotMatrixGalleryPreview.PREVIEW_EXTRA,
+            DotMatrixGalleryPreview.TOOLBAR_INSET, DotMatrixGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiDotMatrix;
@@ -425,7 +460,7 @@ enum DeveloperSamples {
                         .withGradient(gradient));
             }
             """),
-    ANTIGRAVITY("antigravity", """
+    ANTIGRAVITY("antigravity", 11, DEFAULT_HEIGHT + AntigravityGalleryPreview.PREVIEW_EXTRA, AntigravityGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.Antigravity;
@@ -452,7 +487,7 @@ enum DeveloperSamples {
                 super.removed();
             }
             """),
-    LIGHT_RAYS("light_rays", """
+    LIGHT_RAYS("light_rays", 12, DEFAULT_HEIGHT + LightRaysGalleryPreview.PREVIEW_EXTRA, LightRaysGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.LightRays;
@@ -479,7 +514,7 @@ enum DeveloperSamples {
                 super.removed();
             }
             """),
-    PATTERN_WAVES("pattern_waves", """
+    PATTERN_WAVES("pattern_waves", 10, DEFAULT_HEIGHT + PatternWavesGalleryPreview.PREVIEW_EXTRA, PatternWavesGalleryPreview::new, """
             import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
             import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PatternWaves;
@@ -505,9 +540,9 @@ enum DeveloperSamples {
 
             private void togglePause() { waves.setPaused(!waves.isPaused()); }
             """),
-    LIQUID_BUTTON("liquid_button", UiStyle.LIQUID_GLASS),
-    DARK_BUTTON("dark_button", UiStyle.DEFAULT),
-    GRADIENT_CARD("gradient_card", """
+    LIQUID_BUTTON("liquid_button", MATERIALS, 1, UiStyle.LIQUID_GLASS),
+    DARK_BUTTON("dark_button", MATERIALS, 2, UiStyle.DEFAULT),
+    GRADIENT_CARD("gradient_card", MATERIALS, 3, MaterialPreviewScenes.GradientCard::new, """
             import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
             import com.dishanhai.sh_better_ui.client.gui.scaled.PageTransition;
             import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -521,26 +556,30 @@ enum DeveloperSamples {
                 DarkModeTheme.card(graphics, x, y, width, height, state, drawContent);
             }
             """),
-    NETWORK_TAB("network_tab", UiStyle.NETWORK),
-    CLEAR_GLASS("clear_glass", GlassStyle.CLEAR, "CLEAR"),
-    FROSTED_GLASS("frosted_glass", GlassStyle.FROSTED, "FROSTED"),
-    RESET_ICON("reset_icon", GraphicIcon.RESET, "RESET"),
-    SETTINGS_ICON("settings_icon", GraphicIcon.SETTINGS, "SETTINGS"),
-    COPY_ICON("copy_icon", GraphicIcon.COPY, "COPY"),
-    STATUS_ICON("status_icon", GraphicIcon.STATUS_PENDING, "STATUS_PENDING");
+    NETWORK_TAB("network_tab", MATERIALS, 4, UiStyle.NETWORK),
+    CLEAR_GLASS("clear_glass", 5, GlassStyle.CLEAR, "CLEAR"),
+    FROSTED_GLASS("frosted_glass", 6, GlassStyle.FROSTED, "FROSTED"),
+    RESET_ICON("reset_icon", 7, GraphicIcon.RESET, "RESET"),
+    SETTINGS_ICON("settings_icon", 8, GraphicIcon.SETTINGS, "SETTINGS"),
+    COPY_ICON("copy_icon", 9, GraphicIcon.COPY, "COPY"),
+    STATUS_ICON("status_icon", 10, GraphicIcon.STATUS_PENDING, "STATUS_PENDING");
 
-    final String key;
-    final String code;
-    final UiStyle buttonStyle;
-    final GlassStyle glassStyle;
-    final GraphicIcon icon;
+    final PreviewSpec spec;
 
-    DeveloperSamples(String key, String code) {
-        this(key, code, null, null, null);
+    DeveloperSamples(String key, int order, Supplier<? extends PreviewScene> factory, String code) {
+        this(key, CONTROLS, order, DEFAULT_HEIGHT, 0, factory, code);
     }
 
-    DeveloperSamples(String key, UiStyle style) {
-        this(key, """
+    DeveloperSamples(String key, int order, int height, Supplier<? extends PreviewScene> factory, String code) {
+        this(key, CONTROLS, order, height, 0, factory, code);
+    }
+
+    DeveloperSamples(String key, Category category, int order, Supplier<? extends PreviewScene> factory, String code) {
+        this(key, category, order, DEFAULT_HEIGHT, 0, factory, code);
+    }
+
+    DeveloperSamples(String key, Category category, int order, UiStyle style) {
+        this(key, category, order, () -> new MaterialPreviewScenes.StyledButton(style), """
                 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
                 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
                 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -558,11 +597,11 @@ enum DeveloperSamples {
                     button.setLeadingIcon(GraphicIcon.RESET);
                     addRenderableWidget(button);
                 }
-                """.formatted(style.name()), style, null, null);
+                """.formatted(style.name()));
     }
 
-    DeveloperSamples(String key, GlassStyle style, String constant) {
-        this(key, """
+    DeveloperSamples(String key, int order, GlassStyle style, String constant) {
+        this(key, MATERIALS, order, () -> new MaterialPreviewScenes.Glass(style), """
                 import com.dishanhai.sh_better_ui.client.blur.GlassStyle;
                 import com.dishanhai.sh_better_ui.client.glass.GlassBlur;
                 import com.dishanhai.sh_better_ui.client.glass.GuiRect;
@@ -576,11 +615,11 @@ enum DeveloperSamples {
                                 1f, GlassStyle.%s, 12f, 4f);
                     }
                 }
-                """.formatted(constant), null, style, null);
+                """.formatted(constant));
     }
 
-    DeveloperSamples(String key, GraphicIcon icon, String constant) {
-        this(key, """
+    DeveloperSamples(String key, int order, GraphicIcon icon, String constant) {
+        this(key, MATERIALS, order, () -> new MaterialPreviewScenes.Icon(icon), """
                 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
                 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
                 import net.minecraft.client.gui.GuiGraphics;
@@ -589,14 +628,12 @@ enum DeveloperSamples {
                     GraphicIcon.%s.draw(graphics, x, y, 2, 0xFFFFFFFF,
                             UiPreferences.configured());
                 }
-                """.formatted(constant), null, null, icon);
+                """.formatted(constant));
     }
 
-    DeveloperSamples(String key, String code, UiStyle buttonStyle, GlassStyle glassStyle, GraphicIcon icon) {
-        this.key = key;
-        this.code = code;
-        this.buttonStyle = buttonStyle;
-        this.glassStyle = glassStyle;
-        this.icon = icon;
+    DeveloperSamples(String key, Category category, int order, int height, int toolbarInset,
+                     Supplier<? extends PreviewScene> factory, String code) {
+        spec = new PreviewSpec("sh_better_ui:" + key, category, order,
+                "sh_better_ui.panel.developer.gallery.sample." + key, height, toolbarInset, code, factory);
     }
 }

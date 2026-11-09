@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
@@ -19,20 +21,41 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
 
 /** 山海：可切换预设和暂停的波面画布。窗口重建时保留预设与暂停状态。 */
-final class PatternWavesGalleryPreview {
+final class PatternWavesGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 68;
     private static final String TEXT = "gallery.pattern_waves.";
     private static final int GAP = 4;
     private static final int BUTTON_HEIGHT = 22;
     private static final Preset[] PRESETS = Preset.values();
 
-    private Preset preset = Preset.SILK;
-    private final PatternWaves waves = new PatternWaves(preset.profile());
+    private Preset preset;
+    private final PatternWaves waves;
+
+    PatternWavesGalleryPreview() { this(Preset.SILK, false); }
+
+    private PatternWavesGalleryPreview(Preset preset, boolean paused) {
+        this.preset = preset;
+        waves = new PatternWaves(preset.profile());
+        waves.setPaused(paused);
+    }
+
+    @Override
+    public void layout(PreviewContext host) {
+        widgets(host.viewport(), host.preferences(), host::interactive).forEach(host::add);
+    }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        Preset saved = preset;
+        boolean paused = waves.isPaused();
+        return () -> new PatternWavesGalleryPreview(saved, paused);
+    }
 
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences, BooleanSupplier inputAllowed) {
         int x = area.x() + GAP;
@@ -133,16 +156,16 @@ final class PatternWavesGalleryPreview {
                 var lines = font.split(label(TEXT + "contrast"), area.width() - 2 * GAP);
                 int y = area.y() + (area.height() - lines.size() * font.lineHeight) / 2;
                 for (var line : lines) {
-                    graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.TEXT);
+                    graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.textColor());
                     y += font.lineHeight;
                 }
             } else if (active) {
                 GraphicIcon.INTERACTION.draw(graphics, area.right() - GraphicIcon.PIXELS - GAP,
                         area.bottom() - GraphicIcon.PIXELS - GAP, 1,
-                        isHoveredOrFocused() ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_MUTED, preferences);
+                        isHoveredOrFocused() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), preferences);
             }
-            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.TEXT
-                    : isHovered() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
+            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.textColor()
+                    : isHovered() ? DarkModeTheme.hoverBorderColor() : DarkModeTheme.borderColor();
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), border);
             if (isFocused()) {
                 graphics.renderOutline(area.x() + 1, area.y() + 1, area.width() - 2, area.height() - 2, border);

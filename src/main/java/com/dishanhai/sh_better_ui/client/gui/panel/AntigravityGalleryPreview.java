@@ -1,9 +1,12 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.Antigravity;
+import com.dishanhai.sh_better_ui.client.gui.scaled.AntigravityProfile;
 import com.dishanhai.sh_better_ui.client.gui.scaled.AntigravityProfile.ColorMode;
 import com.dishanhai.sh_better_ui.client.gui.scaled.AntigravityProfile.Shape;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
@@ -21,18 +24,34 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
 /** 山海：反重力粒子画布；形状、配色和暂停状态随窗口重建保留。 */
-final class AntigravityGalleryPreview {
+final class AntigravityGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 112;
     private static final String TEXT = "gallery.antigravity.";
     private static final int GAP = 4;
     private static final int BUTTON_HEIGHT = 22;
     private static final Shape[] SHAPES = Shape.values();
     private static final ColorMode[] COLOR_MODES = ColorMode.values();
-    private final Antigravity field = ShBetterUiApi.graphics().antigravity();
+    private final Antigravity field;
+    private boolean edited;
+
+    AntigravityGalleryPreview() { this(null, false); }
+
+    private AntigravityGalleryPreview(AntigravityProfile profile, boolean paused) {
+        field = profile == null ? ShBetterUiApi.graphics().antigravity() : ShBetterUiApi.graphics().antigravity(profile);
+        edited = profile != null;
+        field.setPaused(paused);
+    }
+
+    @Override
+    public void layout(PreviewContext host) {
+        suspend();
+        widgets(host.viewport(), host.preferences(), host::interactive).forEach(host::add);
+    }
 
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences, BooleanSupplier inputAllowed) {
         int x = area.x() + GAP;
@@ -53,6 +72,7 @@ final class AntigravityGalleryPreview {
         var shape = DeveloperPanelScreen.button(controlsX, controlsY, controlWidth, buttonHeight,
                 shapeLabel(), null, preferences, pressed -> {
                     Shape next = SHAPES[(field.profile().particleShape().ordinal() + 1) % SHAPES.length];
+                    edited = true;
                     field.setProfile(field.profile().toBuilder().particleShape(next).build());
                     pressed.setMessage(shapeLabel());
                     ((UiButton) pressed).setModeIndicators(SHAPES.length, next.ordinal());
@@ -61,6 +81,7 @@ final class AntigravityGalleryPreview {
         var color = DeveloperPanelScreen.button(controlsX + controlWidth + GAP, controlsY, controlWidth, buttonHeight,
                 colorLabel(), null, preferences, pressed -> {
                     ColorMode next = COLOR_MODES[(field.profile().colorMode().ordinal() + 1) % COLOR_MODES.length];
+                    edited = true;
                     field.setProfile(field.profile().toBuilder().colorMode(next).build());
                     pressed.setMessage(colorLabel());
                     ((UiButton) pressed).setModeIndicators(COLOR_MODES.length, next.ordinal());
@@ -92,7 +113,15 @@ final class AntigravityGalleryPreview {
         return List.of(new Canvas(canvas, field, preferences, inputAllowed), shape, color, pause, restart);
     }
 
-    void suspend() { field.suspend(); }
+    @Override
+    public void suspend() { field.suspend(); }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        var profile = edited ? field.profile() : null;
+        boolean paused = field.isPaused();
+        return () -> new AntigravityGalleryPreview(profile, paused);
+    }
 
     private Component shapeLabel() {
         return label(TEXT + "shape", label(TEXT + field.profile().particleShape().name().toLowerCase(Locale.ROOT)));
@@ -155,7 +184,7 @@ final class AntigravityGalleryPreview {
                 graphics.enableScissor(area.x(), area.y(), area.right(), area.bottom());
                 try {
                     for (var line : lines) {
-                        graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.TEXT);
+                        graphics.drawCenteredString(font, line, area.x() + area.width() / 2, y, DarkModeTheme.textColor());
                         y += font.lineHeight;
                     }
                 } finally {
@@ -165,10 +194,10 @@ final class AntigravityGalleryPreview {
                     && area.height() >= GraphicIcon.PIXELS + 2 * GAP) {
                 GraphicIcon.INTERACTION.draw(graphics, area.right() - GraphicIcon.PIXELS - GAP,
                         area.bottom() - GraphicIcon.PIXELS - GAP, 1,
-                        isHoveredOrFocused() ? DarkModeTheme.TEXT : DarkModeTheme.TEXT_MUTED, preferences);
+                        isHoveredOrFocused() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), preferences);
             }
-            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.TEXT
-                    : isHovered() ? DarkModeTheme.BORDER_HOVER : DarkModeTheme.BORDER;
+            int border = isFocused() || preferences.highContrast() ? DarkModeTheme.textColor()
+                    : isHovered() ? DarkModeTheme.hoverBorderColor() : DarkModeTheme.borderColor();
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), border);
             if (isFocused() && area.width() > 2 && area.height() > 2) {
                 graphics.renderOutline(area.x() + 1, area.y() + 1, area.width() - 2, area.height() - 2, border);

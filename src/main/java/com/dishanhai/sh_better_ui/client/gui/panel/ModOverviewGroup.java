@@ -47,11 +47,11 @@ final class ModOverviewGroup extends AbstractWidget {
     @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (isFocused()) RoundedCorners.draw(graphics, getX(), getY(), getWidth(), getHeight(),
-                4f, 1f, LiquidGlassTheme.ACCENT, 0);
+                4f, 1f, LiquidGlassTheme.accentColor(), 0);
         int y = getY() + INSET;
-        titleLayout.render(graphics, font, getX() + INSET, y, LiquidGlassTheme.ACCENT, false, preferences);
+        titleLayout.render(graphics, font, getX() + INSET, y, LiquidGlassTheme.accentColor(), false, preferences);
         detailsLayout.render(graphics, font, getX() + INSET, y + titleLayout.height() + INSET,
-                LiquidGlassTheme.TEXT, false, preferences);
+                LiquidGlassTheme.textColor(), false, preferences);
     }
 
     @Override

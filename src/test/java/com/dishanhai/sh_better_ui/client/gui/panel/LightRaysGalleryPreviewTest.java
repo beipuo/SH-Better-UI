@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.LightRaysProfile.Origin;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
@@ -20,8 +22,9 @@ class LightRaysGalleryPreviewTest {
 
     @Test
     void registersTheLightRaysSampleInTheControlsGallery() {
-        assertTrue(DeveloperGalleryScreen.Section.CONTROLS.samples.contains(DeveloperSamples.LIGHT_RAYS));
-        assertTrue(DeveloperSamples.LIGHT_RAYS.code.contains("rays.setProfile("));
+        var sample = ShBetterUiApi.developerPreviews().find("light_rays").orElseThrow();
+        assertEquals(PreviewSpec.Category.CONTROLS, sample.category());
+        assertTrue(sample.code().contains("rays.setProfile("));
     }
 
     @Test
@@ -52,6 +55,28 @@ class LightRaysGalleryPreviewTest {
         assertFalse(preview.profile().lightMode());
         assertEquals(Origin.TOP_RIGHT, preview.profile().raysOrigin());
         assertEquals(0f, preview.profile().raysSpeed());
+    }
+
+    @Test
+    void restoringAnUnmountedPreviewKeepsTheParametersAndSelectedControl() {
+        var preview = new LightRaysGalleryPreview();
+        var original = widgets(preview, NARROW);
+        var speed = visibleSlider(original);
+        speed.onClick(speed.getX() + 4, speed.getY() + 4);
+        ((Button) original.get(1)).onPress();
+        ((Button) original.get(4)).onPress();
+        var profile = preview.profile();
+        var remount = preview.saveForRemount();
+        preview.close();
+
+        var restored = assertInstanceOf(LightRaysGalleryPreview.class, remount.get());
+        var rebuilt = widgets(restored, WIDE);
+        assertEquals(profile, restored.profile());
+        assertEquals(visibleSlider(original).getMessage(), visibleSlider(rebuilt).getMessage());
+        ((Button) rebuilt.get(1)).onPress();
+        assertFalse(restored.profile().lightMode());
+        assertEquals(0f, restored.profile().raysSpeed());
+        assertTrue(preview.profile().lightMode());
     }
 
     @Test

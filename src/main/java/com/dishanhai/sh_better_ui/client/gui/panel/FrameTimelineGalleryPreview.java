@@ -1,5 +1,8 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.UiFrame;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
@@ -10,27 +13,38 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSlider;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTimeline;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
 /** 山海：用同一个帧快照驱动画面、滑杆与状态，缩放窗口时保留播放位置。 */
-final class FrameTimelineGalleryPreview {
+final class FrameTimelineGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 68;
     private static final String TEXT = "gallery.frame_timeline.";
     private static final UiTimeline.Sequence CAPTION = new UiTimeline.Sequence(30, 90);
-    private final UiTimeline timeline = new UiTimeline(30, 120);
+    private final UiTimeline timeline;
+    private Font font;
     private UiButton transport;
     private UiSlider scrubber;
     private UiTimeline.State shownState;
     private Bounds canvas;
+
+    FrameTimelineGalleryPreview() { this(new UiTimeline(30, 120)); }
+
+    private FrameTimelineGalleryPreview(UiTimeline timeline) { this.timeline = timeline; }
+
+    @Override
+    public void layout(PreviewContext host) {
+        font = host.font();
+        widgets(host.viewport(), host.preferences()).forEach(host::add);
+    }
 
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences) {
         int gap = 3;
@@ -69,6 +83,15 @@ final class FrameTimelineGalleryPreview {
 
     void pause() { timeline.pause(PageTransition.nowMs()); }
 
+    @Override
+    public void suspend() { pause(); }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        UiTimeline saved = timeline;
+        return () -> new FrameTimelineGalleryPreview(saved);
+    }
+
     private void sync(UiTimeline.Frame frame) {
         scrubber.setValue(frame.index());
         if (shownState != frame.state()) {
@@ -79,11 +102,13 @@ final class FrameTimelineGalleryPreview {
         }
     }
 
-    void render(GuiGraphics graphics, UiPreferences preferences) {
+    @Override
+    public void render(UiFrame uiFrame) {
         if (canvas == null) return;
-        var frame = timeline.sample(PageTransition.nowMs());
+        var graphics = uiFrame.graphics();
+        var preferences = uiFrame.preferences();
+        var frame = timeline.sample(uiFrame.nowMs());
         sync(frame);
-        var font = Minecraft.getInstance().font;
         graphics.enableScissor(canvas.x(), canvas.y(), canvas.right(), canvas.bottom());
         try {
             graphics.fill(canvas.x(), canvas.y(), canvas.right(), canvas.bottom(),
@@ -96,14 +121,14 @@ final class FrameTimelineGalleryPreview {
             int cardX = canvas.x() + 5 + Math.round(progress * Math.max(0, canvas.width() - cardSize - 10));
             int alpha = preferences.highContrast() ? 255 : Math.max(8, Math.round(frame.interpolate(0, 20, 0f, 255f)));
             RoundedCorners.draw(graphics, cardX, motionY, cardSize, cardSize, Math.min(5, cardSize / 2), 1,
-                    DarkModeTheme.TEXT, alpha << 24 | LiquidGlassTheme.ACCENT & 0xFFFFFF);
+                    DarkModeTheme.textColor(), alpha << 24 | LiquidGlassTheme.accentColor() & 0xFFFFFF);
             if (roomy) {
                 graphics.drawCenteredString(font, label(TEXT + "idea"), canvas.x() + canvas.width() / 2,
-                        canvas.y() + 2, LiquidGlassTheme.TEXT);
+                        canvas.y() + 2, LiquidGlassTheme.textColor());
                 Component caption = CAPTION.contains(frame)
                         ? label(TEXT + "sequence", CAPTION.localFrame(frame)) : label(TEXT + "sequence_wait");
                 graphics.drawCenteredString(font, caption, canvas.x() + canvas.width() / 2,
-                        canvas.bottom() - font.lineHeight - 1, LiquidGlassTheme.TEXT);
+                        canvas.bottom() - font.lineHeight - 1, LiquidGlassTheme.textColor());
             }
         } finally {
             graphics.disableScissor();

@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DotMatrixProfile;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiButton;
@@ -21,12 +23,13 @@ class DotMatrixGalleryPreviewTest {
 
     @Test
     void materialsGalleryOpensWithTheDotMatrixSample() {
-        var sample = DeveloperGalleryScreen.Section.MATERIALS.samples.getFirst();
-        assertSame(DeveloperSamples.DOT_MATRIX, sample);
-        assertTrue(sample.code.contains("dots.setProfile("));
-        assertTrue(sample.code.contains(".withFade("));
-        assertTrue(sample.code.contains(".withPointerWave("));
-        assertTrue(sample.code.contains(".withGradient("));
+        var sample = ShBetterUiApi.developerPreviews().entries().stream()
+                .filter(spec -> spec.category() == PreviewSpec.Category.MATERIALS).findFirst().orElseThrow();
+        assertEquals("sh_better_ui:dot_matrix", sample.id());
+        assertTrue(sample.code().contains("dots.setProfile("));
+        assertTrue(sample.code().contains(".withFade("));
+        assertTrue(sample.code().contains(".withPointerWave("));
+        assertTrue(sample.code().contains(".withGradient("));
     }
 
     @Test

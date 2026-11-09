@@ -1,5 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
@@ -26,12 +28,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
 /** 山海：光束画布和实时调参。预览重建时保留当前底板和参数。 */
-final class LightRaysGalleryPreview {
+final class LightRaysGalleryPreview implements PreviewScene {
     static final int PREVIEW_EXTRA = 65;
     private static final String TEXT = "gallery.light_rays.";
     private static final int PAD = 2;
@@ -40,9 +43,33 @@ final class LightRaysGalleryPreview {
     private static final Origin[] ORIGINS = Origin.values();
     private static final Parameter[] PARAMETERS = Parameter.values();
 
-    private final LightRays rays = ShBetterUiApi.graphics().lightRays();
-    private final Builder settings = LightRaysProfile.builder();
+    private final LightRays rays;
+    private final Builder settings;
     private int selected;
+    private boolean edited;
+
+    LightRaysGalleryPreview() {
+        this(null, 0);
+    }
+
+    private LightRaysGalleryPreview(LightRaysProfile profile, int selected) {
+        rays = profile == null ? ShBetterUiApi.graphics().lightRays() : ShBetterUiApi.graphics().lightRays(profile);
+        this.selected = selected;
+        settings = LightRaysProfile.builder();
+        edited = profile != null;
+        if (edited) {
+            settings.lightMode(profile.lightMode());
+            for (Parameter parameter : PARAMETERS) {
+                parameter.write.accept(settings, (float) parameter.read.applyAsDouble(profile));
+            }
+        }
+    }
+
+    @Override
+    public void layout(PreviewContext host) {
+        suspend();
+        widgets(host.viewport(), host.preferences(), host::interactive).forEach(host::add);
+    }
 
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences, BooleanSupplier inputAllowed) {
         int width = area.width() - 2 * PAD;
@@ -56,7 +83,8 @@ final class LightRaysGalleryPreview {
 
         var board = DeveloperPanelScreen.button(x, y, controlsWidth - REPLAY_WIDTH - GAP, rowHeight,
                 boardLabel(), null, preferences, pressed -> {
-                    rays.setProfile(settings.lightMode(!profile().lightMode()).build());
+                    settings.lightMode(!profile().lightMode());
+                    applySettings();
                     pressed.setMessage(boardLabel());
                     ((UiButton) pressed).setSelected(profile().lightMode());
                 });
@@ -74,7 +102,7 @@ final class LightRaysGalleryPreview {
             var slider = new UiSlider(sliderArea, parameter.min, parameter.max, parameter.step,
                     parameter.currentValue(profile()), preferences, parameter::message, value -> {
                         parameter.write.accept(settings, value / (float) parameter.scale);
-                        rays.setProfile(settings.build());
+                        applySettings();
                     });
             slider.visible = parameter.ordinal() == selected;
             sliders.add(slider);
@@ -100,7 +128,20 @@ final class LightRaysGalleryPreview {
 
     LightRaysProfile profile() { return rays.profile(); }
 
-    void suspend() { rays.suspend(); }
+    private void applySettings() {
+        edited = true;
+        rays.setProfile(settings.build());
+    }
+
+    @Override
+    public void suspend() { rays.suspend(); }
+
+    @Override
+    public Supplier<? extends PreviewScene> saveForRemount() {
+        var profile = edited ? rays.profile() : null;
+        int parameter = selected;
+        return () -> new LightRaysGalleryPreview(profile, parameter);
+    }
 
     private Component boardLabel() {
         return label(TEXT + (profile().lightMode() ? "light_board" : "dark_board"));
@@ -198,14 +239,14 @@ final class LightRaysGalleryPreview {
         @Override
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             boolean light = profile().lightMode();
-            int textColor = light ? 0xFF22344E : DarkModeTheme.TEXT;
+            int textColor = light ? 0xFF22344E : DarkModeTheme.textColor();
             graphics.fill(area.x(), area.y(), area.right(), area.bottom(), light ? 0xFFF0F4FF : 0xFF0B1220);
             UiMouseState mouse = inputAllowed.getAsBoolean() && !preferences.reducedMotion() && !preferences.highContrast()
                     ? UiMouseState.read() : null;
             available = rays.draw(graphics, area, mouse, preferences);
             if (!available) renderFallback(graphics, textColor);
             int border = isFocused() || preferences.highContrast() ? textColor
-                    : light ? 0xFF778299 : DarkModeTheme.BORDER;
+                    : light ? 0xFF778299 : DarkModeTheme.borderColor();
             graphics.renderOutline(area.x(), area.y(), area.width(), area.height(), border);
             if (isFocused()) {
                 graphics.renderOutline(area.x() + 1, area.y() + 1, area.width() - 2, area.height() - 2, border);

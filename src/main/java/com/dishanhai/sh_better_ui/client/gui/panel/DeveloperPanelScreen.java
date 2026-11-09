@@ -1,5 +1,8 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec.Category;
+import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
+
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
@@ -16,11 +19,13 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 /** 山海：在同一画面试用公共控件、检查渲染状态并复制接入示例。 */
@@ -91,6 +96,15 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         this(parent, preferences, null);
     }
 
+    public static List<String> sampleIds() {
+        return DeveloperGalleryScreen.sampleIds();
+    }
+
+    public static Screen fullscreenSample(Screen parent, String id, UiPreferences preferences,
+                                          Supplier<? extends GuiEventListener> returnFocus) {
+        return DeveloperGalleryScreen.fullscreen(parent, id, preferences, returnFocus);
+    }
+
     DeveloperPanelScreen(Screen parent, UiPreferences preferences, Supplier<UiButton> source) {
         super(label("title"));
         this.parent = parent;
@@ -133,10 +147,10 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         int contentWidth = panelWidth - 2 * PADDING;
         int columnWidth = (contentWidth - GAP) / 2;
         controls = addButton(contentX, top + 25, columnWidth, label("gallery.controls"), GraphicIcon.INTERACTION,
-                () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, null, () -> controls));
+                () -> openGallery(Category.CONTROLS, null, () -> controls));
         materials = addButton(contentX + columnWidth + GAP, top + 25, contentWidth - columnWidth - GAP,
                 label("gallery.materials"), GraphicIcon.TEMPLATE,
-                () -> openGallery(DeveloperGalleryScreen.Section.MATERIALS, null, () -> materials));
+                () -> openGallery(Category.MATERIALS, null, () -> materials));
         int demoY = top + DEMOS_Y + 13;
         int demoWidth = (contentWidth - 2 * GAP) / 3;
         int sheetX = contentX + 2 * (demoWidth + GAP);
@@ -145,19 +159,16 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
                 pressed -> showDialog(overlays, (UiButton) pressed, this::showToast)));
         addButton(contentX + demoWidth + GAP, demoY, demoWidth, label("demo.toast"), GraphicIcon.INFO, this::showToast);
         bottomSheet = addButton(sheetX, demoY, contentX + contentWidth - sheetX, label("demo.bottom_sheet"),
-                null, () -> {
-                    returnEntry = () -> bottomSheet;
-                    minecraft.setScreen(new DeveloperBottomSheetScreen(this, preferences, returnEntry));
-                });
+                null, () -> openFullscreenDemo(DeveloperBottomSheetPreview.ID, () -> bottomSheet));
 
         int copyX = contentX + contentWidth - COPY_WIDTH;
         dialogExample = addButton(contentX, top + EXAMPLES_Y + 13, columnWidth, label("example.open_dialog"),
-                null, () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, DeveloperSamples.DIALOG, () -> dialogExample));
+                null, () -> openGallery(Category.CONTROLS, "dialog", () -> dialogExample));
         toastExample = addButton(contentX + columnWidth + GAP, top + EXAMPLES_Y + 13, contentWidth - columnWidth - GAP,
                 label("example.open_toast"),
-                null, () -> openGallery(DeveloperGalleryScreen.Section.CONTROLS, DeveloperSamples.TOAST, () -> toastExample));
+                null, () -> openGallery(Category.CONTROLS, "toast", () -> toastExample));
         animationExample = addButton(contentX, top + FOOTER_Y, copyX - contentX - GAP,
-                label("demo.animation"), null, () -> DeveloperAnimationScreen.open(this, preferences, () -> animationExample));
+                label("demo.animation"), null, () -> openFullscreenDemo(DeveloperAnimationPreview.ID, () -> animationExample));
         addButton(copyX, top + FOOTER_Y, COPY_WIDTH, BACK, GraphicIcon.BACK, this::onClose);
     }
 
@@ -178,9 +189,14 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
         return button;
     }
 
-    private void openGallery(DeveloperGalleryScreen.Section section, DeveloperSamples example, Supplier<UiButton> entry) {
+    private void openGallery(Category section, String sampleId, Supplier<UiButton> entry) {
         returnEntry = entry;
-        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section, example, entry));
+        minecraft.setScreen(new DeveloperGalleryScreen(this, preferences, section, sampleId, entry));
+    }
+
+    private void openFullscreenDemo(String sampleId, Supplier<UiButton> entry) {
+        returnEntry = entry;
+        minecraft.setScreen(DeveloperGalleryScreen.fullscreenFrom(this, sampleId, preferences, entry));
     }
 
     void restoreReturnFocus() {
@@ -226,7 +242,7 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
             int y = PADDING;
             for (var line : font.split(TOO_SMALL, Math.max(1, width - 2 * PADDING))) {
                 if (y + font.lineHeight > height - BUTTON_HEIGHT - 6) break;
-                graphics.drawString(font, line, PADDING, y, LiquidGlassTheme.TEXT, false);
+                graphics.drawString(font, line, PADDING, y, LiquidGlassTheme.textColor(), false);
                 y += font.lineHeight + 2;
             }
         } else {
@@ -244,11 +260,11 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
 
     private void renderContent(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int x = left + PADDING;
-        graphics.drawString(font, getTitle(), x, top + 11, LiquidGlassTheme.TEXT, false);
-        graphics.drawString(font, label("demos"), x, top + DEMOS_Y, LiquidGlassTheme.ACCENT, false);
-        graphics.drawString(font, label("diagnostics"), x, top + DIAGNOSTICS_Y, LiquidGlassTheme.ACCENT, false);
+        graphics.drawString(font, getTitle(), x, top + 11, LiquidGlassTheme.textColor(), false);
+        graphics.drawString(font, label("demos"), x, top + DEMOS_Y, LiquidGlassTheme.accentColor(), false);
+        graphics.drawString(font, label("diagnostics"), x, top + DIAGNOSTICS_Y, LiquidGlassTheme.accentColor(), false);
         renderDiagnostics(graphics, x, top + DIAGNOSTICS_Y + 13);
-        graphics.drawString(font, label("examples"), x, top + EXAMPLES_Y, LiquidGlassTheme.ACCENT, false);
+        graphics.drawString(font, label("examples"), x, top + EXAMPLES_Y, LiquidGlassTheme.accentColor(), false);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
@@ -274,12 +290,12 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
     private void renderDiagnostics(GuiGraphics graphics, int x, int y) {
         var window = minecraft.getWindow();
         var target = minecraft.getMainRenderTarget();
-        Component enabled = Component.translatable(GlassBackdropSettings.current().enabled() ? "options.on" : "options.off");
+        Component enabled = Component.translatable(ThemeEffects.glass().enabled() ? "options.on" : "options.off");
         Component shader = label(GaussBlur.isReady() ? "shader_ready" : "shader_unavailable");
-        graphics.drawString(font, label("gui", width, height, (int) window.getGuiScale()), x, y, LiquidGlassTheme.TEXT, false);
+        graphics.drawString(font, label("gui", width, height, (int) window.getGuiScale()), x, y, LiquidGlassTheme.textColor(), false);
         graphics.drawString(font, label("framebuffer", target.width, target.height),
-                x, y + 11, LiquidGlassTheme.TEXT, false);
-        graphics.drawString(font, label("blur", enabled, shader), x, y + 22, LiquidGlassTheme.TEXT, false);
+                x, y + 11, LiquidGlassTheme.textColor(), false);
+        graphics.drawString(font, label("blur", enabled, shader), x, y + 22, LiquidGlassTheme.textColor(), false);
     }
 
     static Component label(String key, Object... args) {
