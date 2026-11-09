@@ -192,7 +192,7 @@ public final class LiquidGlassTheme {
         return Math.min(radius, 32f);
     }
 
-    private static int buttonFill(DarkModeTheme.State state, boolean primary, boolean selected, float emphasis) {
+    static int buttonFill(DarkModeTheme.State state, boolean primary, boolean selected, float emphasis) {
         if (!state.enabled()) return UiTheme.current().controlFill(0x96303640, 0.0f);
         int rest = primary ? UiTheme.current().controlFill(0x86244B78, 0.14f) : UiTheme.current().controlFill(0x522B333E, 0.0f);
         int hover = primary ? UiTheme.current().controlFill(0x9C2B598A, 0.23f) : UiTheme.current().controlFill(0x723B4A5B, 0.1f);

@@ -51,6 +51,40 @@ public final class UiScreenReturn {
         handoff.clear();
     }
 
+    /** 胶囊入场的默认交接。旧页在正文出现前淡出，从游戏进入时使用完整进度。 */
+    public void renderCrossfade(Screen previous, GuiGraphics graphics, float partialTick,
+                                UiPreferences preferences, float progress, Runnable background) {
+        float fadeEnd = previous == null ? 1f : UiCapsuleReveal.CONTENT_FADE_START;
+        renderCrossfade(previous, graphics, partialTick, preferences, progress, fadeEnd, background);
+    }
+
+    /** 在前景绘制前调用。progress 可随过渡反向，fadeEnd 是旧页完全透明的进度，取值 (0, 1]。 */
+    public void renderCrossfade(Screen previous, GuiGraphics graphics, float partialTick,
+                                UiPreferences preferences, float progress, float fadeEnd, Runnable background) {
+        float opacity = crossfadeOpacity(progress, fadeEnd);
+        if (preferences.reducedMotion()) {
+            clearHandoff();
+            background.run();
+            return;
+        }
+        if (handoff.renderAtOpacity(graphics, preferences, opacity, background)) return;
+
+        if (previous != null && previous != owner && opacity > 0f) {
+            prepare(previous, owner.width, owner.height);
+            renderBackdrop(graphics, owner.width, owner.height, partialTick);
+        }
+        if (opacity < 1f) {
+            GuiRenderUtil.withAttentionContent(graphics, 1f - opacity, 0f, background);
+        }
+    }
+
+    static float crossfadeOpacity(float progress, float fadeEnd) {
+        if (!Float.isFinite(progress) || !(fadeEnd > 0f && fadeEnd <= 1f)) {
+            throw new IllegalArgumentException("Crossfade requires finite progress and a fade end in (0, 1]");
+        }
+        return 1f - GuiRenderUtil.easeOut(progress / fadeEnd);
+    }
+
     /** 同一尺寸只准备一次；沿用父实例中的草稿、所选页及焦点恢复信息。 */
     public void prepare(Screen previous, int width, int height) {
         if (previous == owner) return;

@@ -1,15 +1,50 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /** 山海：父页只准备一次、不递归绘制、不接收真实指针，返回世界时没有额外界面层。 */
 class UiScreenReturnTest {
+    @Test
+    void outgoingScreenFadesAwayBeforeIncomingTextAppears() {
+        float contentStart = UiCapsuleReveal.CONTENT_FADE_START;
+        assertEquals(1f, UiScreenReturn.crossfadeOpacity(0f, contentStart));
+        float early = UiScreenReturn.crossfadeOpacity(contentStart / 4f, contentStart);
+        float middle = UiScreenReturn.crossfadeOpacity(contentStart / 2f, contentStart);
+        assertTrue(early < 1f && early > middle && middle > 0f);
+        assertEquals(0f, UiScreenReturn.crossfadeOpacity(contentStart, contentStart));
+        assertEquals(0f, UiScreenReturn.crossfadeOpacity(0.8f, contentStart));
+    }
+
+    @Test
+    void motionApiCrossfadeHonorsCustomCutoffAndReducedMotionWithoutDrawingTheParent() {
+        var owner = new Parent();
+        var parent = new Parent();
+        var motion = ShBetterUiApi.motion();
+        var transition = motion.screenCrossfade(owner, parent, UiPreferences.DEFAULT);
+        assertNotSame(transition, motion.screenCrossfade(owner, parent, UiPreferences.DEFAULT));
+
+        var backgrounds = new AtomicInteger();
+        transition.renderCrossfade(parent, null, 0f, UiPreferences.DEFAULT, 0.25f, 0.25f,
+                backgrounds::incrementAndGet);
+        transition.renderCrossfade(parent, null, 0f, UiPreferences.DEFAULT, UiCapsuleReveal.CONTENT_FADE_START,
+                backgrounds::incrementAndGet);
+        transition.renderCrossfade(parent, null, 0f, new UiPreferences(false, true, true), 0f,
+                backgrounds::incrementAndGet);
+
+        assertEquals(3, backgrounds.get());
+        assertEquals(0, parent.preparations);
+        assertEquals(0, parent.renders);
+    }
+
     @Test
     void preparesExistingParentOnceWithoutReinitializingItsDraft() {
         var parent = new Parent();

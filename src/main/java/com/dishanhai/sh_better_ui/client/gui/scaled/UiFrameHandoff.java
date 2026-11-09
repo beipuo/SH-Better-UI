@@ -83,13 +83,8 @@ public final class UiFrameHandoff {
 
     /** 第一帧保留完整快照；之后由原有混合轨道将快照淡出。 */
     public void render(GuiGraphics graphics, UiPreferences preferences) {
-        if (!active()) return;
-        var shader = VisualRevealRenderer.handoffShader();
-        if (preferences.reducedMotion() || !RenderSystem.isOnRenderThread() || shader == null || !sameViewport()) {
-            clear();
-            return;
-        }
-
+        var shader = readyShader(preferences);
+        if (shader == null) return;
         long now = PageTransition.nowMs();
         if (pending) {
             opacity.snapTo(1f);
@@ -101,6 +96,29 @@ public final class UiFrameHandoff {
             clear();
             return;
         }
+        draw(graphics, shader, alpha);
+    }
+
+    /** 用宿主采样的透明度合成，保留快照供当前过渡中途反向。 */
+    boolean renderAtOpacity(GuiGraphics graphics, UiPreferences preferences, float alpha, Runnable background) {
+        var shader = readyShader(preferences);
+        if (shader == null) return false;
+        background.run();
+        if (alpha > 0f) draw(graphics, shader, alpha);
+        return true;
+    }
+
+    private ShaderInstance readyShader(UiPreferences preferences) {
+        if (!active()) return null;
+        var shader = VisualRevealRenderer.handoffShader();
+        if (preferences.reducedMotion() || !RenderSystem.isOnRenderThread() || shader == null || !sameViewport()) {
+            clear();
+            return null;
+        }
+        return shader;
+    }
+
+    private void draw(GuiGraphics graphics, ShaderInstance shader, float alpha) {
         float width = (float) (textureWidth / guiScale);
         float height = (float) (textureHeight / guiScale);
         SnapshotRenderer.draw(graphics, shader, texture, x, y, width, height, alpha);

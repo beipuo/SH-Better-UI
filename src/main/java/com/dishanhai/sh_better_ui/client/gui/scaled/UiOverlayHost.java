@@ -215,6 +215,7 @@ public final class UiOverlayHost {
         // 已由底层控件接收的拖拽应先完成，再打开新的模态框。
         if (modal == null && owner.isDragging()) return;
         if (!register()) return;
+        UiLocalModal.interrupt(owner);
         boolean opening = modal == null;
         if (!opening && modal != layer) {
             modal.buttons.get(modal.focused).setFocused(false);

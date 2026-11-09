@@ -34,6 +34,7 @@ public final class UiButton extends Button {
     private Component preview;
     private GraphicIcon icon;
     private boolean iconWithLabel;
+    private int iconOffsetY;
     private boolean sampleBackground = true;
     private float backgroundBlurRadius = LiquidGlassTheme.DEFAULT_BUTTON_BLUR_RADIUS;
 
@@ -94,6 +95,11 @@ public final class UiButton extends Button {
         iconWithLabel = true;
     }
 
+    /** 仅移动图标，单位为 GUI 像素。绘制时限制在按钮内；文字、焦点和点击范围保持原位。 */
+    public void setIconOffsetY(int offset) {
+        iconOffsetY = Math.clamp(offset, -2, 2);
+    }
+
     @Override
     public void setMessage(Component message) {
         super.setMessage(message);
@@ -147,7 +153,21 @@ public final class UiButton extends Button {
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (UiLocalModal.hidesSource(this)) return false;
+        boolean handled = super.mouseClicked(mouseX, mouseY, button);
+        if (handled) UiLocalModal.captureSourcePress(this, button);
+        return handled;
+    }
+
+    @Override
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (UiLocalModal.hidesSource(this)) {
+            isHovered = false;
+            justPressed = false;
+            return;
+        }
+        if (isHovered && UiLocalModal.coversMouse(mouseX, mouseY)) isHovered = false;
         if (isCapsule() && UiOverlayHost.hidesSource(this)) return;
         long now = PageTransition.nowMs();
         var state = sampleMotion(now);
@@ -184,6 +204,13 @@ public final class UiButton extends Button {
 
     boolean isCapsule() {
         return style == UiStyle.LIQUID_GLASS;
+    }
+
+    int expansionFill(long now) {
+        var state = sampleMotion(now);
+        float emphasis = selectionEmphasis(now);
+        return isCapsule() ? LiquidGlassTheme.buttonFill(state, primary, selected, emphasis)
+                : state.buttonFill(primary, selected, emphasis);
     }
 
     FluidMorph renderMorph(GuiGraphics graphics, GuiRect target, UiPreferences panelPreferences,
@@ -285,7 +312,7 @@ public final class UiButton extends Button {
     private void drawContent(GuiGraphics graphics, int x, int y, int width, int height, int textColor) {
         int iconSize = GraphicIcon.PIXELS;
         if (!iconWithLabel && icon != null && width >= iconSize && height >= iconSize) {
-            icon.draw(graphics, x + (width - iconSize) / 2, y + (height - iconSize) / 2, 1, textColor, preferences);
+            drawIcon(graphics, x + (width - iconSize) / 2, y, height, textColor);
             return;
         }
         var font = Minecraft.getInstance().font;
@@ -297,7 +324,7 @@ public final class UiButton extends Button {
             int textWidth = 0;
             for (int i = 0; i < count; i++) textWidth = Math.max(textWidth, font.width(lines.get(i)));
             contentX += (width - inset - textWidth) / 2;
-            icon.draw(graphics, contentX, y + (height - iconSize) / 2, 1, textColor, preferences);
+            drawIcon(graphics, contentX, y, height, textColor);
         }
         int textY = y + (height - count * font.lineHeight) / 2;
         for (int i = 0; i < count; i++) {
@@ -306,6 +333,14 @@ public final class UiButton extends Button {
             UiFormattedText.draw(graphics, font, line, textX, textY + i * font.lineHeight,
                     textColor, false, preferences);
         }
+    }
+
+    private void drawIcon(GuiGraphics graphics, int x, int y, int height, int color) {
+        int padding = (height - GraphicIcon.PIXELS) / 2;
+        int travel = Math.max(0, padding - 1);
+        int offset = preferences.reducedMotion() || preferences.highContrast() ? 0
+                : Math.clamp(iconOffsetY, -travel, travel);
+        icon.draw(graphics, x, y + padding + offset, 1, color, preferences);
     }
 
     int labelWidth(int width, int height) {

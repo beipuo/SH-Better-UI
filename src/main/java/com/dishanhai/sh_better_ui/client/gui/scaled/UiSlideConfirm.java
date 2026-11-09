@@ -29,6 +29,17 @@ public final class UiSlideConfirm extends AbstractWidget {
     private static final int PRIMARY_BUTTON = GLFW.GLFW_MOUSE_BUTTON_LEFT;
     private static final int SLIDE_KEY = GLFW.GLFW_KEY_RIGHT;
 
+    /** 局部扩展模式的确认阈值和键盘滑动时长。确认仍以放开时的落点为准。 */
+    public record LocalConfig(double threshold, int keyTravelMs) {
+        public static final LocalConfig DEFAULT = new LocalConfig(1d, 600);
+
+        public LocalConfig {
+            if (!(threshold > 0 && threshold <= 1) || keyTravelMs <= 0) {
+                throw new IllegalArgumentException("Invalid slide configuration");
+            }
+        }
+    }
+
     private final Screen owner;
     private final Component label;
     private final Runnable onConfirm;
@@ -141,33 +152,43 @@ public final class UiSlideConfirm extends AbstractWidget {
         Track track = track();
         if (!track.hasTravel()) return;
         float progress = gesture.sample(now, preferences);
-        float thumbX = track.thumbX(progress);
-        int diameter = track.diameter();
         boolean armed = gesture.armed(now);
         boolean completed = isCompleted();
         float successProgress = completed ? gesture.sampleCompletion(now, preferences) : 0f;
+        drawTrack(graphics, track, preferences, getMessage(), progress, successProgress, armed, completed,
+                gesture.held(), isFocused(), active, true, mouseX, mouseY);
+    }
+
+    private static void drawTrack(GuiGraphics graphics, Track track, UiPreferences preferences, Component label,
+                                  float progress, float successProgress, boolean armed, boolean completed,
+                                  boolean held, boolean focused, boolean active, boolean drawSurface,
+                                  int mouseX, int mouseY) {
+        float thumbX = track.thumbX(progress);
+        int diameter = track.diameter();
         boolean highContrast = preferences.highContrast();
         int surface = highContrast ? DarkModeTheme.backgroundColor() : DarkModeTheme.surfaceColor();
         int accent = highContrast ? DarkModeTheme.textColor() : LiquidGlassTheme.accentColor();
-        int edge = isFocused() || armed ? accent
+        int edge = focused || armed ? accent
                 : highContrast ? DarkModeTheme.secondaryTextColor() : DarkModeTheme.hoverBorderColor();
         int fill = completed && !highContrast ? GuiMotion.lerpColor(accent, DarkModeTheme.SUCCESS, successProgress) : accent;
         int thumb = active ? fill : DarkModeTheme.mutedTextColor();
-        if (active && !highContrast && !completed && !isFocused() && !gesture.held()
+        if (active && !highContrast && !completed && !focused && !held
                 && !track.containsThumb(mouseX, mouseY, progress)) {
             thumb = DarkModeTheme.secondaryTextColor();
         }
 
-        RoundedCorners.draw(graphics, track.x, track.y, track.width, track.height, track.height * 0.5f,
-                isFocused() ? 2f : 1f, edge, surface);
+        if (drawSurface) {
+            RoundedCorners.draw(graphics, track.x, track.y, track.width, track.height, track.height * 0.5f,
+                    focused ? 2f : 1f, edge, surface);
+        }
         if (progress > 0f) {
             int progressFill = GuiMotion.lerpColor(surface, fill, 0.28f);
             RoundedCorners.draw(graphics, track.x + INSET, track.y + INSET, thumbX - track.x - INSET + diameter,
                     diameter, diameter * 0.5f, 0f, 0, progressFill);
         }
-        drawLabel(graphics, track, armed);
+        drawLabel(graphics, track, preferences, label, armed, completed, active);
         RoundedCorners.draw(graphics, thumbX, track.y + INSET, diameter, diameter, diameter * 0.5f,
-                gesture.held() ? 1f : 0f, DarkModeTheme.backgroundColor(), thumb);
+                held ? 1f : 0f, DarkModeTheme.backgroundColor(), thumb);
         GraphicIcon icon = completed ? GraphicIcon.SUCCESS : GraphicIcon.NEXT;
         int iconX = Math.round(thumbX + (diameter - GraphicIcon.PIXELS) * 0.5f);
         int iconY = track.y + (track.height - GraphicIcon.PIXELS) / 2;
@@ -176,17 +197,18 @@ public final class UiSlideConfirm extends AbstractWidget {
                 () -> icon.draw(graphics, iconX, iconY, 1, DarkModeTheme.backgroundColor(), preferences));
     }
 
-    private void drawLabel(GuiGraphics graphics, Track track, boolean armed) {
-        boolean atEnd = armed || isCompleted();
+    private static void drawLabel(GuiGraphics graphics, Track track, UiPreferences preferences,
+                                  Component label, boolean armed, boolean completed, boolean active) {
+        boolean atEnd = armed || completed;
         int left = track.x + INSET + LABEL_GAP + (atEnd ? 0 : track.diameter());
         int right = track.x + track.width - INSET - LABEL_GAP - (atEnd ? track.diameter() : 0);
         var font = Minecraft.getInstance().font;
         if (right <= left || font.lineHeight > track.height - 2 * INSET) return;
-        var text = armed ? ARMED : getMessage();
+        var text = armed ? ARMED : label;
         var line = Language.getInstance().getVisualOrder(font.substrByWidth(text, right - left));
         UiFormattedText.draw(graphics, font, line, left + (right - left - font.width(line)) / 2,
                 track.y + (track.height - font.lineHeight) / 2,
-                active || isCompleted() ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), false, preferences);
+                active || completed ? DarkModeTheme.textColor() : DarkModeTheme.mutedTextColor(), false, preferences);
     }
 
     private Track track() {
@@ -211,6 +233,98 @@ public final class UiSlideConfirm extends AbstractWidget {
         setMessage(COMPLETED);
         if (getTooltip() == hint) setTooltip(completedTooltip);
         onConfirm.run();
+    }
+
+    static boolean fitsLocal(Bounds bounds) {
+        return new Track(bounds.x(), bounds.y(), bounds.width(), bounds.height()).hasTravel();
+    }
+
+    static UiLocalModal.Content localContent(UiLocalModal.Session session, LocalConfig config, Component label) {
+        return new LocalContent(session, config, label);
+    }
+
+    private static final class LocalContent implements UiLocalModal.Content {
+        private final UiLocalModal.Session session;
+        private final Track track;
+        private final Gesture gesture;
+        private final Component label;
+        private boolean narrated;
+        private boolean completionNarrated;
+
+        private LocalContent(UiLocalModal.Session session, LocalConfig config, Component label) {
+            this.session = session;
+            var target = session.target();
+            track = new Track(target.x(), target.y(), target.width(), target.height());
+            gesture = new Gesture(config);
+            this.label = label;
+        }
+
+        @Override
+        public boolean animatesContents() { return true; }
+
+        @Override
+        public void render(GuiGraphics graphics, UiLocalModal.Frame frame, int mouseX, int mouseY, float partialTick) {
+            long now = frame.nowMs();
+            var prefs = frame.preferences();
+            var state = frame.state();
+            boolean completed = gesture.completed();
+            if (!narrated && frame.focused() && state == UiExpansionController.State.ACTIVE) {
+                narrated = true;
+                Minecraft.getInstance().getNarrator().say(Component.translatable(TEXT_KEY + "tooltip", label));
+            }
+            if (completed && !completionNarrated && frame.focused()) {
+                completionNarrated = true;
+                Minecraft.getInstance().getNarrator().say(COMPLETED);
+            }
+            float success = prefs.reducedMotion() || state == UiExpansionController.State.COLLAPSING
+                    ? 1f : frame.phaseProgress();
+            float progress = switch (state) {
+                case CANCELLING -> gesture.localReturnFrom * (1f - frame.phaseProgress());
+                case CONFIRMING -> GuiMotion.lerp(gesture.localReleaseProgress, 1f, success);
+                case COLLAPSING -> completed ? 1f : 0f;
+                default -> gesture.sample(now, prefs);
+            };
+            drawTrack(graphics, track, prefs, completed ? COMPLETED : label, progress, success, gesture.armed(now),
+                    completed, gesture.held(), frame.focused(), true, false, mouseX, mouseY);
+        }
+
+        @Override
+        public boolean mousePressed(double x, double y, int button, long now) {
+            return button == PRIMARY_BUTTON && gesture.begin(track, x, y, now, session.preferences());
+        }
+
+        @Override
+        public void mouseDragged(double x, double y, int button, long now) {
+            gesture.drag(track, x, y);
+        }
+
+        @Override
+        public void mouseReleased(double x, double y, int button, long now) {
+            settle(gesture.release(track, x, y, now));
+        }
+
+        @Override
+        public boolean keyPressed(int key, int scanCode, int modifiers, long now) {
+            return key == SLIDE_KEY && gesture.beginKey(now);
+        }
+
+        @Override
+        public void keyReleased(int key, int scanCode, int modifiers, long now) {
+            settle(gesture.releaseKey(now));
+        }
+
+        @Override
+        public void cancel(long now) {
+            gesture.cancel(now);
+        }
+
+        private void settle(boolean confirmed) {
+            if (confirmed) {
+                session.confirm();
+            } else {
+                session.cancel();
+            }
+        }
     }
 
     record Track(int x, int y, int width, int height) {
@@ -244,11 +358,18 @@ public final class UiSlideConfirm extends AbstractWidget {
         private final PointerDrag pointer = new PointerDrag();
         private final InterruptibleAnimation returning = new InterruptibleAnimation(Spring.FLUID_MORPH);
         private final InterruptibleAnimation completion = new InterruptibleAnimation(Spring.STAGGER);
+        private final LocalConfig local;
         private double grabOffset;
         private double pointerProgress;
         private boolean keyHeld;
         private long keyStart;
         private boolean completed;
+        private float localReturnFrom;
+        private float localReleaseProgress;
+
+        Gesture() { this(null); }
+
+        Gesture(LocalConfig local) { this.local = local; }
 
         boolean begin(Track track, double x, double y, long now, UiPreferences preferences) {
             if (completed || held() || !track.hasTravel()) return false;
@@ -267,7 +388,7 @@ public final class UiSlideConfirm extends AbstractWidget {
             if (!pointer.active()) return false;
             boolean valid = pointer.release(PRIMARY_BUTTON, x, y) != null;
             if (valid) pointerProgress = position(track, x);
-            return settle(pointerProgress, valid, now);
+            return settle(pointerProgress, valid && (local == null || pointer.offsetX() > 0d), now);
         }
 
         boolean beginKey(long now) {
@@ -290,12 +411,12 @@ public final class UiSlideConfirm extends AbstractWidget {
         }
 
         boolean armed(long now) {
-            return held() && heldProgress(now) == 1d;
+            return held() && heldProgress(now) >= threshold();
         }
 
         float sample(long now, UiPreferences preferences) {
             if (completed) return 1f;
-            return held() ? (float) heldProgress(now) : returning.sample(now, preferences);
+            return held() ? (float) heldProgress(now) : local == null ? returning.sample(now, preferences) : 0f;
         }
 
         float sampleCompletion(long now, UiPreferences preferences) {
@@ -310,6 +431,7 @@ public final class UiSlideConfirm extends AbstractWidget {
             pointer.cancel();
             keyHeld = false;
             completed = false;
+            localReturnFrom = 0f;
             returning.snapTo(0);
             completion.snapTo(0);
         }
@@ -319,7 +441,7 @@ public final class UiSlideConfirm extends AbstractWidget {
         }
 
         private double keyProgress(long now) {
-            return Math.clamp((now - keyStart) / (double) KEY_TRAVEL_MS, 0d, 1d);
+            return Math.clamp((now - keyStart) / (local == null ? KEY_TRAVEL_MS : (double) local.keyTravelMs()), 0d, 1d);
         }
 
         private double position(Track track, double x) {
@@ -333,14 +455,23 @@ public final class UiSlideConfirm extends AbstractWidget {
         private boolean settle(double progress, boolean allowConfirm, long now) {
             pointer.cancel();
             keyHeld = false;
-            if (allowConfirm && progress == 1d) {
+            if (allowConfirm && progress >= threshold()) {
                 completed = true;
-                completion.animateTo(1f, now);
+                if (local == null) completion.animateTo(1f, now);
+                else localReleaseProgress = (float) progress;
                 return true;
             }
-            returning.snapTo((float) progress);
-            returning.animateTo(0f, now);
+            if (local == null) {
+                returning.snapTo((float) progress);
+                returning.animateTo(0f, now);
+            } else {
+                localReturnFrom = (float) progress;
+            }
             return false;
+        }
+
+        private double threshold() {
+            return local == null ? 1d : local.threshold();
         }
     }
 }

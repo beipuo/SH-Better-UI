@@ -30,14 +30,15 @@ class UiScrollableSectionBarTest {
         bar.scrollTo(20);
         var first = bar.buttons().getFirst();
         var second = bar.buttons().get(1);
-        assertTrue(first.getX() < bar.getX());
-        assertTrue(second.getX() + second.getWidth() > bar.getX() + bar.getWidth());
+        int left = bar.viewportLeft(), right = bar.viewportRight();
+        assertTrue(first.getX() < left);
+        assertTrue(second.getX() + second.getWidth() > right);
         var leftClip = bar.buttonRenderClip(first);
         var rightClip = bar.buttonRenderClip(second);
-        assertEquals(bar.getX(), leftClip.x());
-        assertFalse(leftClip.contains(bar.getX() - 0.5, bar.getY() + 4));
-        assertEquals(bar.getX() + bar.getWidth(), rightClip.right());
-        assertFalse(rightClip.contains(bar.getX() + bar.getWidth(), bar.getY() + 4));
+        assertEquals(left, leftClip.x());
+        assertFalse(leftClip.contains(left - 0.5, bar.getY() + 4));
+        assertEquals(right, rightClip.right());
+        assertFalse(rightClip.contains(right, bar.getY() + 4));
         // 纵向装饰留白与内容的横向滚动裁切是两项独立约束。
         assertTrue(leftClip.y() <= bar.getY() - 3);
         assertTrue(rightClip.bottom() >= bar.getY() + bar.getHeight() + 3);
@@ -48,10 +49,10 @@ class UiScrollableSectionBarTest {
         var calls = new AtomicInteger();
         var bar = bar(calls);
         var decoration = bar.buttonRenderClip(bar.buttons().getFirst());
-        assertTrue(decoration.contains(8, 8));
-        assertFalse(bar.mouseClicked(8, 20, 0));
-        assertFalse(bar.mouseClicked(20, 8, 0));
-        assertFalse(bar.mouseReleased(20, 20, 0));
+        assertTrue(decoration.contains(32, 8));
+        assertFalse(bar.mouseClicked(32, 20, 0));
+        assertFalse(bar.mouseClicked(44, 8, 0));
+        assertFalse(bar.mouseReleased(44, 20, 0));
         assertEquals(0, calls.get());
     }
 
@@ -59,11 +60,11 @@ class UiScrollableSectionBarTest {
     void clippedButtonsCannotBeClickedAndClicksCommitOnlyOnRelease() {
         var calls = new AtomicInteger();
         var bar = bar(calls);
-        assertFalse(bar.mouseClicked(120, 20, 0));
+        assertFalse(bar.mouseClicked(170, 20, 0));
         assertEquals(0, calls.get());
-        assertTrue(bar.mouseClicked(20, 20, 0));
+        assertTrue(bar.mouseClicked(44, 20, 0));
         assertEquals(0, calls.get());
-        assertTrue(bar.mouseReleased(20, 20, 0));
+        assertTrue(bar.mouseReleased(44, 20, 0));
         assertEquals(1, calls.get());
         assertEquals(0, bar.selectedIndex());
         assertTrue(bar.buttons().getFirst().isSelected());
@@ -74,9 +75,9 @@ class UiScrollableSectionBarTest {
     void nativeScreenFocusAfterPressPreservesClickAndDragCapture() {
         var calls = new AtomicInteger();
         var bar = bar(calls);
-        assertTrue(bar.mouseClicked(20, 20, 0));
+        assertTrue(bar.mouseClicked(44, 20, 0));
         bar.setFocused(true);
-        assertTrue(bar.mouseReleased(20, 20, 0));
+        assertTrue(bar.mouseReleased(44, 20, 0));
         assertEquals(1, calls.get());
 
         assertTrue(bar.mouseClicked(80, 20, 0));
@@ -199,8 +200,58 @@ class UiScrollableSectionBarTest {
         bar.select(3);
         assertEquals(bar.maxScroll(), bar.scrollOffset());
         bar.setBounds(new Bounds(30, 40, 160, 22));
-        assertEquals(190, bar.buttons().getLast().getX() + bar.buttons().getLast().getWidth());
+        assertEquals(bar.viewportRight(), bar.buttons().getLast().getX() + bar.buttons().getLast().getWidth());
         assertEquals(40, bar.buttons().getLast().getY());
+    }
+
+    @Test
+    void overflowArrowsRevealHiddenTabsWithoutChangingThePage() {
+        var calls = new AtomicInteger();
+        var bar = bar(calls);
+        bar.setSettings(new TabScrollSettings(false, false, false, 32));
+        bar.setFocused(true);
+        assertFalse(bar.mouseClicked(20, 20, 0));
+        for (int index = 1; index < 4; index++) {
+            double oldOffset = bar.scrollOffset();
+            assertTrue(bar.mouseClicked(148, 20, 0));
+            assertEquals(oldOffset, bar.scrollOffset());
+            assertTrue(bar.mouseReleased(148, 20, 0));
+            assertTrue(bar.scrollOffset() > oldOffset);
+            var revealed = bar.buttons().get(index);
+            assertTrue(revealed.getX() >= bar.viewportLeft());
+            assertTrue(revealed.getX() + revealed.getWidth() <= bar.viewportRight());
+        }
+        assertEquals(bar.maxScroll(), bar.scrollOffset());
+        assertFalse(bar.mouseClicked(148, 20, 0));
+        assertTrue(bar.mouseClicked(20, 20, 0));
+        assertTrue(bar.mouseReleased(20, 20, 0));
+        assertTrue(bar.scrollOffset() < bar.maxScroll());
+        assertEquals(0, bar.selectedIndex());
+        assertEquals(0, calls.get());
+        assertTrue(bar.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0));
+        assertEquals(2, bar.selectedIndex());
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void arrowReleaseOutsideOrEscapeCancelsAndFittingTabsReclaimTheGutters() {
+        var calls = new AtomicInteger();
+        var bar = bar(calls);
+        bar.setFocused(true);
+        assertTrue(bar.mouseClicked(148, 20, 0));
+        assertTrue(bar.mouseReleased(148, 36, 0));
+        assertEquals(0, bar.scrollOffset());
+        assertTrue(bar.mouseClicked(148, 20, 0));
+        assertTrue(bar.keyPressed(GLFW.GLFW_KEY_ESCAPE, 0, 0));
+        assertFalse(bar.mouseReleased(148, 20, 0));
+        assertEquals(0, bar.scrollOffset());
+
+        bar.setBounds(new Bounds(10, 10, 332, 22));
+        assertEquals(0, bar.maxScroll());
+        assertTrue(bar.mouseClicked(332, 20, 0));
+        assertTrue(bar.mouseReleased(332, 20, 0));
+        assertEquals(3, bar.selectedIndex());
+        assertEquals(1, calls.get());
     }
 
     private static UiScrollableSectionBar bar(AtomicInteger calls) {
@@ -209,7 +260,7 @@ class UiScrollableSectionBarTest {
                 new UiSectionBar.Section(Component.translatable("gui.stats"), GraphicIcon.MONITOR),
                 new UiSectionBar.Section(Component.translatable("gui.back"), GraphicIcon.BACK),
                 new UiSectionBar.Section(Component.translatable("gui.done"), GraphicIcon.SUCCESS));
-        return new UiScrollableSectionBar(new Bounds(10, 10, 100, 22), UiPreferences.DEFAULT,
+        return new UiScrollableSectionBar(new Bounds(10, 10, 148, 22), UiPreferences.DEFAULT,
                 entries, 0, ignored -> calls.incrementAndGet(), TabScrollSettings.DEFAULT, 80);
     }
 

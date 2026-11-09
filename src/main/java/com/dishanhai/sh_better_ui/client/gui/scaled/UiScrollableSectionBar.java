@@ -22,13 +22,18 @@ import java.util.function.IntConsumer;
  * 山海：可直接注册为单个原生控件的横向滚动标签栏。
  * 内部按钮由本控件绘制、裁切和旁白，不应再次注册到 Screen。
  * Tab 进入标签组，左右、Home、End 选择标签；鼠标在放开时选择，拖动不会误选。
+ * 标签溢出时，两侧箭头可显示相邻标签，当前页保持不变。
  */
 public final class UiScrollableSectionBar extends AbstractWidget {
     private static final int GAP = 4;
+    private static final int ARROW_WIDTH = 20;
+    private static final int ARROW_GUTTER = ARROW_WIDTH + GAP;
     // 液态玻璃原生焦点环外扩 3 单位，再为圆角抗锯齿保留 1 单位。
     private static final int DECORATION_PADDING = 4;
     public static final int DEFAULT_TAB_WIDTH = 104;
     private final List<UiButton> buttons;
+    private final UiButton previous;
+    private final UiButton next;
     private final TabScrollState scrolling = new TabScrollState();
     private final IntConsumer onSelect;
     private final int tabWidth;
@@ -36,6 +41,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     private int selected;
     private int focused;
     private int pressed = -1;
+    private UiButton pressedArrow;
     private boolean captured;
 
     public UiScrollableSectionBar(Bounds area, UiPreferences preferences, List<UiSectionBar.Section> sections,
@@ -72,9 +78,20 @@ public final class UiScrollableSectionBar extends AbstractWidget {
             widgets.add(button);
         }
         buttons = List.copyOf(widgets);
+        previous = arrow(preferences, "previous", GraphicIcon.PREVIOUS, false);
+        next = arrow(preferences, "next", GraphicIcon.NEXT, true);
         selected = focused = selectedIndex;
         setBounds(area);
         select(selectedIndex);
+    }
+
+    private UiButton arrow(UiPreferences preferences, String key, GraphicIcon icon, boolean forward) {
+        var button = new UiButton(0, getY(), ARROW_WIDTH, getHeight(),
+                Component.translatable("sh_better_ui.control.tabs." + key), ignored -> browse(forward),
+                preferences, false, UiStyle.LIQUID_GLASS);
+        button.setSampleBackground(false);
+        button.setIcon(icon);
+        return button;
     }
 
     /** 返回只读按钮列表，用于读取位置、提示和状态；不要再次向 Screen 注册。 */
@@ -104,6 +121,8 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         Objects.requireNonNull(preferences);
         PlatformUiApi.setTooltipDelay(this, preferences.feedback().tooltipDelayMs());
         buttons.forEach(button -> button.setPreferences(preferences));
+        previous.setPreferences(preferences);
+        next.setPreferences(preferences);
     }
 
     public void setSettings(TabScrollSettings settings) {
@@ -119,7 +138,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         setY(area.y());
         setWidth(area.width());
         setHeight(area.height());
-        scrolling.resize(area.width(), (double) buttons.size() * (tabWidth + GAP) - GAP);
+        scrolling.resize(viewportWidth(), contentWidth());
         layoutButtons();
         if (isFocused()) reveal(focused);
         else if (ThemeEffects.profile("tabs", settings).autoReveal()) reveal(selected);
@@ -134,8 +153,34 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     public void reveal(int index) {
         Objects.checkIndex(index, buttons.size());
         double start = (double) index * (tabWidth + GAP);
-        scrolling.reveal(start, start + tabWidth, getWidth());
+        scrolling.reveal(start, start + tabWidth, viewportWidth());
         layoutButtons();
+    }
+
+    private double contentWidth() {
+        return (double) buttons.size() * (tabWidth + GAP) - GAP;
+    }
+
+    private int gutter() {
+        // 极窄的自定义栏优先给标签保留空间，仍可用键盘和已启用的手势浏览。
+        return getWidth() < contentWidth() && getWidth() >= 2 * ARROW_GUTTER + GraphicIcon.PIXELS
+                ? ARROW_GUTTER : 0;
+    }
+
+    int viewportLeft() { return getX() + gutter(); }
+    int viewportRight() { return getX() + getWidth() - gutter(); }
+    private int viewportWidth() { return getWidth() - 2 * gutter(); }
+
+    private void browse(boolean forward) {
+        int stride = tabWidth + GAP;
+        double edge = scrolling.offset() + (forward ? viewportWidth() : 0);
+        // 向右找第一个尾部越界的标签；向左找最近一个起点在视口之前的标签。
+        int index = forward ? (int) Math.floor((edge - tabWidth) / stride) + 1
+                : (int) Math.ceil(edge / stride) - 1;
+        focused = Math.clamp(index, 0, buttons.size() - 1);
+        double start = (double) focused * stride;
+        scrollTo(forward ? start + tabWidth - viewportWidth() : start);
+        syncFocus();
     }
 
     private static void checkArea(Bounds area) {
@@ -147,12 +192,23 @@ public final class UiScrollableSectionBar extends AbstractWidget {
 
     private void layoutButtons() {
         int shift = (int) Math.round(scrolling.offset());
+        int left = viewportLeft();
         for (int index = 0; index < buttons.size(); index++) {
             var button = buttons.get(index);
-            button.setX(getX() + index * (tabWidth + GAP) - shift);
+            button.setX(left + index * (tabWidth + GAP) - shift);
             button.setY(getY());
             button.setHeight(getHeight());
         }
+        layoutArrow(previous, getX(), scrolling.offset() > 0);
+        layoutArrow(next, getX() + getWidth() - ARROW_WIDTH, scrolling.offset() < scrolling.maxOffset());
+    }
+
+    private void layoutArrow(UiButton arrow, int x, boolean canScroll) {
+        arrow.setX(x);
+        arrow.setY(getY());
+        arrow.setHeight(getHeight());
+        arrow.visible = gutter() != 0;
+        arrow.active = canScroll;
     }
 
     private boolean contains(double x, double y) {
@@ -161,7 +217,7 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     }
 
     private int buttonAt(double x, double y) {
-        if (!contains(x, y)) return -1;
+        if (!contains(x, y) || x < viewportLeft() || x >= viewportRight()) return -1;
         for (int index = 0; index < buttons.size(); index++) {
             var button = buttons.get(index);
             if (button.active && button.visible && button.isMouseOver(x, y)) return index;
@@ -169,10 +225,23 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         return -1;
     }
 
+    private UiButton arrowAt(double x, double y) {
+        if (!contains(x, y)) return null;
+        if (previous.isMouseOver(x, y)) return previous;
+        return next.isMouseOver(x, y) ? next : null;
+    }
+
     @Override
     public boolean mouseClicked(double x, double y, int button) {
         if (button != 0 || !contains(x, y)) return false;
         cancelDrag();
+        if (x < viewportLeft() || x >= viewportRight()) {
+            pressedArrow = arrowAt(x, y);
+            if (pressedArrow == null) return false;
+            pressedArrow.setHeld(true);
+            captured = true;
+            return true;
+        }
         captured = true;
         pressed = buttonAt(x, y);
         if (ThemeEffects.profile("tabs", settings).dragEnabled()) scrolling.beginDrag(x, y);
@@ -187,6 +256,10 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     @Override
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (button != 0 || !captured) return false;
+        if (pressedArrow != null) {
+            pressedArrow.setHeld(arrowAt(x, y) == pressedArrow);
+            return true;
+        }
         scrolling.drag(x, y);
         layoutButtons();
         if (pressed >= 0) buttons.get(pressed).setHeld(!scrolling.dragging() && buttonAt(x, y) == pressed);
@@ -196,6 +269,12 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     @Override
     public boolean mouseReleased(double x, double y, int button) {
         if (button != 0 || !captured) return false;
+        if (pressedArrow != null) {
+            var arrow = pressedArrow;
+            cancelDrag();
+            if (arrowAt(x, y) == arrow) arrow.onPress();
+            return true;
+        }
         boolean dragged = scrolling.endDrag(x, y);
         int index = pressed;
         if (index >= 0) buttons.get(index).setHeld(false);
@@ -210,6 +289,8 @@ public final class UiScrollableSectionBar extends AbstractWidget {
     public boolean cancelDrag() {
         boolean result = captured;
         scrolling.cancelDrag();
+        if (pressedArrow != null) pressedArrow.setHeld(false);
+        pressedArrow = null;
         if (buttons != null && pressed >= 0) buttons.get(pressed).setHeld(false);
         captured = false;
         pressed = -1;
@@ -269,10 +350,11 @@ public final class UiScrollableSectionBar extends AbstractWidget {
 
     /** 完整可见的一侧容纳外描边；越过滚动边界的一侧仍严格裁切内容。 */
     Bounds buttonRenderClip(UiButton button) {
-        int left = button.getX() >= getX() ? Math.min(getX(), button.getX() - DECORATION_PADDING) : getX();
+        int viewLeft = viewportLeft(), viewRight = viewportRight();
+        int left = button.getX() >= viewLeft ? Math.min(viewLeft, button.getX() - DECORATION_PADDING) : viewLeft;
         int buttonRight = button.getX() + button.getWidth();
-        int right = buttonRight <= getX() + getWidth()
-                ? Math.max(getX() + getWidth(), buttonRight + DECORATION_PADDING) : getX() + getWidth();
+        int right = buttonRight <= viewRight
+                ? Math.max(viewRight, buttonRight + DECORATION_PADDING) : viewRight;
         return new Bounds(left, getY() - DECORATION_PADDING, right - left,
                 getHeight() + 2 * DECORATION_PADDING);
     }
@@ -283,39 +365,42 @@ public final class UiScrollableSectionBar extends AbstractWidget {
         boolean hover = contains(mouseX, mouseY);
         int tooltipIndex = hover ? buttonAt(mouseX, mouseY) : isFocused() ? focused : -1;
         UiButton tooltipButton = tooltipIndex < 0 ? null : buttons.get(tooltipIndex);
-        boolean tooltipVisible = tooltipButton != null && tooltipButton.getX() < getX() + getWidth()
-                && tooltipButton.getX() + tooltipButton.getWidth() > getX();
+        var hoveredArrow = arrowAt(mouseX, mouseY);
         // 原生提示锚定聚合控件的可见视口，避免部分裁切按钮把提示定位到画面外。
-        var tooltip = tooltipVisible ? tooltipButton.getTooltip() : null;
+        var tooltip = hoveredArrow != null ? hoveredArrow.getTooltip()
+                : tooltipButton != null && intersectsViewport(tooltipButton) ? tooltipButton.getTooltip() : null;
         if (getTooltip() != tooltip) setTooltip(tooltip);
+        boolean hoverTabs = hover && mouseX >= viewportLeft() && mouseX < viewportRight();
         for (UiButton button : buttons) {
-            if (button.getX() + button.getWidth() > getX() && button.getX() < getX() + getWidth()) {
+            if (intersectsViewport(button)) {
                 var clip = buttonRenderClip(button);
                 graphics.enableScissor(clip.x(), clip.y(), clip.right(), clip.bottom());
-                boolean buttonActive = button.active;
-                var buttonTooltip = button.getTooltip();
                 try {
-                    button.active &= active;
-                    button.setTooltip(null);
-                    button.render(graphics, hover ? mouseX : -1, hover ? mouseY : -1, partialTick);
+                    renderButton(button, graphics, hoverTabs ? mouseX : -1, hoverTabs ? mouseY : -1, partialTick);
                 } finally {
-                    button.setTooltip(buttonTooltip);
-                    button.active = buttonActive;
                     graphics.disableScissor();
                 }
             }
         }
-        if (scrolling.maxOffset() > 0) {
-            graphics.enableScissor(getX(), getY(), getX() + getWidth(), getY() + getHeight());
-            try {
-                int track = getWidth();
-                int thumb = Math.max(8, (int) Math.round(track * track / (track + scrolling.maxOffset())));
-                int start = getX() + (int) Math.round((track - thumb) * scrolling.offset() / scrolling.maxOffset());
-                graphics.fill(getX(), getY() + getHeight() - 1, getX() + track, getY() + getHeight(), 0x664A5565);
-                graphics.fill(start, getY() + getHeight() - 1, start + thumb, getY() + getHeight(), LiquidGlassTheme.mutedTextColor());
-            } finally {
-                graphics.disableScissor();
-            }
+        renderButton(previous, graphics, mouseX, mouseY, partialTick);
+        renderButton(next, graphics, mouseX, mouseY, partialTick);
+    }
+
+    private boolean intersectsViewport(UiButton button) {
+        return button.getX() < viewportRight() && button.getX() + button.getWidth() > viewportLeft();
+    }
+
+    private void renderButton(UiButton button, GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (!button.visible) return;
+        boolean buttonActive = button.active;
+        var tooltip = button.getTooltip();
+        try {
+            button.active &= active;
+            button.setTooltip(null);
+            button.render(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            button.setTooltip(tooltip);
+            button.active = buttonActive;
         }
     }
 
