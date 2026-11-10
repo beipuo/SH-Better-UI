@@ -31,11 +31,11 @@ dependencies {
     }
 }
 
-def java17 = JavaLanguageVersion.of(17)
-def compiler17 = javaToolchains.compilerFor { languageVersion = java17 }
+def java21 = JavaLanguageVersion.of(21)
+def compiler21 = javaToolchains.compilerFor { languageVersion = java21 }
 [kernel, contracts].each { sources ->
     tasks.named(sources.compileJavaTaskName, JavaCompile) {
-        javaCompiler = compiler17
+        javaCompiler = compiler21
         options.release = 17
     }
 }
@@ -45,7 +45,7 @@ def kernelTest = tasks.register('kernelTest', Test) {
     description = 'Runs the shared Java 17 UI kernel contract tests.'
     testClassesDirs = contracts.output.classesDirs
     classpath = contracts.runtimeClasspath
-    javaLauncher = javaToolchains.launcherFor { languageVersion = java17 }
+    javaLauncher = javaToolchains.launcherFor { languageVersion = java21 }
     useJUnitPlatform()
 }
 tasks.named('check') {
