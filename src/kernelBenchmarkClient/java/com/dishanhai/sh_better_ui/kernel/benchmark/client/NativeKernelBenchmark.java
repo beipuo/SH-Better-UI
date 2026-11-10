@@ -182,8 +182,7 @@ public final class NativeKernelBenchmark implements UIModule {
                 keys.add(key);
             }
         }
-        int java = engine.platform().info() == ModuleDescriptor.Platform.FORGE_1_20_1 ? 17 : 21;
-        require(Runtime.version().feature() == java, "Unexpected game Java " + Runtime.version());
+        require(Runtime.version().feature() == 21, "Expected game Java 21, got " + Runtime.version());
         require(client.getWindow().getGuiScale() == 2, "Expected GUI Scale 2");
         client.setWindowActive(true);
         Files.writeString(output.resolve("environment.txt"),

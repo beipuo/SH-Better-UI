@@ -28,7 +28,27 @@
 - [x] Phase 8 接上 Loader 模組發現、原生輸入、Screen／會話、GUI 繪製和資源重載。整合包雙端各 94 項 `kernelTest`，Forge 814 項與 NeoForge 816 項一般測試及發行包檢查通過。雙端無選用相依與含 LDLib 的客戶端煙測各通過。
 - [x] Phase 9 建立 Java 17 和原生客戶端基準，雙端各通過 96 項 `kernelTest`，一般測試 Forge 814、NeoForge 816 項。兩端各以同一負載完成優化前後的遊戲採樣。見 [效能報告](docs/performance.md)。
 - [x] Phase 10 交付公共 API 文件、遷移指南和雙端第三方範例。各端重新通過 `kernelTest`、建置和獨立客戶端煙測。Forge 載入開發 JAR，NeoForge 載入正式 JAR。見 [驗證紀錄](docs/kernel-migration-plan.md#phase-10-驗證2026-11-10)。
-- [ ] 待驗 Forge 專用服越過 EULA 門檻、實體 F3+T、Forge 正式 JAR 的生產客戶端啟動及長時間資源壓力。見 [遷移計畫](docs/kernel-migration-plan.md)。
+
+### 待完成｜原始規格與現行交付的差距
+
+- [ ] **動態能力**。已實作會話、Screen、樹和元件分層解析、變更訂閱、安全點發布，以及提供者變更後重新解析必要依賴。Java 21 無遊戲宿主已驗證元件隔離、撤銷通知、作用域失效及跨模組替代／最後供給撤銷；撤權與原生會話／Screen 接線仍待驗收。見 [能力系統](docs/capability-system.md)。
+- [ ] **執行期指標**。已接入預設停用、可取樣的 measure／layout／animation／event／render／cache 統計及可選執行緒分配讀取，提供快照、分位數和重置。Java 21 核心基準及聚合器邊界已驗證；原生各類別實際負載與效能門檻未通過完整複測。見 [效能報告](docs/performance.md)。
+- [ ] **設定與資源**。已接入兩端共用持久化、版本遷移、背景原子保存／失敗重試，以及資源包資料準備、驗證和安全點提交。無遊戲呼叫已驗證重新讀取／遷移、磁碟失敗重試、未知鍵保留、超限拒絕、資料驗證失敗不發布、過期批次及句柄關閉。既有模態、GPU 目標、圖集和紋理已逐項接入中央租約並通過雙端編譯；實體資源釋放與原生重載仍未驗收。見 [設定](docs/configuration.md)、[架構](docs/kernel-architecture.md)、[權限與租約](docs/permissions.md)。
+- [ ] **系統讀屏**。已完成 Windows UIA、macOS NSAccessibility、Linux AT-SPI2 的靜態橋接評估及雙 Loader／OS 未驗證矩陣；無真實提供者時仍保留 `SYSTEM_SCREEN_READER` 不可用。未以空實作宣告能力；各作業系統的遊戲內驗收未執行。見 [能力系統](docs/capability-system.md)。
+
+### 複核｜正式交付前
+
+- [ ] **雙端建置與 ABI**。對同一待交付快照分別執行 `kernelTest test build`、Python 抽取契約和範例建置。驗證 Forge `reobfJar`、雙端封裝邊界、Java 17 核心，以及 1.0.4 和 Phase 8 預編譯消費方的連結。留存日誌、測試數和正式 JAR SHA-256。
+- [ ] **文件與範例**。重新編譯公共 API 和遷移指南中的完整 Java 範例，確認第三方模組按文件可分別在兩端建置，並從獨立 JAR 載入。見 [公共 API](docs/public-api.md)、[第三方範例](examples/kernel-extension/README.md)。
+- [ ] **Forge 1.20.1 正式客戶端**。用已核對雜湊的正式 SRG 程式庫與範例 JAR，在隔離的 Java 17 生產實例驗證雙 JAR 發現、服務查詢、設定覆寫、原生鍵盤／滑鼠操作、頁面關閉和退出。Phase 10 的 Forge 煙測使用開發 JAR，NeoForge 已使用正式 JAR 通過對應煙測。
+- [ ] **Forge 1.20.1 專用服**。用已接受 EULA 的隔離實例驗證啟動至 `Done`，檢查客戶端內核、渲染和媒體執行緒均未啟動，再驗證正常停止。NeoForge 開發專用服已有 `Done` 紀錄。
+- [ ] **雙端實體 F3+T**。在活動 UI 中實際按下 F3+T，核對資源世代、主題、字型、貼圖、量測及快取更新。驗證重載後仍能操作、正常返回原版畫面，以及停止時完成清理。既有煙測已呼叫遊戲重載入口。
+- [ ] **雙端長時間資源壓測**。交錯重載資源包、切換主題、開關 Screen、進出世界和啟停動畫。記錄作用域、租約、訂閱、佇列、快取、heap 和可量測的 GPU 資源；核對每輪清理後回到穩定基線，並保留退出標記。
+- [ ] **效能複測與歸檔**。固定環境、樣本數和工作量，複測 Forge 原生指標 P99、NeoForge 核心單訂閱 P95／P99，以及雙端反覆掛載的額外分配。長期留存基線識別、原始 CSV、JFR 和統計報告。見 [效能報告](docs/performance.md)。
+
+本輪統一使用 `C:/GRAALVM/graalvm-jdk-21.0.6+8.1`；核心／Forge 輸出仍保持 Java 17 classfile。兩端一般測試 814／816 項、封裝檢查、獨立範例建置及每端六段完整 Java 文件範例編譯通過。兩端核心測試各 95／96 項通過，唯一失敗是既有用例硬性要求 Java 17 執行期，未修改測試或跳過。Python 抽取契約缺相鄰 `gt_shanhai` 工程，7 項中 3 通過、4 錯誤；舊版 JAR 與歷史 ABI 快照缺失，不能完成預編譯連結複核。使用者已要求不啟動遊戲，因此客戶端／專用服、獨立 JAR 遊戲發現、實體 F3+T、長時間 GPU 壓測和原生效能驗收均不再執行，也不勾選。正式成品 SHA-256、日誌及失敗證據見 [遷移計畫](docs/kernel-migration-plan.md#java-21-待交付快照複核2026-11-10)。
+
+複核結果分別記錄 Forge 和 NeoForge 的測試、建置與遊戲證據。主題、媒體、KubeJS、JEI 和消費畫面的功能驗收仍依各區塊追蹤。見 [遷移計畫](docs/kernel-migration-plan.md)。
 
 ## 染色玻璃配色（2026-11-09）
 
