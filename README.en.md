@@ -2,18 +2,22 @@
 
 [简体中文](README.md) · [繁體中文](README.zh-TW.md) · **English**
 
+[Documentation index](docs/README.md)
+
 Maintained by 山海 / dishanhai.
 
 SH-Better-UI is a Minecraft client UI library for Forge 1.20.1 and NeoForge 1.21.1. Both platforms share glass materials, blur, animations, search widgets, and item and fluid pickers. Each platform ships its own standalone mod JAR.
+
+[English API reference](docs/API_REFERENCE.en.md) · [Unified UI Kernel](docs/API_REFERENCE.en.md#get-the-kernel-and-look-up-services) · [Third-party example project](examples/kernel-extension/README.md)
 
 ## Requirements
 
 | Platform | Loader | Java | Kotlin runtime |
 | --- | --- | --- | --- |
-| Minecraft 1.20.1 | Forge 47.4.16 or later | 21 | KotlinForForge 4.12.0, with Kotlin 2.2.21 |
+| Minecraft 1.20.1 | Forge 47.4.16 or later | 17 for the game, 21 for the general test suite | KotlinForForge 4.12.0, with Kotlin 2.2.21 |
 | Minecraft 1.21.1 | NeoForge 21.1.251 for development | 21 | KotlinForForge NeoForge 5.10.0 or a compatible 5.x release |
 
-Install KotlinForForge separately. JEI is optional. Forge integrations under `compat.ldlib` use LDLib `1.0.33.b`. NeoForge integrations under `compat.ldlib2` use LDLib2 `2.2.44`. Both native Screen builds can use the shared dialog, anchored bubble, action sheet, and pull-to-refresh APIs. See the [integration examples](SCREEN_INTERACTIONS.md).
+Install KotlinForForge separately. JEI is optional. Forge integrations under `compat.ldlib` use LDLib `1.0.33.b`. NeoForge integrations under `compat.ldlib2` use LDLib2 `2.2.44`. Both native Screen builds can use the shared dialog, anchored bubble, action sheet, and pull-to-refresh APIs. See the [integration examples](docs/SCREEN_INTERACTIONS.md).
 
 ## Build and install
 
@@ -34,18 +38,18 @@ $env:TMP = 'C:\jtmp'
 
 | Use | Artifact |
 | --- | --- |
-| Forge runtime | `build/libs/sh_better_ui-1.0.3.jar` |
-| Forge development | `build/libs/sh_better_ui-1.0.3-dev.jar` |
-| NeoForge runtime and development | `neoforge/build/libs/sh_better_ui-neoforge-1.21.1-1.0.3.jar` |
+| Forge runtime | `build/libs/sh_better_ui-<version>.jar` |
+| Forge development | `build/libs/sh_better_ui-<version>-dev.jar` |
+| NeoForge runtime and development | `neoforge/build/libs/sh_better_ui-neoforge-1.21.1-<version>.jar` |
 
-Forge's raw JAR and `build/reobfJar/output.jar` are build intermediates. Install the platform's runtime JAR alongside the consuming mod.
+Use the `mod_version` from the corresponding `gradle.properties`. Forge's raw JAR and `build/reobfJar/output.jar` are build intermediates. Install the platform's runtime JAR alongside the consuming mod.
 
 ## Integrate with a mod
 
-In Forge, compile against the development JAR. `publishToMavenLocal` publishes `com.dishanhai:sh_better_ui:1.0.3:dev` and sources. You can also reference the local build directly.
+In Forge, compile against the development JAR. `publishToMavenLocal` publishes `com.dishanhai:sh_better_ui:<version>:dev` and sources. You can also reference the local build directly. This example uses the version configured in the current source tree.
 
 ```groovy
-implementation files('../SH-Better-UI/build/libs/sh_better_ui-1.0.3-dev.jar')
+compileOnly files('../SH-Better-UI/build/libs/sh_better_ui-1.0.6-dev.jar')
 ```
 
 Declare the external `sh_better_ui` dependency in `mods.toml`. Use `[1.0.3,2.0.0)` when calling `GlassTheme.SMOKE`. The NeoForge JAR uses Mojang names for both development and runtime. Keep the library classes and shaders in the standalone JAR.
@@ -109,4 +113,4 @@ The comparison shows the earlier glass on the left and the updated glass on the 
 
 ![Neutral glass render comparison](docs/previews/2026-11-07-neutral-glass-comparison.png)
 
-See the [neutral glass maintenance notes](docs/neutral-glass-maintenance.md), [NeoForge verification notes](neoforge/VERIFICATION.md), and [in-game checklist](TODO.md).
+See the [neutral glass maintenance notes](docs/neutral-glass-maintenance.md), [NeoForge verification notes](docs/neoforge-verification.md), and [in-game checklist](TODO.md).

@@ -87,6 +87,6 @@ global.openShuiWaves = () => {
 
 ## 实现与版本依据
 
-[Forge 插件](src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java) 与 [NeoForge 插件](neoforge/src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java) 分别处理对应版本的绑定和重载时序。[脚本门面](src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/client/KubeJsUiApi.java) 负责每代脚本的注册与资源。
+[Forge 插件](../src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java) 与 [NeoForge 插件](../neoforge/src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java) 分别处理对应版本的绑定和重载时序。[脚本门面](../src/main/java/com/dishanhai/sh_better_ui/compat/kubejs/client/KubeJsUiApi.java) 负责每代脚本的注册与资源。
 
 编译接口以官方发行包及源码为准。[KubeJS 6 发行包](https://maven.latvian.dev/releases/dev/latvian/mods/kubejs-forge/2001.6.5-build.26/) · [KubeJS 7 发行包](https://maven.latvian.dev/releases/dev/latvian/mods/kubejs-neoforge/2101.7.2-build.381/)

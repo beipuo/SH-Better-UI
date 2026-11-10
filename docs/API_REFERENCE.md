@@ -1,20 +1,22 @@
 <!-- 作者：山海／dishanhai -->
 # SH-Better-UI API 总览
 
+**简体中文** · [English](API_REFERENCE.en.md)
+
 这份索引以当前源码为准，基线为 `86e383f`，两端构建版本均为 `1.0.3`。带 **工作区新增** 标记的入口来自尚未提交的实现。接入现成 jar 时，以该 jar 包含的接口为准。
 
 ## 统一调用入口
 
-需要发现模块与能力、调度作用域任务或挂载 Screen 时，可以从 `UnifiedUI.get()` 取得中央引擎。参阅 [公共 API](docs/public-api.md) 和 [迁移指南](docs/migration-guide.md)。
+需要发现模块与能力、调度作用域任务或挂载 Screen 时，可以从 `UnifiedUI.get()` 取得中央引擎。参阅 [公共 API](public-api.md) 和 [迁移指南](migration-guide.md)。
 
 **工作区新增（1.0.4）**：`GlassTheme.AURORA`、`AMETHYST`、`ROSE`、`EMBER` 是完整的染色玻璃配色，消费端可直接使用或通过受保护复制构造保留全部结构色。`GlassColors.tintedDark(int accent, int surface)` 接受 RGB／ARGB 的颜色值，生成深色底板、按钮、行、边框及文字色；交易成功和失败语义色保持一致。四套配色沿用 `clearGlass` 参数组，局部覆写仍通过 `ThemeEffects` 作用域提供，不读取消费方配置。
 
-**工作区新增** `com.dishanhai.sh_better_ui.client.api.ShBetterUiApi` 是 Forge 与 NeoForge 的共同入口。每个分组是无状态单例，工厂返回现有组件类型。界面持有自己的控件、动画和手势状态，并按下文对应的绘制、输入与释放约定调用。[统一入口源码](src/main/java/com/dishanhai/sh_better_ui/client/api/ShBetterUiApi.java)
+**工作区新增** `com.dishanhai.sh_better_ui.client.api.ShBetterUiApi` 是 Forge 与 NeoForge 的共同入口。每个分组是无状态单例，工厂返回现有组件类型。界面持有自己的控件、动画和手势状态，并按下文对应的绘制、输入与释放约定调用。[统一入口源码](../src/main/java/com/dishanhai/sh_better_ui/client/api/ShBetterUiApi.java)
 
 | 分组 | 主要入口 |
 | --- | --- |
 | `settings()` | `preferences()`、`current()`、`backdrop()`、`save()`、`saveBackdrop()` 与内置面板工厂 |
-| `themes()` | 动态令牌、主题注册、过渡、环境规则、作用域和资源包。[接入指南与示例](docs/DYNAMIC_THEMES.md) |
+| `themes()` | 动态令牌、主题注册、过渡、环境规则、作用域和资源包。[接入指南与示例](DYNAMIC_THEMES.md) |
 | `backgrounds()` | 全页背景目录、参数注册及页面实例。与控制面板的自定义效果预览共用。 |
 | `controls()` | 按钮、滑块、开关、分区、详情、状态、骨架与进度 |
 | `interactions()` | 覆层、全屏预览、确认、抽屉、刷新、滑动确认、鼠标快照、指针捕获、视口、历史和轻提示 |
@@ -25,8 +27,8 @@
 | `graphics()` | 图标、文字、图文布局、网络风格界面、电光轮廓与反重力粒子 |
 | `layout()` | [视觉对齐](VISUAL_ALIGNMENT.md)，包含光学度量、动态约束、像素吸附和调试叠层 |
 | `motion()` | 时钟、弹簧、可打断动画、切页、胶囊过渡、`screenCrossfade()` 旧页淡出、点阵、图案波面、形状波面与帧时间轴 |
-| `audio()` | `systemOutput()` 显式开启 Windows 输出回环，`analyzer()` 独立分析 PCM。`motion().musicMotion()` 映射单个频段，`motion().musicRhythm()` 提供多层律动帧，可配合 `MusicHud` 绘制像素面板，或配合 `MusicIsland` 绘制可展开的音乐胶囊。见 [音乐律动](docs/music-rhythm.md) |
-| `lyrics()` | `localFeed()`、`saltPlayer()`、`renderer()`、`draw()`、`settings()` 与 `position()`。支持逐字同步、译文与多行排版。见 [同步歌词](docs/lyrics.md) |
+| `audio()` | `systemOutput()` 显式开启 Windows 输出回环，`analyzer()` 独立分析 PCM。`motion().musicMotion()` 映射单个频段，`motion().musicRhythm()` 提供多层律动帧，可配合 `MusicHud` 绘制像素面板，或配合 `MusicIsland` 绘制可展开的音乐胶囊。见 [音乐律动](music-rhythm.md) |
+| `lyrics()` | `localFeed()`、`saltPlayer()`、`renderer()`、`draw()`、`settings()` 与 `position()`。支持逐字同步、译文与多行排版。见 [同步歌词](lyrics.md) |
 | `platform()` | 当前加载器的 `fluid()`、`renderTooltip()` 与可选 `ldlib()` 桥接 |
 
 ### 共享主题与背景（1.0.5）
@@ -54,7 +56,42 @@ var request = ingredients.singleRequest(pickerTitle, ingredients.automaticCatalo
 ingredients.openPicker(this, request, this::currentPickerButton, this::applySelection);
 ```
 
-枚举、请求、布局和配置继续使用已有类型。`platform().ldlib()` 下的方法按各端安装的 LDLib 版本调用，常用分组在 JEI 和 LDLib 缺席时也可加载。[共享分组源码](src/main/java/com/dishanhai/sh_better_ui/client/api/) · [NeoForge 平台分组](neoforge/src/main/java/com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java)
+枚举、请求、布局和配置继续使用已有类型。`platform().ldlib()` 下的方法按各端安装的 LDLib 版本调用，常用分组在 JEI 和 LDLib 缺席时也可加载。[共享分组源码](../src/main/java/com/dishanhai/sh_better_ui/client/api/) · [NeoForge 平台分组](../neoforge/src/main/java/com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java)
+
+### Unified UI Kernel 效果编辑器（1.0.6）
+
+宿主可用 `UnifiedUI.get().require(UIApis.APPEARANCE)` 打开共用表单，商店和 SHBUI 设置面板均使用这个入口。
+
+```java
+var editor = UnifiedUI.get().require(UIApis.APPEARANCE);
+var screen = editor.edit(parent, scopedSettings, group, inheritedGroup, localGroup, onApply);
+minecraft.setScreen(screen);
+```
+
+- `scopedSettings` 提供宿主的外观与无障碍偏好。继承分组与本地分组在进入时复制，表单只在确认时交回本地分组，保存由调用方负责。
+- 表单直接读取已注册的效果记录，布尔值、枚举、数字、文字、嵌套记录与内置色板会生成对应控件。自定义背景只需登记一次。控件名称可用 `sh_better_ui.theme_editor.field.<字段>` 本地化。
+- 每个字段可清除本地值并继承上层设置。背景效果使用同一注册项即时预览。
+
+同一服务的 `backgrounds()` 返回原生背景注册表，`groups()`、`template(group)` 和 `presets(group)` 提供配置入口。预设 ID 属于效果分组，保存仍使用原有的局部覆写 JSON。
+
+```java
+var appearance = UnifiedUI.get().require(UIApis.APPEARANCE);
+var rainbow = appearance.applyPreset(scopedSettings, "dotMatrix", "rainbow", inheritedGroup, localGroup);
+var draft = appearance.draft(scopedSettings, "dotMatrix", inheritedGroup, rainbow);
+appearance.preview(draft, () -> backgroundLayer.draw("dotMatrix", graphics, font, bounds,
+        mouse, x, y, nowMs, preferences));
+```
+
+每个宿主持有并关闭自己的 `appearance.backgrounds().layer(optionalLogo)`。直接使用 typed profile 时，点阵提供 `DotMatrixProfile.Gradient` 常量，电光提供 `ElectricLogoProfile.Preset`，图案波面提供 `PatternWavesProfile.Preset`。这些值也用于共享表单。开发者材质图库的「UUK 效果预览」可试调同一分组，确认只更新当前图库草稿。目录元数据和独立原生预览 ID 通过 `UIApis.MATERIAL_CATALOG` 查询。
+
+| 效果 | 原生设置组 | 专用图库与设置页的关系 |
+| --- | --- | --- |
+| 点阵 | `dotMatrix` | 共用单色、彩虹、反向彩虹和极光。专用场景用更密的网格演示调色与指针波。 |
+| 电光轮廓 | `electricLogo` | 共用紫电、雷暴、霓虹和静态描边。专用场景的换图使用 `ElectricLogo.setTexture`。 |
+| 图案波面 | `patternWaves` | 共用 `PatternWavesProfile.Preset` 的六个样式。专用场景另有暂停控件。 |
+| 代码雨和 ASCII | `codeRain`、`ascii` | 共用 `CodeRainProfile` 的两个默认配置。专用场景通过 `CodeRainEffect` 演示点击波。 |
+| 形状波面和渐进揭示 | `shapeWaves`、`reveal` | 独立目录预览使用原生背景和同一个配置表单。 |
+| 反重力、光束和激光流 | `antigravity`、`lightRays`、`laserFlow` | UUK 效果预览使用消费端原生配置。激光专用场景用 `LaserFlowSurface` 演示裁切。 |
 
 ## 全库客户端主题
 
@@ -100,11 +137,11 @@ ShBetterUiApi.screen(Component.translatable("your_mod.ui.title"))
 
 `PatternWaves` 位于 `client.gui.scaled`。扩展工厂接收上下文，可通过 `api.extension(otherId, OtherType.class)` 组合其他扩展。注册 ID 必须包含 `namespace:path`，重复 ID 会报错，关闭注册句柄后可重新登记。每个上下文按需创建并缓存自己的扩展，已解析实例保留到上下文关闭。工厂失败后可重试，循环依赖会报告解析路径。
 
-扩展实现 `AutoCloseable` 时，上下文会自动管理其释放。其他资源可用 `context.manage(resource)` 登记，也可以用 `context.onClose(task)` 登记释放函数。同一个资源按对象身份去重，并按依赖创建的相反顺序释放。手动创建上下文时使用 `try-with-resources`。上下文由客户端线程持有，工厂执行期间不占用注册表锁。[注册表](src/main/java/com/dishanhai/sh_better_ui/client/api/UiExtensionRegistry.java) · [协作上下文](src/main/java/com/dishanhai/sh_better_ui/client/api/UiApiContext.java)
+扩展实现 `AutoCloseable` 时，上下文会自动管理其释放。其他资源可用 `context.manage(resource)` 登记，也可以用 `context.onClose(task)` 登记释放函数。同一个资源按对象身份去重，并按依赖创建的相反顺序释放。手动创建上下文时使用 `try-with-resources`。上下文由客户端线程持有，工厂执行期间不占用注册表锁。[注册表](../src/main/java/com/dishanhai/sh_better_ui/client/api/UiExtensionRegistry.java) · [协作上下文](../src/main/java/com/dishanhai/sh_better_ui/client/api/UiApiContext.java)
 
 `screen()` 构建器提供默认返回顶栏、原生控件输入与旁白、父页及有效焦点恢复。`onInit` 在打开和重布局时注册控件，`onRender` 在控件之前绘制，`onForeground` 在控件之后绘制，两者共享一个 `UiFrame`。`frame.viewport()` 是扣除返回栏后的内容区域。离开页面会调用 `onRemoved` 并关闭上下文，返回同一页面时重新初始化。跨页面保留的业务草稿由调用方持有。`dispose()` 可永久释放单页，`disposeAll()` 用于一并释放存在父子关系的页面。
 
-通过 `ShBetterUiApi.client().run(task)` 把异步回执交给客户端线程。`screen().open()` 在执行时捕获当前父页，显式 `parent(null)` 可返回游戏，`backButton(false)` 由调用方安排返回控件。父页重建入口控件时，传入 `returnFocus(() -> currentButton)`，关闭后会取得新的有效焦点。自绘背景与控件均裁切到内容区域，点击与滚轮使用同一边界。[界面构建器](src/main/java/com/dishanhai/sh_better_ui/client/api/UiScreenBuilder.java) · [帧快照](src/main/java/com/dishanhai/sh_better_ui/client/api/UiFrame.java)
+通过 `ShBetterUiApi.client().run(task)` 把异步回执交给客户端线程。`screen().open()` 在执行时捕获当前父页，显式 `parent(null)` 可返回游戏，`backButton(false)` 由调用方安排返回控件。父页重建入口控件时，传入 `returnFocus(() -> currentButton)`，关闭后会取得新的有效焦点。自绘背景与控件均裁切到内容区域，点击与滚轮使用同一边界。[界面构建器](../src/main/java/com/dishanhai/sh_better_ui/client/api/UiScreenBuilder.java) · [帧快照](../src/main/java/com/dishanhai/sh_better_ui/client/api/UiFrame.java)
 
 Java 调用方可用 `onError((screen, failure) -> ...)` 接收构建器生命周期及便捷按钮回调的运行时异常，页面会先永久关闭并释放资源。省略时沿用 Java 异常传播。KubeJS 构建器默认启用日志报告和页面释放。
 
@@ -119,9 +156,9 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | Forge 1.20.1 | Java 21，Forge 47.4.16 起，外部 KotlinForForge `[4.12.0,5.0.0)` | 开发用 `sh_better_ui-1.0.3-dev.jar`，游戏用 `sh_better_ui-1.0.3.jar` |
 | NeoForge 1.21.1 | Java 21，NeoForge 21.1.251 起，外部 KotlinForForge `[5.10.0,6)` | 开发和游戏均使用 `sh_better_ui-neoforge-1.21.1-1.0.3.jar` |
 
-- 接入模组声明依赖 `sh_better_ui`，游戏中单独安装对应平台的 UI 库。NeoForge 复用根目录的 Java、Kotlin 与资源，并替换加载器事件、渲染和素材适配所需的类。[接入与构建](README.md) · [Forge 元数据](src/main/resources/META-INF/mods.toml) · [NeoForge 元数据](neoforge/src/main/resources/META-INF/neoforge.mods.toml) · [NeoForge 源集](neoforge/build.gradle)
-- 共用控件坐标使用 GUI 逻辑单位。布局可复用 `GraphicDisplayLayout.Bounds`，读取当前高对比、减少动效与控件模糊偏好可用 `UiPreferences.configured()`。事件和绘制中的动画时间统一使用 `PageTransition.nowMs()`。[坐标与布局](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicDisplayLayout.java) · [界面偏好](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiPreferences.java)
-- `ClientUiSettings.current()` 与 `GlassBackdropSettings.current()` 读取客户端配置快照。`ShBetterUi.saveClientUiSettings(settings)`、`saveGlassBackdrop(settings)` 返回保存结果，对应 `config/sh_better_ui-client.toml` 的 `[ui]` 与 `[glassBackdrop]` 配置。[设置类型](src/main/java/com/dishanhai/sh_better_ui/config/) · [Forge 保存实现](src/main/java/com/dishanhai/sh_better_ui/ShBetterUi.java) · [NeoForge 保存实现](neoforge/src/main/java/com/dishanhai/sh_better_ui/ShBetterUi.java)
+- 接入模组声明依赖 `sh_better_ui`，游戏中单独安装对应平台的 UI 库。NeoForge 复用根目录的 Java、Kotlin 与资源，并替换加载器事件、渲染和素材适配所需的类。[接入与构建](../README.md) · [Forge 元数据](../src/main/resources/META-INF/mods.toml) · [NeoForge 元数据](../neoforge/src/main/resources/META-INF/neoforge.mods.toml) · [NeoForge 源集](../neoforge/build.gradle)
+- 共用控件坐标使用 GUI 逻辑单位。布局可复用 `GraphicDisplayLayout.Bounds`，读取当前高对比、减少动效与控件模糊偏好可用 `UiPreferences.configured()`。事件和绘制中的动画时间统一使用 `PageTransition.nowMs()`。[坐标与布局](../src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicDisplayLayout.java) · [界面偏好](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiPreferences.java)
+- `ClientUiSettings.current()` 与 `GlassBackdropSettings.current()` 读取客户端配置快照。`ShBetterUi.saveClientUiSettings(settings)`、`saveGlassBackdrop(settings)` 返回保存结果，对应 `config/sh_better_ui-client.toml` 的 `[ui]` 与 `[glassBackdrop]` 配置。[设置类型](../src/main/java/com/dishanhai/sh_better_ui/config/) · [Forge 保存实现](../src/main/java/com/dishanhai/sh_better_ui/ShBetterUi.java) · [NeoForge 保存实现](../neoforge/src/main/java/com/dishanhai/sh_better_ui/ShBetterUi.java)
 
 ## 主题、玻璃与模糊
 
@@ -136,7 +173,7 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | 玻璃 tooltip | `GlassTooltip.render(event[, smoke])` 接收当前平台的 `RenderTooltipEvent.Pre`。宿主决定哪些界面使用玻璃提示，方法成功绘制后取消原事件。 |
 | 渐进模糊、贴图与径向渐变 | `VisualReveal.blurRegion()/drawTexture()/drawRadialGradient()` 与 `RevealProfile` 控制模糊半径和清晰区间。已画区域可用 `GlassBlur.revealRegion()`，贴图可独立绘制渐进清晰效果。 |
 
-[玻璃 Java 接口](src/main/java/com/dishanhai/sh_better_ui/client/glass/) · [玻璃 Kotlin 接口](src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/) · [模糊源码](src/main/java/com/dishanhai/sh_better_ui/client/blur/) · [可选效果与渐进模糊](docs/effects.md)
+[玻璃 Java 接口](../src/main/java/com/dishanhai/sh_better_ui/client/glass/) · [玻璃 Kotlin 接口](../src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/) · [模糊源码](../src/main/java/com/dishanhai/sh_better_ui/client/blur/) · [可选效果与渐进模糊](effects.md)
 
 ## 原生控件与界面交互
 
@@ -156,7 +193,7 @@ KubeJS 客户端脚本使用自动绑定的 `SHUI`，提供同一套分组和构
 | 任务状态与轻提示 | `ButtonFeedback.tryBegin()/pending()/resolve()` 用请求 ID 匹配回执，`status()/visual()` 提供状态和视觉反馈。`UiDynamicStatus` 用 `Supplier<Snapshot>` 读取当前状态和实际进度。`UiToast.show()/taskCompleted()` 提交无需焦点的 Screen 或 HUD 提示。 |
 | 等待与进度 | `UiSkeleton.card()/draw()` 按实际区域绘制占位。`UiLoading.spinner()/edgeSpinner()/topBar()/progressBar()` 支持等待提示或真实进度。**工作区新增** `UiSkeleton.draw(..., opacity)` 淡出重载。 |
 
-[控件与交互源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [覆层、抽屉与刷新接入示例](SCREEN_INTERACTIONS.md) · [按钮和注意力反馈](docs/attention-feedback.md)
+[控件与交互源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [覆层、抽屉与刷新接入示例](SCREEN_INTERACTIONS.md) · [按钮和注意力反馈](attention-feedback.md)
 
 ### 局部模态扩展
 
@@ -181,7 +218,7 @@ private void addExpandable(int x, int y, Component actionLabel, Runnable onConfi
 - `open()` 接收自定义 `Content` 工厂，内容通过 `Session.confirm()`、`Session.cancel()` 结束交互，并可在 `Content.close()` 释放资源。内容可通过 `animatesContents()` 使用滑动条的交叉淡化。过渡期间按目标坐标绘制，管理器缩放并裁切到当前轮廓。已注册的底层控件保留原有数据，屏幕级路由负责点击、拖动、滚轮和放开。 `UiScreen` 与图库已屏蔽被覆盖的 hover。独立 `Screen` 的自绘组件用 `blocksPointer()` 过滤 hover 坐标，用 `filterPointer()` 过滤轮询快照。
 - Forge 与 NeoForge 的 Screen 事件处理关闭、窗口失焦、重布局及源按钮移除。若宿主在同一个 Screen 内切换页面或滚动重建布局，可在切换前调用 `local.interrupt()` 立即中断。
 
-游戏内可从「主控面板 → 开发者面板 → 控件图库 → 局部模态扩展」查看双向展开、区域冲突、覆盖外计数和可复制代码。 [交互实现](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiLocalModal.java) · [画廊示例](src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/LocalModalGalleryPreview.java)
+游戏内可从「主控面板 → 开发者面板 → 控件图库 → 局部模态扩展」查看双向展开、区域冲突、覆盖外计数和可复制代码。 [交互实现](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiLocalModal.java) · [画廊示例](../src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/LocalModalGalleryPreview.java)
 
 ### 底线分页与编号步骤器
 
@@ -268,7 +305,7 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | 单选、多选与写回 | `IngredientPicker.Request.single()/multiple()` 配置来源与上限，`IngredientPicker.open(parent, request, restoreFocus, onConfirm)` 在确认并回到父界面后返回不可修改列表。空列表可用于清除，取消放弃草稿。自绘页面可用 `IngredientSelection` 管理草稿。`IngredientValues.item()/fluid()` 包装原生 stack，`Ingredient.copy(type)` 取副本并保留数量及 NBT／数据组件。运行期以 `Ingredient.key()` 区分变体，持久化保存 stack 数据。 |
 | 直接查 JEI | `JeiIntegration.isAvailable()/revision()/ingredients()` 用于获取当前世界的素材快照，`recipes(ingredient, direction, limit)` 和 `open()` 用于查阅取得方式或用途。无 JEI 时，查询返回空列表，打开返回 `false`。 |
 
-[搜索源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/search/) · [素材筛选](src/main/java/com/dishanhai/sh_better_ui/client/gui/filter/IngredientFilter.java) · [选取器与素材来源](src/main/java/com/dishanhai/sh_better_ui/client/gui/selection/) · [JEI 接口](src/main/java/com/dishanhai/sh_better_ui/client/jei/JeiIntegration.java)
+[搜索源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/search/) · [素材筛选](../src/main/java/com/dishanhai/sh_better_ui/client/gui/filter/IngredientFilter.java) · [选取器与素材来源](../src/main/java/com/dishanhai/sh_better_ui/client/gui/selection/) · [JEI 接口](../src/main/java/com/dishanhai/sh_better_ui/client/jei/JeiIntegration.java)
 
 ## 图标、文字与布局
 
@@ -277,10 +314,10 @@ var registration = ShBetterUiApi.client().registerDeveloperPreview(new PreviewSp
 | 图标与动效 | `GraphicIcon` 提供内置 16×16 图标，也可传自定义贴图。`withMotion(GraphicIconMotion)` 配置动作，`withShader(GraphicIconShader)` 配置着色器。自定义着色器由宿主在客户端注册，使用 `POSITION_TEX`。 |
 | 图文列表、网格与分页 | `GraphicDisplayLayout.arrange()/pageCapacity()` 计算 `Bounds`、单元格和翻页区域。`GraphicDisplay.drawRows()/drawRowTooltip()/drawPageNumber()/pageButton()` 负责绘制或创建控件，宿主提供 `Entry` 及页数据。 |
 | 自绘排版与文字效果 | `UiLayout.align()/row()/column()` 计算边界，`UiText.drawLeft()/drawCentered()/drawRight()` 在区域内绘制对齐文字。`UiFormattedText.draw()/colorize()` 处理格式化文字，`graphics().colorizeLyricText()` 为 FCS 提供逐字进度色；`UiTextEffects.apply()/parse()` 套用逐字效果，`registerPalette()/registerEffect()` 扩展效果。 |
-| 二维弹性挤压 | `UiApiContext.collisionLayout(viewport)` 创建页面布局。`world().add(shape)` 链式配置响应、分组、优先级、锚点和尺寸，`bind(body, widget)` 复用原生控件。绘制前调用 `update(frame)`。自绘控件使用绑定回调提供的 `Bounds` 和 `hitTest()`。见 [二维 UI 弹性挤压](docs/UI_COLLISION.md)。 |
+| 二维弹性挤压 | `UiApiContext.collisionLayout(viewport)` 创建页面布局。`world().add(shape)` 链式配置响应、分组、优先级、锚点和尺寸，`bind(body, widget)` 复用原生控件。绘制前调用 `update(frame)`。自绘控件使用绑定回调提供的 `Bounds` 和 `hitTest()`。见 [二维 UI 弹性挤压](UI_COLLISION.md)。 |
 | 网络风格界面 | `NetworkScreen` 根据 `Tab` 与 `Field / Edit / Status / Toggle` 等行模型建立整页控件。已有页面可独立使用 `NetworkLayout.arrange()`、`NetworkTheme` 与 `NetworkToggle`。表单内容、权限判断和提交仍由宿主提供。 |
 
-[图形和布局源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/) · [格式化文字源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/text/) · [网络风格控件](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java)
+[图形和布局源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/display/) · [格式化文字源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/text/) · [网络风格控件](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java)
 
 ## 动画与画面过渡
 
@@ -313,7 +350,7 @@ transition.renderCrossfade(previous, graphics, partialTick, preferences, progres
 transition.clearHandoff();
 ```
 
-进度从 `0` 到 `1`，允许中途反向。`fadeEnd` 取值 `(0, 1]`。省略时，有父页的胶囊过渡会在正文出现前完成淡出，从游戏进入时背景随完整进度淡入。快照不可用时，库会预绘旧页并给 `drawBackground` 设置当前帧的透明度，自定义着色器需遵循该透明度。减少动效时直接绘制目标背景。KubeJS 可通过 `SHUI.motion().screenCrossfade(...)` 调用同一入口。[淡出实现](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiScreenReturn.java)
+进度从 `0` 到 `1`，允许中途反向。`fadeEnd` 取值 `(0, 1]`。省略时，有父页的胶囊过渡会在正文出现前完成淡出，从游戏进入时背景随完整进度淡入。快照不可用时，库会预绘旧页并给 `drawBackground` 设置当前帧的透明度，自定义着色器需遵循该透明度。减少动效时直接绘制目标背景。KubeJS 可通过 `SHUI.motion().screenCrossfade(...)` 调用同一入口。[淡出实现](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiScreenReturn.java)
 
 点阵跟随波纹通过 `profile.withPointerWave(new DotMatrixProfile.PointerWave(radius, lift))` 单独开启，半径和抬升高度均为 GUI 单位。每帧把同一坐标系下的指针坐标传给 `UiDotMatrix.render()`。需要独立采集时，可复用 `UiMouseState.read()` 的 `x()/y()`。指针不可用或被模态层遮挡时传入 `Double.NaN`。减少动效时保留环形高亮，半径设为零时关闭。
 
@@ -341,11 +378,11 @@ void drawDots(GuiGraphics graphics, Bounds area, UiPreferences preferences, bool
 
 `PointerLens(radius, bulgeStrength, twistDegrees, glowRadius, glowArgb, glowIntensity, holdToZoom)` 配置透镜半径、径向强度、旋转角度、柔光半径、ARGB 柔光颜色与强度，以及左键长按是否加深效果。半径使用 GUI 单位，鼓胀强度为 −1 到 1，负值向内收缩。透镜半径为零时关闭整项效果，柔光半径为零时关闭柔光。正常移出传入区域外的帧以淡出，失焦、关闭交互或被模态层遮挡时传入 `null`。减少动效时仅保留静态柔光。绘制放在前景控件之前，指针追踪不消耗鼠标事件。
 
-[动效源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [可打断动画](docs/interruptible-animation.md) · [电光轮廓源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/display/ElectricLogo.java)
+[动效源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/) · [可打断动画](interruptible-animation.md) · [电光轮廓源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/display/ElectricLogo.java)
 
 ### 反重力粒子
 
-`ShBetterUiApi.graphics().antigravity()` 或 `antigravity(profile)` 为每个区域创建独立粒子场。不可变 `AntigravityProfile` 配置形状、色板、吸附、波浪、旋转、蓄力与入场；`ShBetterUiApi.interactions().pointerTracker()` 单独提供 pose 变换后的区域指针与按压／释放／取消状态。开发者控件图库提供四种形状、三种配色、暂停与重播。[完整接入说明](docs/antigravity-api.md)。
+`ShBetterUiApi.graphics().antigravity()` 或 `antigravity(profile)` 为每个区域创建独立粒子场。不可变 `AntigravityProfile` 配置形状、色板、吸附、波浪、旋转、蓄力与入场；`ShBetterUiApi.interactions().pointerTracker()` 单独提供 pose 变换后的区域指针与按压／释放／取消状态。开发者控件图库提供四种形状、三种配色、暂停与重播。[完整接入说明](antigravity-api.md)。
 
 ### 光束背景
 
@@ -368,7 +405,7 @@ rays.draw(graphics, ShBetterUiApi.graphics().bounds(16, 16, 240, 120));
 - 需要共享快照或屏蔽被模态层遮住的区域时，调用 `draw(graphics, bounds, mouse, preferences)`。传 `null` 屏蔽指针。`ShBetterUiApi.interactions().pointerTracker()` 可独立用于区域按压和取消检测。
 - `suspend()` 清除指针和点击波并保留入场进度，`restart()` 重播。减少动效时显示静态光束。高对比或着色器不可用时 `draw()` 返回 `false`，宿主可绘制底板。
 
-[光束源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRays.java) · [配置源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRaysProfile.java) · [效果参考](https://reactbits.dev/backgrounds/light-rays)
+[光束源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRays.java) · [配置源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LightRaysProfile.java) · [效果参考](https://reactbits.dev/backgrounds/light-rays)
 
 ### 激光流背景
 
@@ -424,7 +461,7 @@ rain.draw(graphics, font, previewBounds, mouseSnapshot, preferences);
 - 自定义 `CodeRainEffect` 可用 lambda 修改单元字形索引、亮度、颜色、发光强度或点宽。`Cell` 坐标是区域内的单元中心，实例会重复使用。需要指针的扩展可覆盖 `usesPointer()`，有状态的扩展应由一个区域独占。
 - 高对比模式跳过装饰层并返回 `false`。减少动效冻结字符场、立即完成入场并清除互动。界面离开时调用 `suspend()`，重播时调用 `restart()`。
 
-[代码雨源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRain.java) · [扩展接口](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffect.java) · [内置扩展](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffects.java)
+[代码雨源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRain.java) · [扩展接口](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffect.java) · [内置扩展](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffects.java)
 
 ### 图案波面与鼠标快照
 
@@ -444,13 +481,13 @@ UiMouseState mouse = ShBetterUiApi.interactions().mouseState();
 waves.draw(graphics, new Bounds(16, 16, 240, 120), mouse, ShBetterUiApi.settings().preferences());
 ```
 
-类型位于 `client.gui.scaled`，`Preset` 和 `Fade` 是 `PatternWavesProfile` 的嵌套枚举，`Bounds` 来自 `client.gui.display.GraphicDisplayLayout`。预设有 `SILK`、`OCEAN`、`POND`、`LINES`、`TERMINAL`、`MESH`。Builder 可覆盖图案、波形、间距、尺寸、深度、光向、亮斑、对比度、速度、尺度、方向、淡出和入场。`GLYPH` 接受最多 64 个 Unicode 码点，按疏到密传入，使用客户端的等宽字形。 [波面配置](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/PatternWavesProfile.java)
+类型位于 `client.gui.scaled`，`Preset` 和 `Fade` 是 `PatternWavesProfile` 的嵌套枚举，`Bounds` 来自 `client.gui.display.GraphicDisplayLayout`。预设有 `SILK`、`OCEAN`、`POND`、`LINES`、`TERMINAL`、`MESH`。Builder 可覆盖图案、波形、间距、尺寸、深度、光向、亮斑、对比度、速度、尺度、方向、淡出和入场。`GLYPH` 接受最多 64 个 Unicode 码点，按疏到密传入，使用客户端的等宽字形。 [波面配置](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/PatternWavesProfile.java)
 
-`setPaused(true)` 或将速度设为 `0` 会冻结背景波动，鼠标涟漪继续播放。`restart()` 重新播放入场。减少动效时使用静态波面，高对比模式只绘制所配置的底色。省略快照参数的 `draw(graphics, bounds)` 会自动读取鼠标和当前偏好。 [波面入口](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/PatternWaves.java)
+`setPaused(true)` 或将速度设为 `0` 会冻结背景波动，鼠标涟漪继续播放。`restart()` 重新播放入场。减少动效时使用静态波面，高对比模式只绘制所配置的底色。省略快照参数的 `draw(graphics, bounds)` 会自动读取鼠标和当前偏好。 [波面入口](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/PatternWaves.java)
 
-`UiMouseState.read()` 可独立使用。`x()/y()` 是带小数的 `Screen` 坐标，`windowX()/windowY()` 是 GLFW 窗口坐标。`isDown(button)`、`buttons()`、`pressedSince(previous)` 与 `releasedSince(previous)` 使用 GLFW 按键编号或对应位掩码，`available()` 判断是否可用于 GUI 命中。两次采样之间的短按可从 `Screen.mouseClicked` 转发给 `waves.mousePressed(x, y, button)`，随后照常分派事件。模态层或自定义裁切挡住背景时，可向 `draw()` 传入 `null` 关闭该区域的鼠标效果。 [鼠标快照](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiMouseState.java)
+`UiMouseState.read()` 可独立使用。`x()/y()` 是带小数的 `Screen` 坐标，`windowX()/windowY()` 是 GLFW 窗口坐标。`isDown(button)`、`buttons()`、`pressedSince(previous)` 与 `releasedSince(previous)` 使用 GLFW 按键编号或对应位掩码，`available()` 判断是否可用于 GUI 命中。两次采样之间的短按可从 `Screen.mouseClicked` 转发给 `waves.mousePressed(x, y, button)`，随后照常分派事件。模态层或自定义裁切挡住背景时，可向 `draw()` 传入 `null` 关闭该区域的鼠标效果。 [鼠标快照](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiMouseState.java)
 
-游戏内可从开发者面板进入控件图库，在「电光轮廓」后翻到「图案波纹」。在预览区移动指针或点击可触发尾迹和涟漪。预设按钮循环切换六种样式，暂停只冻结背景波动。预览区获得焦点后，可按回车或空格从中心触发涟漪。 [图库预览](src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/PatternWavesGalleryPreview.java)
+游戏内可从开发者面板进入控件图库，在「电光轮廓」后翻到「图案波纹」。在预览区移动指针或点击可触发尾迹和涟漪。预设按钮循环切换六种样式，暂停只冻结背景波动。预览区获得焦点后，可按回车或空格从中心触发涟漪。 [图库预览](../src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/PatternWavesGalleryPreview.java)
 
 ### 形状波面
 
@@ -473,7 +510,7 @@ shapes.draw(graphics, new Bounds(16, 16, 240, 120), ShBetterUiApi.interactions()
         ShBetterUiApi.settings().preferences());
 ```
 
-`text` 接受宿主已本地化的文本，`fontFamily` 使用 Java 客户端字体族名，默认 `SansSerif`。长文字会按区域宽度缩放。`replayIntro()` 重新播放从中心向外的入场，`restart()` 同时重置波面和涟漪。`setPaused(true)` 冻结波面，鼠标反馈仍可使用。`draw()` 返回 `false` 时只绘制所配置的底色，或区域为空。 [形状波面入口](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWaves.java) · [配置](src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWavesProfile.java)
+`text` 接受宿主已本地化的文本，`fontFamily` 使用 Java 客户端字体族名，默认 `SansSerif`。长文字会按区域宽度缩放。`replayIntro()` 重新播放从中心向外的入场，`restart()` 同时重置波面和涟漪。`setPaused(true)` 冻结波面，鼠标反馈仍可使用。`draw()` 返回 `false` 时只绘制所配置的底色，或区域为空。 [形状波面入口](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWaves.java) · [配置](../src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ShapeWavesProfile.java)
 
 ## 平台适配与库内入口
 
@@ -491,8 +528,18 @@ shapes.draw(graphics, new Bounds(16, 16, 240, 120), ShBetterUiApi.interactions()
 | NeoForge LDLib2 | 使用 `LdLib2UiBridge`，编译版本 `2.2.44`。`overlay()` 绑定宿主，`anchor()` 把 `UIElement` 转为覆层锚点，`createPullRefreshHandle()` 生成把手。把手加入布局，同时将 `focusTarget()` 注册到宿主 Screen 的焦点顺序。 |
 | 原生类型差异 | `IngredientValues.fluid()` 分别接收 `net.minecraftforge.fluids.FluidStack` 与 `net.neoforged.neoforge.fluids.FluidStack`。`GlassTooltip.render()` 也分别接收对应加载器的事件类型。两端使用相同的 `JeiIntegration` 签名，JEI 与 LDLib 均按需要安装。 |
 
-[Forge LDLib 源码](src/main/kotlin/com/dishanhai/sh_better_ui/compat/ldlib/) · [NeoForge LDLib2 源码](neoforge/src/main/java/com/dishanhai/sh_better_ui/compat/ldlib2/LdLib2UiBridge.java) · [双端覆层与刷新示例](SCREEN_INTERACTIONS.md)
+[Forge LDLib 源码](../src/main/kotlin/com/dishanhai/sh_better_ui/compat/ldlib/) · [NeoForge LDLib2 源码](../neoforge/src/main/java/com/dishanhai/sh_better_ui/compat/ldlib2/LdLib2UiBridge.java) · [双端覆层与刷新示例](SCREEN_INTERACTIONS.md)
 
-`ControlPanelScreen` 是库自带的设置页，在游戏世界中默认按 F8 打开。`DeveloperPanelScreen` 和图库提供控件与材质演示。`UiClient`、`JeiPluginBridge`、`JeiPlatformTooltip`、`IconShaderRenderer`、`CapsuleRenderer`、`VisualRevealRenderer` 属于库内事件、插件或渲染接线，接入方通过上表的控件和材质入口调用。[主控与演示源码](src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/) · [客户端事件](src/main/java/com/dishanhai/sh_better_ui/client/UiClient.java)
+`ControlPanelScreen` 是库自带的设置页，在游戏世界中默认按 F8 打开。`DeveloperPanelScreen` 和图库提供控件与材质演示。`UiClient`、`JeiPluginBridge`、`JeiPlatformTooltip`、`IconShaderRenderer`、`CapsuleRenderer`、`VisualRevealRenderer` 属于库内事件、插件或渲染接线，接入方通过上表的控件和材质入口调用。[主控与演示源码](../src/main/java/com/dishanhai/sh_better_ui/client/gui/panel/) · [客户端事件](../src/main/java/com/dishanhai/sh_better_ui/client/UiClient.java)
 
-本索引按源码核对入口。GUI 缩放、键盘与焦点、资源重载、GPU 着色器及第三方模组叠层的客户端验收记录见 [TODO](TODO.md) 与 [NeoForge 验证记录](neoforge/VERIFICATION.md)。
+本索引按源码核对入口。GUI 缩放、键盘与焦点、资源重载、GPU 着色器及第三方模组叠层的客户端验收记录见 [TODO](../TODO.md) 与 [NeoForge 验证记录](neoforge-verification.md)。
+
+## UI Intelligence & Correctness（1.0.6）
+
+`UnifiedUI.get().correctness()`／`UIApis.CORRECTNESS` 沿用同一 Kernel，提供 `UIElement` 宣告、有界布局与运动预测、局部可读性修复、版本快照、结构化验证／回滚及 JSON。原生绘制成功后才发布命中 receipt；预测、模型与真实像素分栏。
+
+接入及限制见 [使用指南](intelligence.md)、[架构审计](intelligence-audit.md)、[双端验证](intelligence-verification.md) 与 [CPU 基准](intelligence-performance.md)。可编译示例见 `CorrectnessExamples`。Inspector 通过 `UIApis.RENDER.openInspector(context, scope)` 显示带帧号的冻结快照。
+
+## Spatial UI
+
+`SpatialUI.KEY` 通过 Unified UI Kernel 提供作用域场景、节点高度、SDF 阴影、动态灯光、玻璃材质、动画和几何命中。用 `RenderService.Context.spatial(scene)` 在已挂载的屏幕或 HUD 绘制。详见 [SpatialUI API](spatial/SpatialAPI.md) 与 [架构与兼容性](spatial/Architecture.md)。

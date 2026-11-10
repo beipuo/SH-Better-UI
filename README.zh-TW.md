@@ -294,4 +294,6 @@ $env:TMP = 'C:\jtmp'
 
 兩平台共用的 shader 將 `WaveOrigin` 宣告為 GLSL `vec2`，對齊 Minecraft 的 `float/count=2` 上傳。資源測試檢查各平台的實際構建輸出。
 
-NeoForge 版本提供原生 `Screen` API 與可選的 `compat.ldlib2.LdLib2UiBridge`。使用橋接時安裝 LDLib2 `2.2.44`。Forge 1.20.1 的 `compat.ldlib` 套件隨 Forge 產物發布。對話框、氣泡提示、動作面板與下拉刷新的接入範例見 [畫面互動 API](SCREEN_INTERACTIONS.md)。測試與待驗項目見 `neoforge/VERIFICATION.md` 與 `TODO.md`。
+NeoForge 版本提供原生 `Screen` API 與可選的 `compat.ldlib2.LdLib2UiBridge`。使用橋接時安裝 LDLib2 `2.2.44`。Forge 1.20.1 的 `compat.ldlib` 套件隨 Forge 產物發布。對話框、氣泡提示、動作面板與下拉刷新的接入範例見 [畫面互動 API](docs/SCREEN_INTERACTIONS.md)。測試與待驗項目見 `docs/neoforge-verification.md` 與 `TODO.md`。
+
+[文件索引](docs/README.md)

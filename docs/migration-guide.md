@@ -80,4 +80,4 @@ global.openShuiDone = () => {
 }
 ```
 
-透過 `SHUI.registerExtension` 建立的工廠及以 `SHUI.screen` 打開的頁面由腳本週期清理。直接建立的 `SHUI.context()` 由腳本負責關閉。使用完整內核範例時，採對應 Loader 的獨立依賴及資源描述檔。 [KubeJS 接入](../KUBEJS.md) · [第三方範例](../examples/kernel-extension/README.md) · [平台相容性](platform-compatibility.md)
+透過 `SHUI.registerExtension` 建立的工廠及以 `SHUI.screen` 打開的頁面由腳本週期清理。直接建立的 `SHUI.context()` 由腳本負責關閉。使用完整內核範例時，採對應 Loader 的獨立依賴及資源描述檔。 [KubeJS 接入](KUBEJS.md) · [第三方範例](../examples/kernel-extension/README.md) · [平台相容性](platform-compatibility.md)

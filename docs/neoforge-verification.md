@@ -39,7 +39,7 @@ $env:TMP = 'C:\jtmp'
 - 未啟動 Minecraft 客戶端驗收玻璃外觀、OpenGL shader、F3+T、關閉／重開、GUI scale、tooltip 或第三方 shader 相容性。單元測試不等同視覺與 GPU 證據。
 - Nexus 專用伺服器整合由消費專案分開記錄；本庫入口隔離單元測試只證明 client／LDLib 不會因共同入口而載入。
 - NeoForge 不包含 Forge 1.20.1 專用 LDLib adapter；原生 Screen 公開 API 保持。
-- 根目錄 `CODE_REVIEW-20261107.md`／`TODO.md` 的既有渲染與動效待辦仍由原專案維護。WaveOrigin 僅修正 NeoForge 打包資源；其餘問題未擴修，不能以本次編譯／測試宣稱全部修復。
+- `docs/CODE_REVIEW-20261107.md`／`TODO.md` 的既有渲染與動效待辦仍由原專案維護。WaveOrigin 僅修正 NeoForge 打包資源；其餘問題未擴修，不能以本次編譯／測試宣稱全部修復。
 - 初次平台接入驗證時未部署、未改動既有整合包，尚未提交或推送 Git。
 
 ## 共用動畫與玻璃維護後的驗證
@@ -47,4 +47,4 @@ $env:TMP = 'C:\jtmp'
 - 2026-11-07 後續加入可打斷動畫與中性玻璃維護，共用來源與平台模糊接口一併回歸。
 - NeoForge `test build --offline --no-daemon --console=plain` 成功，137 項 JUnit；Forge 同一命令成功，135 項 JUnit；均為 0 failures/errors。
 - NeoForge 正式包 SHA-256：`015EE3D6CCBF3E9BCD14B90DA8C1A2AD219CB7B2F0FCBA26A3CA5A607C599BFE`。初次接入的 109 項／舊 hash 僅作歷史證據。
-- 共用玻璃 shader 已完成離屏 GPU 預覽；字體、完整介面、平台事件與遊戲效果仍待 Minecraft 驗收。詳見 [玻璃維護紀錄](../docs/neutral-glass-maintenance.md) 與 [TODO](../TODO.md)。
+- 共用玻璃 shader 已完成離屏 GPU 預覽；字體、完整介面、平台事件與遊戲效果仍待 Minecraft 驗收。詳見 [玻璃維護紀錄](neutral-glass-maintenance.md) 與 [TODO](../TODO.md)。

@@ -1,7 +1,7 @@
 <!-- Author: dishanhai -->
 # SH-Better-UI 代碼複核（2026-11-07）
 
-範圍：現有主程式、shader、可選 LDLib 接口、測試與構建契約；新增效果另行驗證。下列記錄複核當時的問題與基線，後續修正另外標示。沒有進行 Minecraft 實機驗收；中性玻璃的後續離屏 GPU 證據見 [維護紀錄](docs/neutral-glass-maintenance.md)。
+範圍：現有主程式、shader、可選 LDLib 接口、測試與構建契約；新增效果另行驗證。下列記錄複核當時的問題與基線，後續修正另外標示。沒有進行 Minecraft 實機驗收；中性玻璃的後續離屏 GPU 證據見 [維護紀錄](neutral-glass-maintenance.md)。
 
 ## [P2] 點擊波原點的 uniform 類型與上傳接口不匹配
 

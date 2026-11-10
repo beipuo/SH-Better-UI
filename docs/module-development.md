@@ -67,7 +67,7 @@ public final class DemoModule implements UIModule {
 3. `start(context)` 使用 `context.engine()`。此時可查詢自己的服務與已啟動的依賴。定義 `ConfigKey` 和 `StateKey` 也在這個階段。要留待操作時使用的 context 可存入模組實例，向外提供窄介面，避免轉交整個授權視圖。`UnifiedUI.get()` 要等引擎公開後才可用。
 4. `stop(context)` 開始時模組作用域已失效。以先前保存的參考清理外部資源，清空引用。可在建立資源時 `context.scope().track(resource)`，交由作用域釋放。`register` 失敗會撤銷該次登記並釋放作用域。不要把已失效的 scope 傳給下一次開啟的頁面。
 
-服務 ID 在整個登記表中唯一，登記時同時驗證實例型別和契約。重複服務預設 `REJECT`。`KEEP_EXISTING` 只接受契約相符的競爭，並回傳 `SKIPPED`。`REPLACE_IF_ALLOWED` 或 `SELECT_BY_PRIORITY` 還需替換授權、相符的可見性與可替換的原服務。優先級策略亦要求新服務可替換。登記結束時凍結，停止後由宿主移除。
+服務 ID 在整個登記表中唯一，登記時同時驗證實例型別和契約。重複服務預設 `REJECT`。`KEEP_EXISTING` 只接受契約相符的競爭，並回傳 `SKIPPED`。`REPLACE_IF_ALLOWED` 或 `SELECT_BY_PRIORITY` 還需替換授權、相符的可見性與可替換的原服務。優先級策略亦要求新服務可替換。登記結束時凍結。查詢時依仲裁次序選擇已啟動的提供者，模組也可在自己的 `start()` 中查詢本模組的登記。替換者初始化失敗或停止時，宿主撤銷其登記，仍存活的前任可恢復為 `ACTIVE`。跨提供者持有的服務需在各自生命週期內使用，切換後可重新解析同一個鍵。
 
 ## 依賴與降級
 

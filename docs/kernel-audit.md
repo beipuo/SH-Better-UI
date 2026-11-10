@@ -31,13 +31,13 @@ Forge 1.20.1 和 NeoForge 1.21.1 的目標 JDK 分別為 17 和 21。以 JDK 21 
 | 動畫 | `MotionApi`、`Spring`、`SpringTable`、`InterruptibleAnimation`、`UiTimeline`、`PageTransition`、膠囊／換頁及後景過渡。每個宿主持有軌道，支援優先級、保速重定向與單次完成。 | 復用時間採樣、插值、彈簧與終止語義。需為同一組件屬性引入可取消的獨占租約及活動軌道集合。 |
 | 佈局 | `UiLayout`、`GraphicDisplayLayout`、`NetworkLayout` 計算固定、列欄與分頁。[AlignmentLayout](../src/main/java/com/dishanhai/sh_better_ui/client/gui/layout/AlignmentLayout.java) 有相對約束、依賴順序、髒節點、像素吸附、呈現與命中幾何和重算計數。 | 復用幾何與增量解算。需補中立樹的 measure／arrange、容器規則和統一的失效傳遞。 |
 | 輸入與焦點 | `InteractionApi`、`UiPointerTracker`、`UiPointerCapture`、`UiOverlayHost`、`UiLocalModal`，以及原生 Screen／Widget 的焦點順序和旁白。兩端 `UiClient` 在 `ScreenEvent.*.Pre` 轉發，既有層依順序決定是否取消原版處理。 | 保留原生鍵盤、拖曳與釋放消化規則。新 UI 樹需捕獲／目標／冒泡路徑、焦點／模態權威、作用域和可選阻斷原版的授權。 |
-| 碰撞 | 工作樹的 [CollisionWorld](../src/main/java/com/dishanhai/sh_better_ui/client/gui/collision/CollisionWorld.java) 按組髒標記求解，迭代受限，`UiCollisionLayout` 將呈現矩形寫入原生 Widget 並提供反向綁定序的自繪命中。 | 復用投影、降級和四通道動畫。原生控件交疊仍由宿主的順序處理。需獨立於擠壓求解的命中／遮擋策略及空間索引。 |
+| 碰撞 | 工作樹的 [CollisionWorld](../src/kernel/java/com/dishanhai/sh_better_ui/client/gui/collision/CollisionWorld.java) 按組髒標記求解，迭代受限，`UiCollisionLayout` 將呈現矩形寫入原生 Widget 並提供反向綁定序的自繪命中。 | 復用投影、降級和四通道動畫。原生控件交疊仍由宿主的順序處理。需獨立於擠壓求解的命中／遮擋策略及空間索引。 |
 | 主題與設定 | `SettingsApi`、`MaterialsApi`、`ClientUiSettings`、`ThemeSettings`、`UiTheme` 和 `ThemeEffects` 支援深淺／自訂、分組 JSON、逐幀草稿預覽。兩端載入和保存同名 TOML。審計期間工作樹新增 `ThemeRegistry`、`ThemeResolver`、`ThemeScope`、型別 token 與 style 綁定，`theme.context` 已有情境快照和規則解析。 | 復用現有驗證、色板及偏好。對進行中的主題模組，保留其定義註冊、token 依賴與樣式作用域。內核補通用配置 schema、交易、生命週期和資源包提交，待主題基線可建置後適配。 |
 | 繪製與資源 | `GraphicsApi`、`BlurApi`、`GaussBlur`、`UiFrameHandoff`、`AlignmentAssets`、圖示與 SDF／字形快取。共用 [UiClientRendering](../src/main/java/com/dishanhai/sh_better_ui/client/UiClientRendering.java) 組合局部模態、浮層、Toast，雙端各自註冊著色器、重載和 Screen Post。 | 保留既有 blur 和清晰前景順序。需中立命令、pass／target 所有權、重載世代、分階段釋放及快取失效。 |
 | 無障礙 | `UiPreferences` 含減少動效、高對比等偏好。原生按鈕、搜尋、模態和選取器提供可見焦點、按鍵和旁白。 | 復用偏好與原生能力。需中立語義角色、樹上的鍵盤導覽和平台能力狀態。 |
 | 狀態、事件及診斷 | 目前使用 Loader 事件、控件回呼、`UiRequest`、音樂快照及各自的狀態模型。已有佈局重算、資產命中計數及部分繪製診斷。 | 保留業務操作的伺服器回執邊界。缺少內核的型別事件、狀態與設定交易、命令、權限、租約和共通取樣指標。 |
 
-完整舊介面以 [API_REFERENCE.md](../API_REFERENCE.md)、[SCREEN_INTERACTIONS.md](../SCREEN_INTERACTIONS.md)、[KUBEJS.md](../KUBEJS.md) 與實際類簽章為準。
+完整舊介面以 [API_REFERENCE.md](API_REFERENCE.md)、[SCREEN_INTERACTIONS.md](SCREEN_INTERACTIONS.md)、[KUBEJS.md](KUBEJS.md) 與實際類簽章為準。
 
 ## 依賴和重複路徑
 
