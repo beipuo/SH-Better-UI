@@ -11,8 +11,6 @@ import java.util.function.Supplier;
 
 final class DynamicCapabilities {
     private record Offer(ScopeLifecycle.Scope scope, CapabilityDescriptor descriptor, Handle handle) {}
-    private record Watch(ScopeLifecycle.Scope scope, CapabilityRequest request,
-                         Consumer<CapabilityChange> listener, Handle handle) {}
     private record Publication(CapabilityIndex modules, List<Offer> offers, long generation) {}
 
     private final ScopeLifecycle scopes;
@@ -85,8 +83,12 @@ final class DynamicCapabilities {
                 access.requireIssuer().assertOwner();
                 var destination = access.read(scope);
                 var handle = new Handle(destination, access);
-                watches.add(new Watch(destination, Objects.requireNonNull(request),
-                        Objects.requireNonNull(listener), handle));
+                Objects.requireNonNull(request);
+                Objects.requireNonNull(listener);
+                var snapshot = published;
+                var baseline = index(new Publication(modules.get(), snapshot.offers(), snapshot.generation()), destination)
+                        .resolve(request);
+                watches.add(new Watch(destination, request, listener, handle, baseline));
                 return handle;
             }
         };
@@ -95,21 +97,22 @@ final class DynamicCapabilities {
     boolean commit() {
         scopes.root().assertOwner();
         offers.removeIf(offer -> !offer.handle().isActive());
-        watches.removeIf(watch -> !watch.handle().isActive());
+        watches.removeIf(watch -> !watch.handle.isActive());
         var before = published;
         var base = modules.get();
         if (before.modules() == base && before.offers().equals(offers)) return false;
         var next = new Publication(base, List.copyOf(offers), before.generation() + 1);
         published = next;
         for (var watch : List.copyOf(watches)) {
-            if (!watch.handle().isActive()) continue;
-            var previous = index(before, watch.scope()).resolve(watch.request());
-            var current = index(next, watch.scope()).resolve(watch.request());
+            if (!watch.handle.isActive()) continue;
+            var previous = watch.previous;
+            var current = index(next, watch.scope).resolve(watch.request);
+            watch.previous = current;
             if (previous.equals(current)) continue;
             try {
-                watch.listener().accept(new CapabilityChange(next.generation(), previous, current));
+                watch.listener.accept(new CapabilityChange(next.generation(), previous, current));
             } catch (RuntimeException | LinkageError | AssertionError failure) {
-                failures.accept("Capability observer at " + watch.scope().id(), failure);
+                failures.accept("Capability observer at " + watch.scope.id(), failure);
             }
         }
         return true;
@@ -117,7 +120,7 @@ final class DynamicCapabilities {
 
     void remove(List<ScopeLifecycle.Scope> closing) {
         offers.removeIf(offer -> closing.contains(offer.scope()));
-        watches.removeIf(watch -> closing.contains(watch.scope()));
+        watches.removeIf(watch -> closing.contains(watch.scope));
     }
 
     CapabilityIndex excluding(java.util.Set<UiId> removed) {
@@ -126,7 +129,8 @@ final class DynamicCapabilities {
             if (!removed.contains(descriptor.provider())) visible.add(descriptor);
         }
         for (var offer : published.offers()) {
-            if (offer.scope().kind() == ScopeKind.MODULE && offer.handle().isActive()
+            // A callback may revoke a handle, but that change belongs to the next publication.
+            if (offer.scope().kind() == ScopeKind.MODULE
                     && !removed.contains(offer.descriptor().provider())) visible.add(offer.descriptor());
         }
         return new CapabilityIndex(visible);
@@ -140,6 +144,23 @@ final class DynamicCapabilities {
             }
         }
         return new CapabilityIndex(visible);
+    }
+
+    private static final class Watch {
+        private final ScopeLifecycle.Scope scope;
+        private final CapabilityRequest request;
+        private final Consumer<CapabilityChange> listener;
+        private final Handle handle;
+        private CapabilityResolution previous;
+
+        private Watch(ScopeLifecycle.Scope scope, CapabilityRequest request, Consumer<CapabilityChange> listener,
+                      Handle handle, CapabilityResolution previous) {
+            this.scope = scope;
+            this.request = request;
+            this.listener = listener;
+            this.handle = handle;
+            this.previous = previous;
+        }
     }
 
     private static final class Handle implements Subscription {

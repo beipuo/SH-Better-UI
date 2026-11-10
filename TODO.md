@@ -38,6 +38,7 @@
 
 ### 複核｜正式交付前
 
+- [ ] **核心測試執行期約定**。PR #1 補修已確認兩端預設 Java 21 的 `kernelTest` 各為 105／106 通過，唯一失敗仍為 `UnifiedUIContractTest.contractTestsRunOnJava17WithoutGameOrKotlinClasses` 的執行期版本斷言。另以僅調整 `kernelTest.javaLauncher` 的本機 init script 在 Java 17 執行，兩端各 106／106 通過；未修改專案工具鏈或跳過測試。正式交付前仍須釐清預設執行期與此測試的約定，不能將相容性補驗視為預設 build 已通過。
 - [ ] **雙端建置與 ABI**。對同一待交付快照分別執行 `kernelTest test build`、Python 抽取契約和範例建置。驗證 Forge `reobfJar`、雙端封裝邊界、Java 17 核心，以及 1.0.4 和 Phase 8 預編譯消費方的連結。留存日誌、測試數和正式 JAR SHA-256。
 - [ ] **文件與範例**。重新編譯公共 API 和遷移指南中的完整 Java 範例，確認第三方模組按文件可分別在兩端建置，並從獨立 JAR 載入。見 [公共 API](docs/public-api.md)、[第三方範例](examples/kernel-extension/README.md)。
 - [ ] **Forge 1.20.1 正式客戶端**。用已核對雜湊的正式 SRG 程式庫與範例 JAR，在隔離的 Java 17 生產實例驗證雙 JAR 發現、服務查詢、設定覆寫、原生鍵盤／滑鼠操作、頁面關閉和退出。Phase 10 的 Forge 煙測使用開發 JAR，NeoForge 已使用正式 JAR 通過對應煙測。
