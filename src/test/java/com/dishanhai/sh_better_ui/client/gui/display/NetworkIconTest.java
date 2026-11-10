@@ -181,6 +181,37 @@ class NetworkIconTest {
         assertIconTextures(List.of(GraphicIcon.DARK_MODE, GraphicIcon.LIGHT_MODE, GraphicIcon.CUSTOM_THEME));
     }
 
+    @Test
+    void fileAndCraftingIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.FOLDER, GraphicIcon.FILE, GraphicIcon.FILE_EXE,
+                GraphicIcon.FILE_MD, GraphicIcon.FILE_JAVA, GraphicIcon.FILE_KT,
+                GraphicIcon.AE2_PATTERN, GraphicIcon.CRAFTING));
+    }
+
+    @Test
+    void planningMathAndAccessIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.PLAN, GraphicIcon.GOAL, GraphicIcon.EQUATION,
+                GraphicIcon.FUNCTION, GraphicIcon.UNDO, GraphicIcon.ACCESS_DENIED));
+    }
+
+    @Test
+    void cardChannelLocationAndWebIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.CARD, GraphicIcon.CHANNEL, GraphicIcon.LOCATION,
+                GraphicIcon.BROWSER, GraphicIcon.WEB_SEARCH));
+    }
+
+    @Test
+    void inputAndTextToolIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.EMOJI, GraphicIcon.SYMBOL, GraphicIcon.TEXT_INPUT,
+                GraphicIcon.TRANSLATE, GraphicIcon.CLIPBOARD, GraphicIcon.NUMBER_INPUT));
+    }
+
+    @Test
+    void dataFlowGuideAndInterfaceIconsHaveBothTextureSizes() throws IOException {
+        assertIconTextures(List.of(GraphicIcon.INPUT, GraphicIcon.OUTPUT, GraphicIcon.GUIDEME,
+                GraphicIcon.GUIDE, GraphicIcon.GUI, GraphicIcon.UI));
+    }
+
     private static void assertIconTextures(List<GraphicIcon> icons) throws IOException {
         for (var icon : icons) {
             var id = icon.texture();

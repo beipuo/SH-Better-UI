@@ -96,4 +96,15 @@ public final class SettingsApi {
                                             Supplier<? extends GuiEventListener> returnFocus) {
         return DeveloperPanelScreen.fullscreenSample(parent, sampleId, preferences, returnFocus);
     }
+
+    /** Resolves a catalog ID or alias and builds its registered native preview. Call on the client thread. */
+    public Screen developerMaterialFullscreen(Screen parent, String materialId) {
+        var focus = parent == null ? null : parent.getFocused();
+        return developerMaterialFullscreen(parent, materialId, preferences(), () -> focus);
+    }
+
+    public Screen developerMaterialFullscreen(Screen parent, String materialId, UiPreferences preferences,
+                                              Supplier<? extends GuiEventListener> returnFocus) {
+        return DeveloperPanelScreen.fullscreenMaterial(parent, materialId, preferences, returnFocus);
+    }
 }

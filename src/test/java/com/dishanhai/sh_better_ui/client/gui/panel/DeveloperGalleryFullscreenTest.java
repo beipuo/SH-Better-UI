@@ -3,9 +3,12 @@ package com.dishanhai.sh_better_ui.client.gui.panel;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.google.gson.JsonParser;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,7 +24,7 @@ class DeveloperGalleryFullscreenTest {
         var ids = settings.developerSampleIds();
         assertEquals(List.of("underlined_tabs", "stepper"), ids.subList(0, 2));
         assertTrue(ids.containsAll(List.of("bottom_sheet", "interruptible_animation", "electric_logo", "status_icon",
-                "code_rain", "laser_flow")));
+                "code_rain", "laser_flow", "effect_appearance", "ascii_field", "shape_waves", "visual_reveal")));
         assertEquals(registry.ids(), ids);
         assertEquals(ids.size(), new HashSet<>(ids).size());
 
@@ -32,6 +35,37 @@ class DeveloperGalleryFullscreenTest {
         }
         assertThrows(IllegalArgumentException.class,
                 () -> settings.developerSampleFullscreen(null, "missing", UiPreferences.DEFAULT));
+    }
+
+    @Test
+    void managedLiquidGlassHasItsOwnMaterialPreview() {
+        var registry = ShBetterUiApi.developerPreviews();
+        var optical = registry.find("sh_better_ui:liquid_glass").orElseThrow();
+        assertSame(optical, registry.find("liquid_glass").orElseThrow());
+        assertEquals(PreviewSpec.Category.MATERIALS, optical.category());
+        assertNotEquals(registry.find("clear_glass").orElseThrow().titleKey(), optical.titleKey());
+        var screen = ShBetterUiApi.settings().developerSampleFullscreen(null, optical.id(), UiPreferences.DEFAULT);
+        assertEquals(optical.titleKey(), assertInstanceOf(TranslatableContents.class, screen.getTitle().getContents()).getKey());
+    }
+
+    @Test
+    void everyBundledNativePreviewIdResolvesToTheDeclaredGalleryRegistration() throws Exception {
+        var registry = ShBetterUiApi.developerPreviews();
+        try (var stream = getClass().getResourceAsStream("/assets/sh_better_ui/material_catalog/catalog.json")) {
+            assertNotNull(stream, "Bundled catalog must be available to each loader");
+            var catalog = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+            int routes = 0;
+            for (var node : catalog.getAsJsonArray("materials")) {
+                var entry = node.getAsJsonObject();
+                var nativeId = entry.get("nativePreviewId");
+                if (nativeId.isJsonNull()) continue;
+                String id = nativeId.getAsString();
+                var preview = registry.find(id).orElseThrow(() -> new AssertionError("Missing native preview " + id));
+                assertEquals(id, preview.id(), entry.get("id").getAsString());
+                routes++;
+            }
+            assertTrue(routes > 0);
+        }
     }
 
     @Test

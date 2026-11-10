@@ -1,5 +1,6 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -157,6 +158,10 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
                 new ColorStop(2f / 7f, 0xFFFFE773), new ColorStop(3f / 7f, 0xFF57E58D),
                 new ColorStop(4f / 7f, 0xFF41D9F5), new ColorStop(5f / 7f, 0xFF627BFF),
                 new ColorStop(6f / 7f, 0xFFC567FF)), 5000, Flow.RIGHT);
+        public static final Gradient REVERSE_RAINBOW = reverseRainbow();
+        public static final Gradient AURORA = new Gradient(List.of(
+                new ColorStop(0f, 0xFF65E3C4), new ColorStop(0.24f, 0xFF4896F3),
+                new ColorStop(0.52f, 0xFF9C6DF5), new ColorStop(0.76f, 0xFFF695CF)), 5000, Flow.RIGHT);
 
         public Gradient {
             stops = List.copyOf(stops);
@@ -167,6 +172,17 @@ public record DotMatrixProfile(Palette palette, Grid grid, Motion motion, Intera
             for (int i = 1; i < stops.size(); i++) {
                 if (stops.get(i - 1).position() >= stops.get(i).position()) throw new IllegalArgumentException();
             }
+        }
+
+        private static Gradient reverseRainbow() {
+            var rainbow = RAINBOW.stops();
+            var reversed = new ArrayList<ColorStop>(rainbow.size());
+            reversed.add(rainbow.get(0));
+            for (int i = rainbow.size() - 1; i > 0; i--) {
+                var stop = rainbow.get(i);
+                reversed.add(new ColorStop(1f - stop.position(), stop.argb()));
+            }
+            return new Gradient(reversed, RAINBOW.periodMs(), RAINBOW.flow());
         }
 
         int sample(float x, float y, float phase) {

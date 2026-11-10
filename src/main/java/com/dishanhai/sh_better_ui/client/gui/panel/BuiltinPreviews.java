@@ -18,6 +18,9 @@ public final class BuiltinPreviews {
         DeveloperBottomSheetPreview.registerInto(registry);
         DeveloperAnimationPreview.registerInto(registry);
         VisualAlignmentPreview.registerInto(registry);
+        AppearanceGalleryPreview.registerInto(registry);
+        registry.register(new PreviewSpec(LiquidGlassPreview.ID, PreviewSpec.Category.MATERIALS, 0,
+                "sh_better_ui.panel.developer.gallery.sample.liquid_glass", 140, 0, "", LiquidGlassPreview::new));
         registry.register(new PreviewSpec("sh_better_ui:dynamic_theme", PreviewSpec.Category.MATERIALS, 260,
                 "sh_better_ui.theme.dynamic.title", () -> host -> {
                     var area = host.viewport();

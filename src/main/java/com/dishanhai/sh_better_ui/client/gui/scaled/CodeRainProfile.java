@@ -6,6 +6,7 @@ import java.util.Objects;
 public record CodeRainProfile(Mode mode, String characters, int cellSize, float density,
                               float speed, int trailLength, int color, int seed) {
     public static final CodeRainProfile DEFAULT = builder().build();
+    public static final CodeRainProfile ASCII = builder().mode(Mode.ASCII).build();
 
     /** RAIN 为下落列，ASCII 为原地变化的字符场。 */
     public enum Mode { RAIN, ASCII }

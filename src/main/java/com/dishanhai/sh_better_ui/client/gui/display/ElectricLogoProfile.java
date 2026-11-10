@@ -33,6 +33,40 @@ public record ElectricLogoProfile(Palette palette, Lines lines, Motion motion, I
         return new ElectricLogoProfile(palette, lines, motion, value);
     }
 
+    /** Ready-to-render visual styles. Apply them to an existing profile to retain its size and interaction. */
+    public enum Preset {
+        VIOLET(DEFAULT.palette(), DEFAULT.lines().thickness(), DEFAULT.lines().strands(), DEFAULT.motion()),
+        STORM(new Palette(0xFFEAFBFF, 0xFF428DFF, Theme.DARK, 1.35f, 1.4f, 0f), 1.2f, 6,
+                new Motion(5f, 1.25f, 2.8f, 4f, 0.8f)),
+        NEON(new Palette(0xFFFFD0EC, 0xFFFF429C, Theme.DARK, 1.2f, 1.7f, 0.35f), 2.1f, 2,
+                new Motion(1.4f, 0.22f, 0.15f, 0f, 0.18f)),
+        OUTLINE(new Palette(0xFFECFFF6, 0xFF39C7A1, Theme.DARK, 1.3f, 0.3f, 0.75f), 1.8f, 1,
+                new Motion(0f, 0f, 0f, 0f, 0f));
+
+        private final Palette palette;
+        private final float thickness;
+        private final int strands;
+        private final Motion motion;
+        private final ElectricLogoProfile profile;
+
+        Preset(Palette palette, float thickness, int strands, Motion motion) {
+            this.palette = palette;
+            this.thickness = thickness;
+            this.strands = strands;
+            this.motion = motion;
+            this.profile = apply(DEFAULT);
+        }
+
+        public ElectricLogoProfile apply(ElectricLogoProfile base) {
+            return new ElectricLogoProfile(palette, new Lines(base.lines().scale(), thickness, strands),
+                    motion, base.interaction());
+        }
+
+        public ElectricLogoProfile profile() {
+            return profile;
+        }
+    }
+
     /** DARK 适合深色背景上的发光效果，LIGHT 适合浅色背景上的电光描边。 */
     public enum Theme { DARK, LIGHT }
 

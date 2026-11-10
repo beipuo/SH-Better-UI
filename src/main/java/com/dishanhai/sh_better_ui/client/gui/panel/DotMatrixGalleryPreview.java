@@ -247,10 +247,9 @@ final class DotMatrixGalleryPreview implements PreviewScene {
 
     private enum Colorway {
         RAINBOW("rainbow", Gradient.RAINBOW.stops()),
-        REVERSE("reverse", reverseRainbow()),
-        AURORA("aurora", List.of(new ColorStop(0f, 0xFF65E3C4), new ColorStop(0.24f, 0xFF4896F3),
-                new ColorStop(0.52f, 0xFF9C6DF5), new ColorStop(0.76f, 0xFFF695CF))),
-        SOLID("solid", List.of());
+        REVERSE("reverse", Gradient.REVERSE_RAINBOW.stops()),
+        AURORA("aurora", Gradient.AURORA.stops()),
+        SOLID("solid", Gradient.NONE.stops());
 
         final String key;
         final List<ColorStop> stops;
@@ -258,17 +257,6 @@ final class DotMatrixGalleryPreview implements PreviewScene {
         Colorway(String key, List<ColorStop> stops) {
             this.key = key;
             this.stops = stops;
-        }
-
-        private static List<ColorStop> reverseRainbow() {
-            List<ColorStop> rainbow = Gradient.RAINBOW.stops();
-            List<ColorStop> reversed = new ArrayList<>(rainbow.size());
-            reversed.add(rainbow.get(0));
-            for (int i = rainbow.size() - 1; i > 0; i--) {
-                ColorStop stop = rainbow.get(i);
-                reversed.add(new ColorStop(1f - stop.position(), stop.argb()));
-            }
-            return List.copyOf(reversed);
         }
     }
 
