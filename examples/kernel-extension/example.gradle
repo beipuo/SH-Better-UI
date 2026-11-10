@@ -27,8 +27,11 @@ def checkLibrary = tasks.register('verifyExampleDependency') {
             throw new GradleException("Build SH-Better-UI first or set -PshBetterUiJar to the corresponding JAR. Missing: ${library}")
         }
         new java.util.zip.ZipFile(library).withCloseable { zip ->
-            if (zip.getEntry(metadata) == null
-                    || zip.getEntry('com/dishanhai/sh_better_ui/kernel/api/UnifiedUI.class') == null) {
+            def required = [metadata, 'com/dishanhai/sh_better_ui/kernel/api/UnifiedUI.class']
+            required += ['ActivityService', 'NotificationService', 'LiveSurfaceService'].collect {
+                "com/dishanhai/sh_better_ui/kernel/api/live/${it}.class"
+            }
+            if (required.any { zip.getEntry(it) == null }) {
                 throw new GradleException("Incompatible SH-Better-UI JAR: ${library}")
             }
         }
@@ -39,7 +42,12 @@ tasks.named('compileJava') { dependsOn checkLibrary }
 project.ext.verifyArchive = { File archive ->
     new java.util.zip.ZipFile(archive).withCloseable { zip ->
         def required = [metadata, 'pack.mcmeta', 'META-INF/sh_better_ui.modules',
-                        'com/dishanhai/shbui_kernel_example/ExampleUiModule.class']
+                        'com/dishanhai/shbui_kernel_example/ExampleUiModule.class',
+                        'com/dishanhai/shbui_kernel_example/LiveActivityExamples.class',
+                        'com/dishanhai/shbui_kernel_example/LiveExamplesSmoke.class',
+                        'com/dishanhai/shbui_kernel_example/ConnectionExample.class',
+                        'com/dishanhai/shbui_kernel_example/CraftingBackend.class']
+        required += ['com/dishanhai/shbui_kernel_example/CorrectnessExamples.class']
         required += ['en_us', 'zh_cn', 'zh_tw'].collect { "assets/shbui_kernel_example/lang/${it}.json" }
         def missing = required.findAll { zip.getEntry(it) == null }
         if (missing) throw new GradleException("Example JAR missing ${missing}")

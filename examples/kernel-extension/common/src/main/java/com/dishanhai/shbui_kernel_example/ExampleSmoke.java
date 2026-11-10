@@ -7,6 +7,9 @@ import com.dishanhai.sh_better_ui.kernel.api.ModuleLifecycle;
 import com.dishanhai.sh_better_ui.kernel.api.UIApis;
 import com.dishanhai.sh_better_ui.kernel.api.UnifiedUI;
 import com.dishanhai.sh_better_ui.kernel.api.VersionRange;
+import com.dishanhai.sh_better_ui.kernel.api.live.ActivityService;
+import com.dishanhai.sh_better_ui.kernel.api.live.LiveSurfaceService;
+import com.dishanhai.sh_better_ui.kernel.api.live.NotificationService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.Button;
@@ -24,6 +27,7 @@ final class ExampleSmoke {
     private static final String OUTPUT = System.getProperty("shbui.example.smoke");
     private static ExampleUiModule module;
     private static Screen title;
+    private static LiveExamplesSmoke live;
     private static Stage stage = Stage.START;
     private static long startedAt;
     private static long closedGeneration;
@@ -31,7 +35,7 @@ final class ExampleSmoke {
     private static boolean done;
     private static boolean passed;
 
-    private enum Stage { START, ACT, CAPTURE_AND_CLOSE, REOPEN }
+    private enum Stage { START, ACT, LIVE, CAPTURE_AND_CLOSE, REOPEN }
 
     private ExampleSmoke() {}
 
@@ -63,7 +67,14 @@ final class ExampleSmoke {
                 }
                 case ACT -> {
                     act(client);
-                    stage = Stage.CAPTURE_AND_CLOSE;
+                    live = new LiveExamplesSmoke(client.screen);
+                    stage = Stage.LIVE;
+                }
+                case LIVE -> {
+                    // Match the focused native UI state on an unattended smoke-test desktop.
+                    if (!client.isWindowActive()) client.setWindowActive(true);
+                    require(module.page() != null && module.page().screen == client.screen, "The example page closed during its demos");
+                    if (live.advance(client.screen)) stage = Stage.CAPTURE_AND_CLOSE;
                 }
                 case CAPTURE_AND_CLOSE -> {
                     screenshotAndReopen(client);
@@ -102,6 +113,8 @@ final class ExampleSmoke {
                 "The custom capability or optional fallback is unavailable");
         require(ui.find(CounterService.KEY).isPresent() && ui.find(UIApis.THEME).isPresent(),
                 "The custom or built-in service is unavailable");
+        require(ui.find(ActivityService.KEY).isPresent() && ui.find(NotificationService.KEY).isPresent()
+                        && ui.find(LiveSurfaceService.KEY).isPresent(), "The public live services are unavailable");
 
         title = client.screen;
         press(title, ExampleClient.titleEntry(title).orElseThrow());
@@ -126,6 +139,8 @@ final class ExampleSmoke {
         var page = module.page();
         var legacyContext = page.screen.context();
         require(client.screen == page.screen && page.count == 3, "The counter screen was not rendered");
+        var glass = UnifiedUI.get().glass().diagnostics();
+        require(glass.shaderReady() && glass.opticalDraws() > 0, "The example status material was not rendered");
         try (var image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
             image.writeToFile(Path.of(OUTPUT, "screen.png").toFile());
         }
@@ -142,10 +157,15 @@ final class ExampleSmoke {
         var reopened = module.page();
         require(reopened != null && client.screen == reopened.screen && reopened.counter.isOpen()
                 && reopened.count == 0 && reopened.tree.generation() != closedGeneration, "The screen reused closed state");
+        live.verifyReopened(reopened.screen);
         reopened.screen.onClose();
         require(!reopened.counter.isOpen() && UnifiedUI.isAvailable(), "Closing a screen changed the engine lifetime");
         Files.writeString(Path.of(OUTPUT, "success.txt"),
                 "Named extension and library JARs, custom service, optional fallback, scoped config, keyboard, undo, and screen cleanup passed.\n"
+                        + "The mounted status row drew Liquid Glass through the public RenderService.\n"
+                        + "Live examples passed: music publication/pause/resume, local crafting cancellation/completion notification, "
+                        + "machine energy/progress, priority preemption/restoration, screen scope cleanup, and connection watch toggle across reopen.\n"
+                        + "External multiplayer connection and listening to the music remain manual checks.\n"
                         + "extension=" + jarLocation(ExampleUiModule.class) + "\nlibrary=" + jarLocation(UnifiedUI.class) + "\n");
     }
 
@@ -158,7 +178,7 @@ final class ExampleSmoke {
         }
     }
 
-    private static void press(Screen screen, Button button) {
+    static void press(Screen screen, Button button) {
         screen.setFocused(button);
         require(screen.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0), "Enter did not activate a focused button");
     }
@@ -171,7 +191,7 @@ final class ExampleSmoke {
         return source.getLocation().toString();
     }
 
-    private static void require(boolean condition, String message) {
+    static void require(boolean condition, String message) {
         if (!condition) throw new IllegalStateException(message);
     }
 }
