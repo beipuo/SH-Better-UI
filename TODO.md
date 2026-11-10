@@ -1,8 +1,54 @@
 <!-- Author: dishanhai -->
 # 待辦
 
+## 共享主題、全頁背景與圖案波面（1.0.5）
+
+- [ ] Forge／NeoForge 驗收新增第三方效果在控制面板與消費界面出現，確認欄位覆寫、切換、重新載入和關閉釋放。
+- [ ] 在含 Oculus 的整合包重複啟用圖案波面、切換其他背景與退出商店，檢查世界、HUD 和後續畫面的渲染。
+
+## 动态主题（2026-11-10）
+
+- [x] Forge／NeoForge 开发客户端均完成 11 张截图基线比较、窗口尺寸变化和 GUI 缩放、页面卸载、原生资源重载、两次单人世界进入，以及生物群系、天气、日夜、下界、末地和断开回退。见 [接入指南](docs/DYNAMIC_THEMES.md)。
+- [x] 上轮两端发布构建和 JAR 校验通过。Forge 850 项、NeoForge 852 项测试通过。中央引擎接入后的结果见下方。
+- [ ] 用独立多人服务器复测连接、跨维度、断线和重连，覆盖服务器提供的资源包。
+- [x] Slate、液态玻璃和 Network 的 `UiButton` 支持逐属性绑定。开发者预览可并排比较三种材质。
+- [ ] 将逐属性绑定扩展到下游模组及其他控件，覆盖透明底板对比度、原生旁白和不同 GUI 比例。
+- [x] 控制面板保存固定主题、动画倍率和低性能模式。Forge／NeoForge 分别通过面板应用、放弃第二次编辑、独立进程重启读回及中央配置快照验证。
+- [x] 中央引擎接入后，两端再次通过 11 张画面基线、三种材质局部覆写、窗口缩放、页面释放、原生资源重载及单人世界切换烟测。
+
+## Unified UI Kernel
+
+- [x] Phase 0 工程審計、架構與分階段遷移計畫。見 [工程審計](docs/kernel-audit.md)、[架構](docs/kernel-architecture.md)、[遷移計畫](docs/kernel-migration-plan.md)。
+- [x] 更新工作樹快照包含 `theme.transition.TransitionSpec`，雙端建置與封裝檢查通過，Forge 780 項、NeoForge 782 項 JUnit 全數通過。
+- [x] Phase 1–3 Java 17 公共契約、註冊與能力解析、生命週期及範圍清理。雙端各通過 55 項獨立 `kernelTest`，最新工作樹快照 Forge 794 項、NeoForge 796 項既有 JUnit 通過。同源碼 JAR 比對的既有 class 逐位元相同。見 [遷移計畫與驗證紀錄](docs/kernel-migration-plan.md)。
+- [x] 複核 Python 抽取契約。依消費方版本展開、Loader 的巢狀選用適配界線，以及 `ac56631` 已提交的 shader 差異校正基線，7 項通過。
+- [x] 兩端客戶端接上 Kernel 啟動、幀首 CPU 調度、關閉、內建 Theme 服務、動態頁面主題範圍，以及 User Global 客戶端配置鏡像。
+- [x] Phase 4–6 雙端逐階段各通過 64、72、89 項 `kernelTest`。整合快照 Forge 799 項一般測試、NeoForge 801 項一般測試通過，兩端通過完整建置與 JAR 檢查。同源碼 JAR 比對的既有 class 逐位元相同。見 [驗證紀錄](docs/kernel-migration-plan.md#phase-46-驗證紀錄2026-11-10)。
+- [x] Phase 7 逐項接入九項附屬服務並跑雙端分項回歸。獨立快照雙端各 89 項 `kernelTest`，Forge 808 項與 NeoForge 810 項一般測試及發行包檢查通過。
+- [x] Phase 8 接上 Loader 模組發現、原生輸入、Screen／會話、GUI 繪製和資源重載。整合包雙端各 94 項 `kernelTest`，Forge 814 項與 NeoForge 816 項一般測試及發行包檢查通過。雙端無選用相依與含 LDLib 的客戶端煙測各通過。
+- [x] Phase 9 建立 Java 17 和原生客戶端基準，雙端各通過 96 項 `kernelTest`，一般測試 Forge 814、NeoForge 816 項。兩端各以同一負載完成優化前後的遊戲採樣。見 [效能報告](docs/performance.md)。
+- [x] Phase 10 交付公共 API 文件、遷移指南和雙端第三方範例。各端重新通過 `kernelTest`、建置和獨立客戶端煙測。Forge 載入開發 JAR，NeoForge 載入正式 JAR。見 [驗證紀錄](docs/kernel-migration-plan.md#phase-10-驗證2026-11-10)。
+- [ ] 待驗 Forge 專用服越過 EULA 門檻、實體 F3+T、Forge 正式 JAR 的生產客戶端啟動及長時間資源壓力。見 [遷移計畫](docs/kernel-migration-plan.md)。
+
+## 染色玻璃配色（2026-11-09）
+
+- [x] `GlassColors.tintedDark(accent, surface)` 提供完整结构色；`GlassTheme` 新增 AURORA、AMETHYST、ROSE、EMBER，沿用 clearGlass 材质覆写协议。
+- [ ] 在 Forge／NeoForge 消费界面验收四套新配色的正文、选中、停用、tooltip、成功／失败、高对比和关闭模糊；检查背景图案下的实际对比度。
+
+## 玻璃主题材质分组
+
+- [x] 补齐消费端复制后的材质身份、内层底板、Component 语义色、高对比焦点，以及烟灰 tooltip 的无模糊回退；局部主题按字段继承全局参数。
+- [x] 本轮 Forge 主题／搜索相关 50 项、NeoForge 相关 29 项测试通过；Forge devJar、重映射及依赖边界检查通过。消费端最低版本为 1.0.4。
+- [ ] 在 Forge 和 NeoForge 的消费界面验收 SLATE、LIQUID_GLASS、NETWORK 的材质覆写及高对比文字，检查不同背景、GUI 缩放下的可读性和成功／失败状态。
+- [ ] 在 gt_shanhai 验收主页和子页的主题草稿、全局反馈继承、本机减少动效保存、烟灰提示框关闭模糊及原生焦点位置；未进行 Minecraft 客户端或专用服务器验收。
+
+## 二维 UI 弹性挤压
+
+- [ ] 在 Forge 1.20.1 和 NeoForge 1.21.1 客户端使用宿主界面验收拖动、反向展开、窗口与 GUI Scale 切换、重绑、减少动效、原生键盘焦点和旁白。检查动画交叠时宿主的顶层命中及资源重载。
+
 ## 本机音乐集成
 
+- [ ] 在 Forge 1.20.1 与 NeoForge 1.21.1 客户端复验直接读取 Windows GSMTC 后的换曲、暂停、拖动、封面与退出；在 Windows ARM64 上验证对应 JVM 的 JNA 系统调用。
 - [ ] 逐个验证网易云音乐、Apple Music、Spotify 和浏览器在 Windows 是否公开曲目、播放位置与封面；复验 QQ 音乐换曲、拖动、循环、进度和暂停恢复。
 - [ ] 在 Linux 桌面验证真实 MPRIS 会话；在 macOS 验证音乐 App 自动化权限和不同曲库的会话字段；完整 FFT 频谱公开输出、音频设备切换恢复仍待补齐。
 - [ ] Forge 已验收实际曲目、封面与展开进度，并用隔离媒体会话验证歌词重读、暂停与恢复、进度跳转及 Windows 输出波形。继续验收 NeoForge 实机卡片，以及双端不同 GUI 缩放、焦点、资源重载、失焦与减少动效。
@@ -175,6 +221,7 @@
 
 ## 圖形化顯示 API
 
+- [ ] 在 Forge 的 gt_shanhai 商店及 NeoForge 的消费界面中验收购物车与购买、出售并排时的辨识度、GUI 缩放及 F3+T 资源重载。
 - [x] 重跑 Forge／NeoForge 構建，核對通用與 AE 頻道圖示的測試及 JAR 材質。
 - [ ] 接入消費畫面後，在 Forge／NeoForge 遊戲內驗收 16×16 圖示、深淺配色、GUI 縮放、自訂欄數與分頁容量、長標籤裁切、翻頁邊界、鍵盤焦點及旁白。
 - [ ] 接入消費畫面後，在 Forge／NeoForge 遊戲內驗收文字與佈局對齊，包含奇數尺寸、較長的本地化文字、GUI 比例變更，以及裁切後的繪製與點擊邊界。

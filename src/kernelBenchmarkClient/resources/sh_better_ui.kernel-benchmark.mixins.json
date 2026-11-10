@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.dishanhai.sh_better_ui.kernel.benchmark.client.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": ["FrameBenchmarkMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

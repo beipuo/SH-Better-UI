@@ -1,0 +1,31 @@
+// Author: dishanhai
+package com.dishanhai.shbui_kernel_example;
+
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.event.GameShuttingDownEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+@Mod(ExampleUiModule.MOD_ID)
+public final class ForgeExampleMod {
+    @Mod.EventBusSubscriber(modid = ExampleUiModule.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+    public static final class ClientEvents {
+        @SubscribeEvent
+        public static void screen(ScreenEvent.Init.Post event) {
+            ExampleClient.addTitleEntry(event.getScreen(), event::addListener);
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public static void frame(TickEvent.RenderTickEvent event) {
+            if (event.phase == TickEvent.Phase.END) ExampleSmoke.frame();
+        }
+
+        @SubscribeEvent(priority = EventPriority.LOWEST)
+        public static void shutdown(GameShuttingDownEvent event) {
+            ExampleSmoke.shutdown();
+        }
+    }
+}

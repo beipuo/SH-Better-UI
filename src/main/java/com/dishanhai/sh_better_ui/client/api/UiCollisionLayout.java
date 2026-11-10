@@ -7,12 +7,19 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import net.minecraft.client.gui.components.AbstractWidget;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
 
 /** 山海：将动画边界应用到既有控件或绘制回调。宿主负责裁剪、焦点和事件分发。 */
 public final class UiCollisionLayout implements AutoCloseable {
+    public static final int MAX_HIT_SLOP = 64;
+    private static final int HIT_ROW_HEIGHT = 32;
+    private static final int MAX_INDEXED_ROWS = 64;
     private static final BooleanSupplier ALWAYS_HITTABLE = () -> true;
     private final CollisionWorld world;
     private final ArrayList<Binding> bindings = new ArrayList<>();
@@ -20,6 +27,7 @@ public final class UiCollisionLayout implements AutoCloseable {
     private boolean closed;
     private boolean updating;
     private boolean applying;
+    private HitRows hitRows;
 
     public UiCollisionLayout(Bounds viewport) {
         this.viewport = Objects.requireNonNull(viewport);
@@ -53,6 +61,7 @@ public final class UiCollisionLayout implements AutoCloseable {
         int index = bindingIndex(body);
         if (index < 0) bindings.add(binding);
         else bindings.set(index, binding);
+        hitRows = null;
         return this;
     }
 
@@ -61,6 +70,7 @@ public final class UiCollisionLayout implements AutoCloseable {
         int index = bindingIndex(body);
         if (index < 0) return false;
         bindings.remove(index);
+        hitRows = null;
         return true;
     }
 
@@ -82,8 +92,9 @@ public final class UiCollisionLayout implements AutoCloseable {
                 var binding = bindings.get(index);
                 if (!world.contains(binding.body)) {
                     bindings.remove(index);
+                    hitRows = null;
                 } else {
-                    binding.apply(viewport);
+                    if (binding.apply(viewport)) hitRows = null;
                     index++;
                 }
             }
@@ -105,11 +116,81 @@ public final class UiCollisionLayout implements AutoCloseable {
         return null;
     }
 
+    /** Indexed input hit test. Hit slop never expands drawing or the viewport. */
+    public CollisionBody hitTestExpanded(double x, double y, int hitSlop) {
+        validateHitSlop(hitSlop);
+        return hitTestExpanded(x, y, hitSlop, null);
+    }
+
+    /** Picks the foremost body using its own hit slop. The resolver must leave the layout unchanged. */
+    public CollisionBody hitTestExpanded(double x, double y, ToIntFunction<? super CollisionBody> hitSlop) {
+        return hitTestExpanded(x, y, MAX_HIT_SLOP, Objects.requireNonNull(hitSlop));
+    }
+
+    private CollisionBody hitTestExpanded(double x, double y, int maxSlop,
+                                          ToIntFunction<? super CollisionBody> hitSlop) {
+        if (!viewport.contains(x, y)) return null;
+        if (hitRows == null) hitRows = indexHits();
+        Binding match = foremost(hitRows.large(), x, y, maxSlop, hitSlop, null);
+        for (int row = row(y - maxSlop); row <= row(y + maxSlop); row++) {
+            var candidates = hitRows.rows().get(row);
+            if (candidates != null) match = foremost(candidates, x, y, maxSlop, hitSlop, match);
+        }
+        return match == null ? null : match.body;
+    }
+
+    private HitRows indexHits() {
+        var rows = new HashMap<Integer, List<Binding>>();
+        var large = new ArrayList<Binding>();
+        for (int i = 0; i < bindings.size(); i++) {
+            var binding = bindings.get(i);
+            var bounds = binding.bounds;
+            if (bounds == null || bounds.width() == 0 || bounds.height() == 0) continue;
+            binding.hitOrder = i;
+            int first = row(bounds.y()), last = row(bounds.bottom() - 1);
+            if (last - first >= MAX_INDEXED_ROWS) {
+                large.add(binding);
+            } else {
+                for (int row = first; row <= last; row++) {
+                    rows.computeIfAbsent(row, ignored -> new ArrayList<>()).add(binding);
+                }
+            }
+        }
+        return new HitRows(rows, large);
+    }
+
+    private Binding foremost(List<Binding> candidates, double x, double y, int maxSlop,
+                              ToIntFunction<? super CollisionBody> hitSlop, Binding match) {
+        for (int i = candidates.size() - 1; i >= 0; i--) {
+            var candidate = candidates.get(i);
+            if (match != null && candidate.hitOrder <= match.hitOrder) break;
+            var bounds = candidate.bounds;
+            int slop = maxSlop;
+            if (hitSlop != null) {
+                slop = hitSlop.applyAsInt(candidate.body);
+                validateHitSlop(slop);
+            }
+            if (x >= (double) bounds.x() - slop && x < (double) bounds.right() + slop
+                    && y >= (double) bounds.y() - slop && y < (double) bounds.bottom() + slop
+                    && world.contains(candidate.body) && candidate.hittable.getAsBoolean()) return candidate;
+        }
+        return match;
+    }
+
+    private static void validateHitSlop(int hitSlop) {
+        if (hitSlop < 0 || hitSlop > MAX_HIT_SLOP) throw new IllegalArgumentException("Invalid hit slop");
+    }
+
+    private static int row(double y) { return (int) Math.floor(y / HIT_ROW_HEIGHT); }
+
+    private record HitRows(Map<Integer, List<Binding>> rows, List<Binding> large) {}
+
     @Override
     public void close() {
         if (closed) return;
         closed = true;
         bindings.clear();
+        hitRows = null;
         world.clear();
     }
 
@@ -147,6 +228,7 @@ public final class UiCollisionLayout implements AutoCloseable {
         private final Consumer<Bounds> apply;
         private final BooleanSupplier hittable;
         private Bounds bounds;
+        private int hitOrder;
 
         private Binding(CollisionBody body, Consumer<Bounds> apply, BooleanSupplier hittable) {
             this.body = body;
@@ -154,7 +236,7 @@ public final class UiCollisionLayout implements AutoCloseable {
             this.hittable = hittable;
         }
 
-        private void apply(Bounds viewport) {
+        private boolean apply(Bounds viewport) {
             int x = clip(Math.round(body.visualX()), viewport.x(), viewport.right());
             int y = clip(Math.round(body.visualY()), viewport.y(), viewport.bottom());
             int right = clip(Math.round(body.visualRight()), x, viewport.right());
@@ -166,7 +248,9 @@ public final class UiCollisionLayout implements AutoCloseable {
                 var next = new Bounds(x, y, width, height);
                 apply.accept(next);
                 bounds = next;
+                return true;
             }
+            return false;
         }
     }
 }

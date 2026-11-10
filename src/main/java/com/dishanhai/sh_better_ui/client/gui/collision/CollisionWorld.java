@@ -19,6 +19,7 @@ public final class CollisionWorld {
     private long nextOrder;
     private long frameTime = Long.MIN_VALUE;
     private boolean updating;
+    private boolean animating;
 
     public CollisionWorld(CollisionShape viewport) {
         this(viewport, new LayoutSolver());
@@ -82,13 +83,18 @@ public final class CollisionWorld {
         groups.clear();
         listener = null;
         frameTime = Long.MIN_VALUE;
+        animating = false;
     }
+
+    /** Whether the last solved geometry still has moving presentation channels. */
+    public boolean isAnimating() { return animating; }
 
     /** 求解有变化的组并推进呈现状态，返回当前未解决约束数。时间使用单调毫秒。 */
     public int update(long nowMs, boolean reducedMotion) {
         if (updating) throw new IllegalStateException("Recursive collision update");
         updating = true;
         try {
+            animating = false;
             frameTime = Math.max(frameTime, nowMs);
             int unresolved = 0;
             var observer = listener;
@@ -130,6 +136,7 @@ public final class CollisionWorld {
             if (solved) body.transition.retarget(target.x, target.y, target.width, target.height, frameTime);
             body.transition.update(frameTime, viewport, body.compression(),
                     body.anchorFraction(true), body.anchorFraction(false));
+            animating |= !body.transition.settled();
         }
         body.mounted = true;
     }

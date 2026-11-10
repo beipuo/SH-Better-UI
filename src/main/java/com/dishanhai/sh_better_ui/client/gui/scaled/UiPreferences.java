@@ -2,6 +2,7 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
+import com.dishanhai.sh_better_ui.theme.ThemeScope;
 
 import java.util.Objects;
 
@@ -43,5 +44,13 @@ public record UiPreferences(boolean highContrast, boolean reducedMotion, boolean
 
     public boolean useBackdropBlur() {
         return backgroundBlur && !highContrast;
+    }
+
+    /** Combines this preference snapshot with an opt-in dynamic theme scope. */
+    public UiPreferences withTheme(ThemeScope scope) {
+        if (scope == null || scope.isClosed()) return this;
+        var dynamic = scope.preferences();
+        return new UiPreferences(highContrast || dynamic.highContrast(), reducedMotion || dynamic.reducedMotion(),
+                backgroundBlur && !dynamic.lowPerformance(), feedback);
     }
 }

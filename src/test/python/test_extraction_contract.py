@@ -3,6 +3,7 @@ import hashlib
 import json
 import pathlib
 import re
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -14,17 +15,43 @@ class ExtractionContract(unittest.TestCase):
         properties = (ROOT / "gradle.properties").read_text(encoding="utf-8-sig")
         self.assertRegex(properties, r"(?m)^mod_id=sh_better_ui$")
         manifest = (CONSUMER / "src/main/resources/META-INF/mods.toml").read_text(encoding="utf-8")
-        self.assertRegex(manifest, r'\[\[dependencies\.gt_shanhai\]\][\s\S]*?modId\s*=\s*"sh_better_ui"')
-        self.assertIn('versionRange="[1.0.0,2.0.0)"', manifest)
+        dependencies = tomllib.loads(manifest)["dependencies"]["gt_shanhai"]
+        entries = [item for item in dependencies if item["modId"] == "sh_better_ui"]
+        self.assertEqual(1, len(entries))
+        dependency = entries[0]
+        self.assertTrue(dependency["mandatory"])
+        self.assertEqual("AFTER", dependency["ordering"])
+        self.assertEqual("BOTH", dependency["side"])
+        properties = (CONSUMER / "gradle.properties").read_text(encoding="utf-8-sig")
+        version = re.search(r"(?m)^sh_better_ui_version=(1\.\d+\.\d+)$", properties)
+        self.assertIsNotNone(version, "Consumer must pin its minimum SH-Better-UI version")
+        build = (CONSUMER / "build.gradle").read_text(encoding="utf-8")
+        self.assertRegex(build, r"\bsh_better_ui_version:\s*sh_better_ui_version\b")
+        expanded = dependency["versionRange"].replace("${sh_better_ui_version}", version[1])
+        self.assertEqual(f"[{version[1]},2.0.0)", expanded)
 
     def test_core_does_not_depend_on_consumer_or_optional_ldlib(self):
-        sources = list((ROOT / "src/main").rglob("*.java")) + list((ROOT / "src/main").rglob("*.kt"))
+        roots = [ROOT / "src/main", ROOT / "src/kernel", ROOT / "neoforge/src/main"]
+        sources = [path for root in roots for suffix in ("*.java", "*.kt") for path in root.rglob(suffix)]
         self.assertGreater(len(sources), 10, "UI implementation has not been extracted")
         for path in sources:
             source = path.read_text(encoding="utf-8")
             self.assertNotIn("com.dishanhai.gt_shanhai", source, str(path))
-            if "compat" not in path.parts:
-                self.assertNotIn("com.lowdragmc", source, str(path))
+            if "compat" in path.parts:
+                continue
+            if path.name == "PlatformUiApi.java":
+                # The published nested optional facade keeps its original JVM signatures.
+                outer, nested, _ = source.partition("public static final class LdLib {")
+                self.assertTrue(nested, str(path))
+                imports = re.findall(r"(?m)^import (?:com\.lowdragmc|com\.dishanhai\.sh_better_ui\.compat\.ldlib)[^;]+;", outer)
+                for line in imports:
+                    outer = outer.replace(line, "")
+                for line in imports:
+                    imported_type = line.removesuffix(";").rsplit(".", 1)[1]
+                    self.assertNotRegex(outer, rf"\b{re.escape(imported_type)}\b", str(path))
+                self.assertNotIn("compat.ldlib", outer, str(path))
+                source = outer
+            self.assertNotIn("com.lowdragmc", source, str(path))
 
     def test_shader_has_single_owner_and_resolves_own_namespace(self):
         relative = pathlib.Path("src/main/resources/assets")

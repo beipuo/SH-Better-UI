@@ -1,0 +1,73 @@
+// Author: dishanhai
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.2.0.7-dev-SNAPSHOT'
+}
+
+java { toolchain.languageVersion = JavaLanguageVersion.of(17) }
+repositories { mavenCentral() }
+
+def workspace = file('../../..')
+ext.uiLibrary = file(providers.gradleProperty('shBetterUiJar')
+        .orElse(new File(workspace, 'build/libs/sh_better_ui-1.0.5-dev.jar').path).get())
+ext.kotlinMod = file(providers.gradleProperty('kotlinForForgeJar')
+        .orElse(new File(workspace, 'libs/kotlinforforge-4.12.0-all.jar').path).get())
+ext.loaderMetadata = 'META-INF/mods.toml'
+def devJar = tasks.register('devJar', Jar) {
+    archiveClassifier = 'dev'
+    destinationDirectory = layout.buildDirectory.dir('devlibs')
+    from sourceSets.main.output
+}
+ext.exampleLaunchArchive = devJar.flatMap { it.archiveFile }
+apply from: '../example.gradle'
+
+dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.4.16' }
+// Forge's naming service reads the mapping CSVs from the JVM classpath. Keep the
+// Minecraft dependencies in the launcher classpath without the example's class directories.
+sourceSets.launcher.runtimeClasspath += configurations.runtimeClasspath
+def run = project.ext.exampleRun
+boolean smoke = project.ext.exampleSmoke
+minecraft {
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
+    runs {
+        client {
+            source sourceSets.launcher
+            // ForgeGradle otherwise adds the empty source set as an exploded mod.
+            // A path list containing only the separator gives Forge no source roots.
+            environment 'MOD_CLASSES', File.pathSeparator
+            workingDirectory run
+            if (smoke) {
+                property 'shbui.example.smoke', run.absolutePath
+                property 'shb.music.disabled', 'true'
+                args '--width', '800', '--height', '480'
+            }
+        }
+    }
+}
+
+// Use ForgeGradle's already downloaded metadata when running offline in a fresh example build.
+def cachedMetadata = new File(gradle.gradleUserHomeDir, 'caches/forge_gradle/minecraft_repo/versions/1.20.1/version.json')
+def gameMetadata = layout.buildDirectory.file('downloadMCMeta/version.json').get().asFile
+if (cachedMetadata.isFile() && !gameMetadata.exists()) {
+    gameMetadata.parentFile.mkdirs()
+    java.nio.file.Files.copy(cachedMetadata.toPath(), gameMetadata.toPath())
+}
+
+jar {
+    archiveClassifier = 'raw'
+    destinationDirectory = layout.buildDirectory.dir('reobf-input')
+}
+def release = tasks.register('releaseJar', Copy) {
+    dependsOn 'reobfJar'
+    from layout.buildDirectory.file('reobfJar/output.jar')
+    into layout.buildDirectory.dir('libs')
+    rename { "${project.name}-${project.version}.jar" }
+}
+def verify = tasks.register('verifyExampleJar') {
+    dependsOn release
+    doLast {
+        project.ext.verifyArchive(layout.buildDirectory.file("libs/${project.name}-${project.version}.jar").get().asFile)
+    }
+}
+tasks.named('build') { dependsOn verify, devJar }

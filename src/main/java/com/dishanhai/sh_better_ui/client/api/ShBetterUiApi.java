@@ -39,6 +39,9 @@ public final class ShBetterUiApi {
         return DeveloperPreviewsHolder.REGISTRY;
     }
 
+    /** Shared full-page effect registration, discovery and screen-owned renderers. */
+    public static BackgroundRegistry backgrounds() { return BackgroundsHolder.REGISTRY; }
+
     public static UiApiContext context() {
         return CLIENT.context();
     }
@@ -117,6 +120,16 @@ public final class ShBetterUiApi {
         private static PreviewRegistry createRegistry() {
             var registry = new PreviewRegistry();
             BuiltinPreviews.registerInto(registry);
+            return registry;
+        }
+    }
+
+    private static final class BackgroundsHolder {
+        private static final BackgroundRegistry REGISTRY = createRegistry();
+
+        private static BackgroundRegistry createRegistry() {
+            var registry = new BackgroundRegistry();
+            BuiltinBackgrounds.registerInto(registry);
             return registry;
         }
     }

@@ -5,6 +5,8 @@
 
 ## 统一调用入口
 
+需要发现模块与能力、调度作用域任务或挂载 Screen 时，可以从 `UnifiedUI.get()` 取得中央引擎。参阅 [公共 API](docs/public-api.md) 和 [迁移指南](docs/migration-guide.md)。
+
 **工作区新增（1.0.4）**：`GlassTheme.AURORA`、`AMETHYST`、`ROSE`、`EMBER` 是完整的染色玻璃配色，消费端可直接使用或通过受保护复制构造保留全部结构色。`GlassColors.tintedDark(int accent, int surface)` 接受 RGB／ARGB 的颜色值，生成深色底板、按钮、行、边框及文字色；交易成功和失败语义色保持一致。四套配色沿用 `clearGlass` 参数组，局部覆写仍通过 `ThemeEffects` 作用域提供，不读取消费方配置。
 
 **工作区新增** `com.dishanhai.sh_better_ui.client.api.ShBetterUiApi` 是 Forge 与 NeoForge 的共同入口。每个分组是无状态单例，工厂返回现有组件类型。界面持有自己的控件、动画和手势状态，并按下文对应的绘制、输入与释放约定调用。[统一入口源码](src/main/java/com/dishanhai/sh_better_ui/client/api/ShBetterUiApi.java)
@@ -13,11 +15,12 @@
 | --- | --- |
 | `settings()` | `preferences()`、`current()`、`backdrop()`、`save()`、`saveBackdrop()` 与内置面板工厂 |
 | `themes()` | 动态令牌、主题注册、过渡、环境规则、作用域和资源包。[接入指南与示例](docs/DYNAMIC_THEMES.md) |
+| `backgrounds()` | 全页背景目录、参数注册及页面实例。与控制面板的自定义效果预览共用。 |
 | `controls()` | 按钮、滑块、开关、分区、详情、状态、骨架与进度 |
 | `interactions()` | 覆层、全屏预览、确认、抽屉、刷新、滑动确认、鼠标快照、指针捕获、视口、历史和轻提示 |
 | `search()` | `index()`、`field()`、`jeiPanel()`，以及 JEI 查询、打开和侧栏避让 |
 | `ingredients()` | 素材来源、筛选、物品包装、选取草稿与 `openPicker()` |
-| `materials()` | 玻璃主题、Slate、液态玻璃、槽位和圆角绘制 |
+| `materials()` | `themeChoices()`、`findTheme(id)`，以及玻璃、Slate、液态玻璃、槽位和圆角绘制 |
 | `blur()` | GUI 坐标即时模糊、像素坐标帧末请求、渐进清晰、渐变和前景回调 |
 | `graphics()` | 图标、文字、图文布局、网络风格界面、电光轮廓与反重力粒子 |
 | `layout()` | [视觉对齐](VISUAL_ALIGNMENT.md)，包含光学度量、动态约束、像素吸附和调试叠层 |
@@ -25,6 +28,14 @@
 | `audio()` | `systemOutput()` 显式开启 Windows 输出回环，`analyzer()` 独立分析 PCM。`motion().musicMotion()` 映射单个频段，`motion().musicRhythm()` 提供多层律动帧，可配合 `MusicHud` 绘制像素面板，或配合 `MusicIsland` 绘制可展开的音乐胶囊。见 [音乐律动](docs/music-rhythm.md) |
 | `lyrics()` | `localFeed()`、`saltPlayer()`、`renderer()`、`draw()`、`settings()` 与 `position()`。支持逐字同步、译文与多行排版。见 [同步歌词](docs/lyrics.md) |
 | `platform()` | 当前加载器的 `fluid()`、`renderTooltip()` 与可选 `ldlib()` 桥接 |
+
+### 共享主题与背景（1.0.5）
+
+在客户端线程调用 `ShBetterUiApi.themes().register(theme)`，或把主题 JSON 放在资源包的 `assets/<namespace>/ui/themes/`。消费界面的 `materials().themeChoices()` 会列出内置材质和当前注册的主题。用 `findTheme(id)` 读取指定主题的玻璃材质，读取时不会切换全局主题。保存稳定 ID，查不到时使用本地默认材质，以便原主题恢复后重新生效。
+
+新增全页效果时调用一次 `ShBetterUiApi.backgrounds().register(new BackgroundSpec(id, titleKey, defaults, factory))`。新增 ID 使用命名空间，`defaults` 使用公开的不可变 record，在构造器校验范围。渲染器每帧通过 `materials().themedProfile(id, defaults)` 读取当前作用域的配置。需要编辑时可从 `settings().themeTemplate(id)` 取得模板，使用 `ThemeEffects.validate(id, json)` 校验，通过 `ThemeEffects.preview(draft, draw)` 预览局部草稿。控制面板与消费界面从同一目录取得该条目。
+
+消费界面每个页面持有一个 `backgrounds().layer(optionalLogo)`，在内容之前以整页 GUI 坐标调用 `draw`。输入被模态层拦截时传入空的鼠标快照，点击坐标使用同一范围。移除界面时调用 `close()` 释放效果状态。注销提供方时关闭 `register` 返回的句柄。
 
 下面在 `Screen.init()` 中注册一个原生按钮。`label` 和 `onPress` 由宿主提供。
 

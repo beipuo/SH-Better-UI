@@ -31,12 +31,7 @@ public final class ClientMusic {
         MusicProvider provider;
         if (Boolean.getBoolean("shb.music.disabled")) provider = unsupported("disabled");
         else if (System.getProperty("os.name", "").startsWith("Windows")) {
-            Path program = null;
-            String path = System.getProperty("shb.music.windowsBridge");
-            try {
-                if (path != null && !path.isBlank()) program = Path.of(path);
-                provider = new WindowsMediaProvider(program);
-            } catch (java.nio.file.InvalidPathException e) { provider = unsupported("windows-smtc"); }
+            provider = new WindowsMediaProvider();
         } else if (System.getProperty("os.name", "").startsWith("Linux")) {
             provider = new MprisProvider(System.getProperty("shb.music.playerctl", "playerctl"));
         } else if (System.getProperty("os.name", "").startsWith("Mac") && Boolean.getBoolean("shb.music.macAutomation")) {

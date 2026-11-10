@@ -1,7 +1,8 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
+import com.dishanhai.sh_better_ui.client.api.BackgroundLayer;
+import com.dishanhai.sh_better_ui.client.api.BackgroundSpec;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
-import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogo;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.*;
 import net.minecraft.client.gui.Font;
@@ -10,21 +11,13 @@ import net.minecraft.network.chat.Component;
 
 /** 山海：在主题草稿作用域内绘制设置页的效果样例。 */
 final class ThemeEffectPreview implements AutoCloseable {
-    private final Antigravity particles = new Antigravity();
-    private final LightRays rays = new LightRays();
-    private final LaserFlow laser = new LaserFlow();
-    private final CodeRain rain = new CodeRain();
-    private final CodeRain ascii = CodeRain.ascii();
-    private final PatternWaves patterns = new PatternWaves();
-    private final ShapeWaves shapes = new ShapeWaves();
-    private final UiDotMatrix dots = new UiDotMatrix();
+    private final BackgroundLayer backgrounds = ShBetterUiApi.backgrounds().layer(null);
     private final ClickRipple ripple = new ClickRipple();
     private final UiPageSlide slide = new UiPageSlide();
     private final UiRecipePageTransition recipe = new UiRecipePageTransition();
     private final UiCapsuleReveal capsule = new UiCapsuleReveal();
     private String previousGroup;
     private long replayAt;
-    private ElectricLogo logo;
 
     void draw(String group, GuiGraphics graphics, Font font, Bounds area, Component caption,
               int mouseX, int mouseY, UiPreferences preferences) {
@@ -38,20 +31,15 @@ final class ThemeEffectPreview implements AutoCloseable {
         DarkModeTheme.background(graphics, x, y, w, h);
         graphics.enableScissor(x, y, area.right(), area.bottom());
         try {
+            var background = background(group);
+            if (background != null) {
+                var mouse = area.contains(mouseX, mouseY) ? UiMouseState.read() : null;
+                backgrounds.draw(background.id(), graphics, font, area, mouse, mouseX, mouseY, now, preferences);
+                return;
+            }
+            backgrounds.close();
             var materials = ShBetterUiApi.materials();
             switch (group) {
-                case "dotMatrix" -> dots.render(graphics, area, mouseX, mouseY, PageTransition.nowMs(), preferences);
-                case "antigravity" -> particles.draw(graphics, area);
-                case "lightRays" -> rays.draw(graphics, area);
-                case "laserFlow" -> laser.draw(graphics, area);
-                case "codeRain" -> rain.draw(graphics, font, area);
-                case "ascii" -> ascii.draw(graphics, font, area);
-                case "patternWaves" -> patterns.draw(graphics, area);
-                case "shapeWaves" -> shapes.draw(graphics, area);
-                case "electricLogo" -> {
-                    if (logo == null) logo = ShBetterUiApi.graphics().electricLogo();
-                    logo.draw(graphics, x, y, w, h, mouseX, mouseY);
-                }
                 case "classic" -> {
                     var classic = materials.classicTheme();
                     classic.box(graphics, x, y, w, h, classic.frameDark, classic.panelBg);
@@ -83,10 +71,6 @@ final class ThemeEffectPreview implements AutoCloseable {
                         now, preferences.reducedMotion(), DarkModeTheme.accentColor());
                 case "breathingGlow" -> GlassEffectRenderer.drawBreathingGlow(graphics, x + 6, y + 6, w - 12, h - 12,
                         1f, now, preferences.reducedMotion(), DarkModeTheme.accentColor());
-                case "reveal" -> {
-                    VisualReveal.drawRadialGradient(graphics, x, y, w, h);
-                    VisualReveal.blurRegion(graphics, x, y, w, h, RevealProfile.DEFAULT);
-                }
                 case "pageSlide" -> {
                     if (restart) slide.start(UiPageSlide.Direction.RIGHT, UiPageSlide.Motion.FLAT, w, now, preferences);
                     UiPageSlide.draw(graphics, area, slide.sample(now, preferences), preferences, UiPageSlide.Effects.NONE,
@@ -122,13 +106,20 @@ final class ThemeEffectPreview implements AutoCloseable {
     }
 
     static boolean supports(String group) {
+        if (background(group) != null) return true;
         return switch (group) {
-            case "dotMatrix", "antigravity", "lightRays", "laserFlow", "codeRain", "ascii", "patternWaves",
-                    "shapeWaves", "electricLogo", "classic", "clearGlass", "smokeGlass", "network", "slate",
-                    "glass", "liquidGlass", "clickRipple", "flowBorder", "breathingGlow", "reveal",
+            case "classic", "clearGlass", "smokeGlass", "network", "slate",
+                    "glass", "liquidGlass", "clickRipple", "flowBorder", "breathingGlow",
                     "pageSlide", "recipeTransition", "capsule", "screenReturn" -> true;
             default -> false;
         };
+    }
+
+    static BackgroundSpec background(String group) {
+        for (var spec : ShBetterUiApi.backgrounds().entries()) {
+            if (group.equals(spec.settingsGroup())) return spec;
+        }
+        return null;
     }
 
     private static void caption(GuiGraphics graphics, Font font, Bounds area, Component caption, int color) {
@@ -137,9 +128,6 @@ final class ThemeEffectPreview implements AutoCloseable {
 
     @Override
     public void close() {
-        if (logo != null) {
-            logo.close();
-            logo = null;
-        }
+        backgrounds.close();
     }
 }

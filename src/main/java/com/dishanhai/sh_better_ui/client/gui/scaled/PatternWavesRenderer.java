@@ -18,7 +18,10 @@ import net.minecraft.server.packs.resources.ResourceProvider;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.system.MemoryStack;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -75,7 +78,7 @@ final class PatternWavesRenderer extends RenderType {
                         long now, WavePointer.Ripple[] ripples) {
         if (fieldShader == null || markShader == null) return false;
         Grid grid = Grid.forBounds(bounds, profile);
-        graphics.flush();
+        DrawState state = DrawState.capture();
         int textureUnit = GlStateManager._getActiveTexture();
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
         int texture0 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
@@ -83,6 +86,7 @@ final class PatternWavesRenderer extends RenderType {
         int texture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
         try {
+            graphics.flush();
             drawField(graphics, grid, bounds, profile, phase, intro, now, ripples);
             boolean glyphs = profile.pattern() == PatternWavesProfile.Pattern.GLYPH;
             markShader.setSampler("FieldSampler", field);
@@ -106,6 +110,7 @@ final class PatternWavesRenderer extends RenderType {
             RenderSystem.activeTexture(GL13.GL_TEXTURE0);
             RenderSystem.bindTexture(texture0);
             RenderSystem.activeTexture(textureUnit);
+            state.restore();
         }
     }
 
@@ -125,16 +130,60 @@ final class PatternWavesRenderer extends RenderType {
             RenderSystem.disableScissor();
             if (field == null) field = new TextureTarget(grid.columns, grid.rows, false, Minecraft.ON_OSX);
             else if (grow) field.resize(Math.max(field.width, grid.columns), Math.max(field.height, grid.rows), Minecraft.ON_OSX);
-            field.bindWrite(false);
+            // 波面只写离屏颜色。避免通知光影管线宿主的主目标已被替换。
+            GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, field.frameBufferId);
             RenderSystem.viewport(0, 0, grid.columns, grid.rows);
             configureField(grid, bounds, profile, phase, intro, now, ripples);
             VisualRevealRenderer.quad(graphics, FIELD_TYPE, -1, -1, 2, 2, IDENTITY);
         } finally {
-            GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawTarget);
+            var minecraft = grow ? Minecraft.getInstance() : null;
+            var main = minecraft == null ? null : minecraft.getMainRenderTarget();
+            // TextureTarget 的创建/扩容会调用 bindWrite；主目标必须经同一入口恢复。
+            if (main != null && main.frameBufferId == drawTarget) main.bindWrite(false);
+            else GlStateManager._glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawTarget);
             GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readTarget);
             RenderSystem.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
             if (grow) RenderSystem.clearColor(clear[0], clear[1], clear[2], clear[3]);
             if (clipped) RenderSystem.enableScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+            else RenderSystem.disableScissor();
+        }
+    }
+
+    /** RenderType 的清理只重置默认值；调用方可能处在另一个绘制通道。 */
+    private record DrawState(ShaderInstance shader, int program, boolean depthTest, boolean depthWrite,
+                             int depthFunc, boolean cull, boolean blend, int sourceRgb, int destinationRgb,
+                             int sourceAlpha, int destinationAlpha, int equationRgb, int equationAlpha, int colorMask) {
+        static DrawState capture() {
+            try (var stack = MemoryStack.stackPush()) {
+                var mask = stack.malloc(4);
+                GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, mask);
+                int channels = (mask.get(0) != 0 ? 1 : 0) | (mask.get(1) != 0 ? 2 : 0)
+                        | (mask.get(2) != 0 ? 4 : 0) | (mask.get(3) != 0 ? 8 : 0);
+                return new DrawState(RenderSystem.getShader(), GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM),
+                        GL11.glIsEnabled(GL11.GL_DEPTH_TEST), GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK),
+                        GL11.glGetInteger(GL11.GL_DEPTH_FUNC), GL11.glIsEnabled(GL11.GL_CULL_FACE),
+                        GL11.glIsEnabled(GL11.GL_BLEND), GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB),
+                        GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA),
+                        GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA), GL11.glGetInteger(GL20.GL_BLEND_EQUATION_RGB),
+                        GL11.glGetInteger(GL20.GL_BLEND_EQUATION_ALPHA), channels);
+            }
+        }
+
+        void restore() {
+            RenderSystem.setShader(() -> shader);
+            GlStateManager._glUseProgram(program);
+            RenderSystem.colorMask((colorMask & 1) != 0, (colorMask & 2) != 0,
+                    (colorMask & 4) != 0, (colorMask & 8) != 0);
+            RenderSystem.depthMask(depthWrite);
+            RenderSystem.depthFunc(depthFunc);
+            if (depthTest) RenderSystem.enableDepthTest();
+            else RenderSystem.disableDepthTest();
+            if (cull) RenderSystem.enableCull();
+            else RenderSystem.disableCull();
+            GL20.glBlendEquationSeparate(equationRgb, equationAlpha);
+            RenderSystem.blendFuncSeparate(sourceRgb, destinationRgb, sourceAlpha, destinationAlpha);
+            if (blend) RenderSystem.enableBlend();
+            else RenderSystem.disableBlend();
         }
     }
 

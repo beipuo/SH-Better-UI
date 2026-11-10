@@ -64,4 +64,6 @@ public final class TransitionController {
     public float y() { return visual.y; }
     public float right() { return visual.x + visual.width; }
     public float bottom() { return visual.y + visual.height; }
+
+    boolean settled() { return x.settled() && y.settled() && width.settled() && height.settled(); }
 }

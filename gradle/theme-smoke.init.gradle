@@ -1,0 +1,64 @@
+// Author: dishanhai
+// Run only for development smoke tests. The normal build has no smoke source roots.
+if (gradle.startParameter.taskNames.isEmpty()
+        || gradle.startParameter.taskNames.any { it.tokenize(':').last() != 'runClient' }) {
+    throw new GradleException('The theme smoke init script may only run the runClient task')
+}
+
+gradle.beforeProject { p ->
+    p.afterEvaluate {
+        def forge = p.plugins.hasPlugin('net.minecraftforge.gradle')
+        def neo = p.plugins.hasPlugin('net.neoforged.moddev')
+        if (!forge && !neo) return
+        def root = forge ? p.projectDir : p.projectDir.parentFile
+        def platform = forge ? 'forge' : 'neoforge'
+        def settings = p.findProperty('themeSmokeSettings') ?: ''
+        if (!(settings in ['', 'write', 'read'])) throw new GradleException('Expected themeSmokeSettings=write or read')
+        def suffix = settings ? '-settings' : ''
+        def game = new File(root, "build/dynamic-theme/client-${platform}${suffix}")
+        def screenshots = new File(root, "build/dynamic-theme/screenshots/${platform}${suffix}")
+        def baseline = new File(root, 'src/themeSmoke/baseline')
+        def captureOnly = p.hasProperty('themeSmokeCaptureOnly').toString()
+        def worlds = p.hasProperty('themeSmokeWorlds').toString()
+        p.sourceSets.main.java.srcDir(new File(root, 'src/themeSmoke/java'))
+        p.sourceSets.main.java.srcDir(new File(root, "src/themeSmoke/${platform}"))
+        if (forge) {
+            p.minecraft.runs.named('client').configure {
+                workingDirectory game
+                property 'shb.theme.smoke', screenshots.absolutePath
+                property 'shb.theme.smoke.baseline', baseline.absolutePath
+                property 'shb.theme.smoke.captureOnly', captureOnly
+                property 'shb.theme.smoke.worlds', worlds
+                property 'shb.theme.smoke.settings', settings
+                property 'shb.music.disabled', 'true'
+                args '--width', '800', '--height', '480'
+            }
+        } else {
+            p.neoForge.runs.named('client').configure {
+                gameDirectory.set(game)
+                systemProperty 'shb.theme.smoke', screenshots.absolutePath
+                systemProperty 'shb.theme.smoke.baseline', baseline.absolutePath
+                systemProperty 'shb.theme.smoke.captureOnly', captureOnly
+                systemProperty 'shb.theme.smoke.worlds', worlds
+                systemProperty 'shb.theme.smoke.settings', settings
+                systemProperty 'shb.music.disabled', 'true'
+                programArgument '--width'
+                programArgument '800'
+                programArgument '--height'
+                programArgument '480'
+            }
+        }
+        p.tasks.matching { it.name == 'runClient' }.configureEach {
+            def result = new File(screenshots, 'success.txt')
+            doFirst {
+                java.nio.file.Files.deleteIfExists(result.toPath())
+                def options = new File(game, 'options.txt')
+                if (!options.isFile()) {
+                    game.mkdirs()
+                    options.setText('onboardAccessibility:false\n', 'UTF-8')
+                }
+            }
+            doLast { if (!result.isFile()) throw new GradleException('Dynamic theme client smoke did not finish') }
+        }
+    }
+}

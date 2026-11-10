@@ -1,0 +1,2 @@
+# Development-only loader discovery fixture
+sh_better_ui com.dishanhai.sh_better_ui.kernel.smoke.KernelClientSmoke

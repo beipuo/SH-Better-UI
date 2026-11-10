@@ -13,6 +13,8 @@ description="Shared glass UI, blur and animation library."
 config="sh_better_ui.text.mixins.json"
 [[mixins]]
 config="sh_better_ui.text_compat.mixins.json"
+[[mixins]]
+config="sh_better_ui.kernel.mixins.json"
 [[dependencies.sh_better_ui]]
 modId="neoforge"
 type="required"

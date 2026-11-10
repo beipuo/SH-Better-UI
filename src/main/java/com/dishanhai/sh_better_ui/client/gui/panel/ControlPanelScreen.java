@@ -166,7 +166,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private Bounds visiblePage;
     private boolean sidePreview;
     private boolean fits;
-    private static final List<String> THEME_GROUPS = List.copyOf(ThemeEffects.groups());
+    private List<String> themeGroups = List.copyOf(ThemeEffects.groups());
     private final ThemeEffectPreview themeEffectPreview = new ThemeEffectPreview();
     private int themeGroupIndex;
     private UiButton themeGroup;
@@ -196,6 +196,9 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
 
     @Override
     protected void init() {
+        var previousThemeGroup = themeGroupId();
+        themeGroups = List.copyOf(ThemeEffects.groups());
+        themeGroupIndex = Math.max(0, themeGroups.indexOf(previousThemeGroup));
         if (sections != null) sections.cancelDrag();
         if (navigation != null) navigation.cancelDrag();
         sections = null;
@@ -359,7 +362,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private void addThemeEditor(int x) {
         int half = (contentWidth - GAP) / 2;
         themeGroup = row(button(x, 94, half, themeGroupName(), GraphicIcon.CUSTOM_THEME, false, () -> {
-            themeGroupIndex = (themeGroupIndex + 1) % THEME_GROUPS.size();
+            themeGroupIndex = (themeGroupIndex + 1) % themeGroups.size();
             syncThemeEditor();
         }));
         themeGroup.setPreview(label("theme.group.tooltip"));
@@ -418,9 +421,12 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         edit(new Draft(draft.settings().withDynamicTheme(settings), draft.shortcut()));
     }
 
-    private String themeGroupId() { return THEME_GROUPS.get(themeGroupIndex); }
+    private String themeGroupId() { return themeGroups.get(themeGroupIndex); }
 
-    private Component themeGroupName() { return label("theme.group." + themeGroupId()); }
+    private Component themeGroupName() {
+        var background = ThemeEffectPreview.background(themeGroupId());
+        return background == null ? label("theme.group." + themeGroupId()) : Component.translatable(background.titleKey());
+    }
 
     private void syncThemeEditor() {
         if (themeJson == null) return;

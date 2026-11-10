@@ -1,0 +1,7 @@
+{
+  "shbui_kernel_example.title": "UI 内核示例",
+  "shbui_kernel_example.increase": "计数 %1$s · 增加 %2$s",
+  "shbui_kernel_example.undo": "撤销",
+  "shbui_kernel_example.minecraft_narration": "使用 Minecraft 旁白",
+  "shbui_kernel_example.system_reader_available": "系统屏幕阅读器能力可用"
+}

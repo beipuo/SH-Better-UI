@@ -38,7 +38,8 @@
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/RepeatCurve.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/RepeatCurve.java"
   },
   "maintained_shader_hashes": {
-    "program/shop_gauss_blur.fsh": "e975c0146a58a91304460ff56fd9a5a7ffcbdb46c4bf431893c77be94db8c348"
+    "program/shop_gauss_blur.fsh": "585d21a1152cf8ae101379c28f3ec7bd340fdad9b61a00f8b303e8a193f2ae77",
+    "program/shop_gauss_blur.json": "6f40d68ae051070153936dcdf528777f24f72ea3ab646569d1a86564cb073374"
   },
   "shader_hashes": {
     "post/shop_gauss_blur.json": "9b3c1dfc3d7964ee0864fe0f325ead3a716a7affbb583f381518070281d78964",

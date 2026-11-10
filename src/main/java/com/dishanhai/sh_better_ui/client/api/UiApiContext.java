@@ -4,6 +4,7 @@ import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds
 import com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
+import com.dishanhai.sh_better_ui.kernel.internal.ClientUiKernel;
 import com.dishanhai.sh_better_ui.theme.ThemeScope;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -114,12 +115,7 @@ public final class UiApiContext implements UiApi, AutoCloseable {
 
     public UiPreferences preferences() {
         requireOpen();
-        var base = settings().preferences();
-        if (themeScope == null || themeScope.isClosed()) return base;
-        var dynamic = themeScope.preferences();
-        return new UiPreferences(base.highContrast() || dynamic.highContrast(),
-                base.reducedMotion() || dynamic.reducedMotion(),
-                base.backgroundBlur() && !dynamic.lowPerformance(), base.feedback());
+        return settings().preferences().withTheme(themeScope);
     }
 
     /** Opens the context's opt-in screen scope. It survives resize and closes with this context. */
@@ -127,7 +123,7 @@ public final class UiApiContext implements UiApi, AutoCloseable {
         requireOpen();
         if (themeScope == null || themeScope.isClosed()) {
             var scope = themes().global().child("screen");
-            manage(scope);
+            manage(ClientUiKernel.ownPageTheme(scope));
             themeScope = scope;
         }
         return themeScope;

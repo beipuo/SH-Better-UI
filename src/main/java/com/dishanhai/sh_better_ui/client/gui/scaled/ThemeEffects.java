@@ -2,10 +2,13 @@ package com.dishanhai.sh_better_ui.client.gui.scaled;
 
 import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogoProfile;
 import com.dishanhai.sh_better_ui.config.*;
+import com.dishanhai.sh_better_ui.theme.ThemeId;
 import com.google.gson.*;
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /** 山海：将主题中的声明式覆写应用于现有材质和效果配置。 */
 public final class ThemeEffects {
@@ -47,6 +50,7 @@ public final class ThemeEffects {
     private static final Gson GSON = new Gson();
     private static final Local LOCAL = new Local(true, "", 1, 1);
     private static final Map<String, Record> DEFAULTS = defaults();
+    private static final Map<String, Extension> EXTENSIONS = new LinkedHashMap<>();
     private static final ThreadLocal<ClientUiSettings> PREVIEW = new ThreadLocal<>();
     private static final Map<String, Cached> CACHE = new LinkedHashMap<>();
 
@@ -76,7 +80,36 @@ public final class ThemeEffects {
         return java.util.Collections.unmodifiableMap(defaults);
     }
 
-    public static java.util.Set<String> groups() { return DEFAULTS.keySet(); }
+    public static synchronized Set<String> groups() {
+        var groups = new java.util.LinkedHashSet<>(DEFAULTS.keySet());
+        groups.addAll(EXTENSIONS.keySet());
+        return java.util.Collections.unmodifiableSet(groups);
+    }
+
+    /** Installs a namespaced record schema and returns its removal callback. */
+    public static synchronized Runnable registerProfile(String group, Record defaults) {
+        ThemeId.require(group);
+        Objects.requireNonNull(defaults);
+        // Verify the template and canonical constructor before publishing.
+        patch(defaults, new JsonObject());
+        fields(defaults);
+        var extension = new Extension(defaults);
+        if (EXTENSIONS.putIfAbsent(group, extension) != null) throw new IllegalArgumentException(group);
+        return () -> {
+            synchronized (ThemeEffects.class) {
+                if (EXTENSIONS.get(group) == extension) {
+                    EXTENSIONS.remove(group);
+                    CACHE.remove(group);
+                }
+            }
+        };
+    }
+
+    private static synchronized Record defaults(String group) {
+        Record defaults = DEFAULTS.get(group);
+        var extension = EXTENSIONS.get(group);
+        return extension == null ? defaults : extension.defaults();
+    }
 
     public static ClientUiSettings settings() {
         var preview = PREVIEW.get();
@@ -137,13 +170,13 @@ public final class ThemeEffects {
     }
 
     public static void validate(String group, JsonObject values) {
-        Record fallback = DEFAULTS.get(group);
+        Record fallback = defaults(group);
         if (fallback == null) throw new IllegalArgumentException(group);
         apply(group, fallback, values);
     }
 
     public static JsonObject template(String group) {
-        Record fallback = DEFAULTS.get(group);
+        Record fallback = defaults(group);
         if (fallback == null) throw new IllegalArgumentException(group);
         JsonObject result = fields(fallback);
         switch (group) {
@@ -171,7 +204,7 @@ public final class ThemeEffects {
     }
 
     private static Record apply(String group, Record fallback, JsonObject overrides) {
-        Record expected = DEFAULTS.get(group);
+        Record expected = defaults(group);
         if (expected == null || expected.getClass() != fallback.getClass()) throw new IllegalArgumentException(group);
         if (fallback instanceof Local && !template(group).keySet().containsAll(overrides.keySet())) {
             throw new IllegalArgumentException(group);
@@ -248,4 +281,5 @@ public final class ThemeEffects {
     }
 
     private record Cached(ThemeOverrides overrides, Record fallback, Record resolved) {}
+    private record Extension(Record defaults) {}
 }

@@ -13,13 +13,87 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTheme;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
+import com.dishanhai.sh_better_ui.theme.ThemeManager;
+import com.dishanhai.sh_better_ui.theme.ThemeRegistry;
+import com.dishanhai.sh_better_ui.theme.ThemeResolver;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
+
 /** 山海：原生画面的玻璃、Slate 和液态玻璃材质。自绘入口沿用 GUI 逻辑坐标。 */
 public final class MaterialsApi {
-    MaterialsApi() {}
+    public record ThemeChoice(String id, String nameKey) {}
+    private record Preset(ThemeChoice choice, GlassTheme theme) {}
+
+    private static final List<Preset> PRESETS = List.of(
+            preset("classic", "classic", GlassTheme.CLASSIC),
+            preset("glass", "clearGlass", GlassTheme.GLASS),
+            preset("smoke", "smokeGlass", GlassTheme.SMOKE),
+            preset("slate", "slate", GlassTheme.SLATE),
+            preset("liquidGlass", "liquidGlass", GlassTheme.LIQUID_GLASS),
+            preset("network", "network", GlassTheme.NETWORK),
+            preset("aurora", "aurora", GlassTheme.AURORA),
+            preset("amethyst", "amethyst", GlassTheme.AMETHYST),
+            preset("rose", "rose", GlassTheme.ROSE),
+            preset("ember", "ember", GlassTheme.EMBER));
+
+    private final Supplier<ThemeManager> themes;
+    private final ThemeResolver resolver = new ThemeResolver();
+    private final Map<String, GlassTheme> resolved = new HashMap<>();
+    private ThemeRegistry registry;
+    private Map<?, ?> tokenCatalog;
+    private List<ThemeChoice> choices;
+
+    MaterialsApi() { this(ShBetterUiApi::themes); }
+
+    MaterialsApi(Supplier<ThemeManager> themes) { this.themes = themes; }
+
+    private static Preset preset(String id, String label, GlassTheme theme) {
+        return new Preset(new ThemeChoice(id, "sh_better_ui.panel.theme.group." + label), theme);
+    }
+
+    /** Stable snapshot of all material presets and registered Java or resource themes. Client thread only. */
+    public List<ThemeChoice> themeChoices() {
+        var manager = themes.get();
+        refresh(manager);
+        return choices;
+    }
+
+    /** Resolves the named theme for this screen without changing the global selection. Client thread only. */
+    public Optional<GlassTheme> findTheme(String id) {
+        for (var preset : PRESETS) {
+            if (preset.choice().id().equals(id)) return Optional.of(preset.theme());
+        }
+        if (id == null || !id.contains(":")) return Optional.empty();
+        var manager = themes.get();
+        refresh(manager);
+        if (registry.find(id).isEmpty()) return Optional.empty();
+        return Optional.of(resolved.computeIfAbsent(id, key -> GlassTheme.fromSnapshot(
+                resolver.resolve(registry, manager.tokenCatalog(), List.of(key), null))));
+    }
+
+    private void refresh(ThemeManager manager) {
+        var next = manager.registry();
+        var tokens = manager.tokenCatalog();
+        if (registry != next) {
+            var entries = new ArrayList<ThemeChoice>();
+            PRESETS.forEach(preset -> entries.add(preset.choice()));
+            next.themes().values().forEach(theme -> entries.add(new ThemeChoice(theme.id(), theme.nameKey())));
+            choices = List.copyOf(entries);
+        }
+        if (registry != next || tokenCatalog != tokens) {
+            resolved.clear();
+            registry = next;
+            tokenCatalog = tokens;
+        }
+    }
 
     public UiTheme theme() {
         return UiTheme.current();

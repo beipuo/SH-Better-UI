@@ -1,0 +1,69 @@
+// Author: dishanhai
+// Compiles the benchmark fixture only for a dedicated development client.
+if (gradle.startParameter.taskNames != ['runClient']) {
+    throw new GradleException('The native kernel benchmark requires only runClient')
+}
+
+gradle.beforeProject { p ->
+    p.afterEvaluate {
+        boolean forge = p.plugins.hasPlugin('net.minecraftforge.gradle')
+        if (!forge && !p.plugins.hasPlugin('net.neoforged.moddev')) return
+        File root = forge ? p.projectDir : p.projectDir.parentFile
+        String platform = forge ? 'forge' : 'neoforge'
+        String label = p.findProperty('kernelNativeLabel') ?: 'current'
+        if (!(label ==~ /[a-zA-Z0-9_-]+/)) throw new GradleException('Invalid kernelNativeLabel')
+        File run = new File(root, "build/kernel-benchmark/native-${platform}-${label}")
+        File fixture = new File(root, 'src/kernelBenchmarkClient')
+        p.sourceSets.main.java.srcDirs(new File(fixture, 'java'), new File(fixture, platform))
+        p.sourceSets.main.resources.srcDir(new File(fixture, 'resources'))
+        def properties = [
+                'shb.kernel.bench.output' : run.absolutePath,
+                'shb.kernel.bench.warmup' : p.findProperty('kernelNativeWarmup') ?: '120',
+                'shb.kernel.bench.samples': p.findProperty('kernelNativeSamples') ?: '300',
+                'shb.kernel.bench.reload' : p.findProperty('kernelNativeReloadSamples') ?: '20',
+                'shb.kernel.bench.filter' : p.findProperty('kernelNativeScenario') ?: '',
+                'shb.kernel.bench.label'  : label,
+                'shb.music.disabled'     : 'true'
+        ]
+        def arguments = ['--width', '800', '--height', '480']
+        def mixin = 'sh_better_ui.kernel-benchmark.mixins.json'
+        if (forge) {
+            p.minecraft.runs.named('client').configure {
+                workingDirectory run
+                properties.each { key, value -> property key, value }
+                args arguments
+                args '--mixin', mixin
+                jvmArgs '-Xms1G', '-Xmx2G', '-XX:+UseG1GC'
+            }
+        } else {
+            p.neoForge.runs.named('client').configure {
+                gameDirectory.set(run)
+                properties.each { key, value -> systemProperty key, value }
+                arguments.each { programArgument it }
+                jvmArguments.addAll('-Xms1G', '-Xmx2G', '-XX:+UseG1GC')
+            }
+            p.tasks.named('processResources') {
+                doLast {
+                    File descriptor = new File(destinationDir, 'META-INF/neoforge.mods.toml')
+                    if (!descriptor.getText('UTF-8').contains(mixin)) {
+                        descriptor.append("\n[[mixins]]\nconfig=\"${mixin}\"\n", 'UTF-8')
+                    }
+                }
+            }
+        }
+        p.tasks.matching { it.name == 'runClient' }.configureEach {
+            doFirst {
+                run.mkdirs()
+                ['frames.csv', 'reload.csv', 'environment.txt', 'success.txt', 'stopped.txt'].each {
+                    java.nio.file.Files.deleteIfExists(new File(run, it).toPath())
+                }
+                new File(run, 'options.txt').setText('onboardAccessibility:false\nguiScale:2\nenableVsync:false\nmaxFps:260\npauseOnLostFocus:false\n', 'UTF-8')
+            }
+            doLast {
+                if (!new File(run, 'success.txt').isFile() || !new File(run, 'stopped.txt').isFile()) {
+                    throw new GradleException('The native kernel benchmark or shutdown check did not finish')
+                }
+            }
+        }
+    }
+}

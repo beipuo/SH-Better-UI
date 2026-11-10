@@ -1,0 +1,85 @@
+// Author: dishanhai
+// Shared source and isolated packaged-client tasks for both example projects.
+version = '1.0.0'
+group = 'com.dishanhai'
+
+sourceSets {
+    main {
+        java.srcDir('../common/src/main/java')
+        resources.srcDir('../common/src/main/resources')
+    }
+    // The client loads both mods from JARs in its own mods folder.
+    launcher
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(Jar).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+def library = project.ext.uiLibrary
+def metadata = project.ext.loaderMetadata
+dependencies { compileOnly files(library) }
+
+def checkLibrary = tasks.register('verifyExampleDependency') {
+    doLast {
+        if (!library.isFile()) {
+            throw new GradleException("Build SH-Better-UI first or set -PshBetterUiJar to the corresponding JAR. Missing: ${library}")
+        }
+        new java.util.zip.ZipFile(library).withCloseable { zip ->
+            if (zip.getEntry(metadata) == null
+                    || zip.getEntry('com/dishanhai/sh_better_ui/kernel/api/UnifiedUI.class') == null) {
+                throw new GradleException("Incompatible SH-Better-UI JAR: ${library}")
+            }
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn checkLibrary }
+
+project.ext.verifyArchive = { File archive ->
+    new java.util.zip.ZipFile(archive).withCloseable { zip ->
+        def required = [metadata, 'pack.mcmeta', 'META-INF/sh_better_ui.modules',
+                        'com/dishanhai/shbui_kernel_example/ExampleUiModule.class']
+        required += ['en_us', 'zh_cn', 'zh_tw'].collect { "assets/shbui_kernel_example/lang/${it}.json" }
+        def missing = required.findAll { zip.getEntry(it) == null }
+        if (missing) throw new GradleException("Example JAR missing ${missing}")
+        def embedded = zip.entries().any {
+            it.name.startsWith('com/dishanhai/sh_better_ui/') || it.name.startsWith('assets/sh_better_ui/')
+                    || it.name.startsWith('META-INF/jarjar/')
+        }
+        if (embedded) throw new GradleException('The example JAR must keep dependencies external')
+    }
+}
+
+boolean smoke = providers.gradleProperty('exampleSmoke').isPresent()
+def run = layout.buildDirectory.dir(smoke ? 'example-smoke' : 'example-client').get().asFile
+project.ext.exampleRun = run
+project.ext.exampleSmoke = smoke
+
+def stageMods = tasks.register('stageExampleMods', Copy) {
+    dependsOn checkLibrary
+    into new File(run, 'mods')
+    from(project.ext.exampleLaunchArchive) { rename { 'shbui_kernel_example.jar' } }
+    from(library) { rename { 'sh_better_ui.jar' } }
+    if (project.ext.has('kotlinMod')) {
+        File kotlinJar = project.ext.kotlinMod
+        from(kotlinJar) { rename { 'kotlinforforge.jar' } }
+        doFirst {
+            if (!kotlinJar.isFile()) throw new GradleException("Missing KotlinForForge JAR: ${kotlinJar}")
+        }
+    }
+}
+tasks.matching { it.name == 'runClient' }.configureEach {
+    dependsOn stageMods
+    if (smoke) {
+        doFirst {
+            ['success.txt', 'stopped.txt', 'screen.png'].each { java.nio.file.Files.deleteIfExists(new File(run, it).toPath()) }
+            new File(run, 'options.txt').setText('onboardAccessibility:false\nguiScale:2\n', 'UTF-8')
+        }
+        doLast {
+            if (!['success.txt', 'stopped.txt', 'screen.png'].every { new File(run, it).isFile() }) {
+                throw new GradleException("The packaged extension did not finish its smoke checks. See ${run}")
+            }
+        }
+    }
+}

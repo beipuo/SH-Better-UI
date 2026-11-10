@@ -27,6 +27,7 @@ repositories {
 // Share stable drawing and motion API; only loader/render entry points are overridden.
 def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/UiClient.java',
+        'com/dishanhai/sh_better_ui/client/ForgePlatformBridge.java',
         'com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java',
         'com/dishanhai/sh_better_ui/client/lyrics/LyricOptionsScreen.java',
         'com/dishanhai/sh_better_ui/client/lyrics/render/LyricGlyphPlatform.java',
@@ -86,7 +87,7 @@ tasks.withType(Test).configureEach {
     workingDir = projectDir.parentFile
 }
 ext.sourceRoot = projectDir.parentFile
-apply from: '../gradle/windows-media.gradle'
+apply from: '../gradle/kernel.gradle'
 
 processResources {
     from('../LICENSE')
@@ -114,10 +115,14 @@ tasks.register('verifyLibraryJar') {
              'com/dishanhai/sh_better_ui/client/api/PlatformUiApi$LdLib.class',
              'com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.class',
              'kubejs.plugins.txt', 'sh_better_ui.text.mixins.json', 'sh_better_ui.text_compat.mixins.json',
+             'sh_better_ui.kernel.mixins.json',
              'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
              'com/dishanhai/sh_better_ui/compat/ldlib2/LdLib2UiBridge.class',
              'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh'].each {
                 if (zip.getEntry(it) == null) throw new GradleException("Missing library entry: ${it}")
+            }
+            if (zip.entries().any { it.name.contains('/kernel/smoke/') || it.name == 'META-INF/sh_better_ui.modules' }) {
+                throw new GradleException('Kernel smoke fixtures must stay out of the release JAR')
             }
             def forbidden = zip.entries().findAll {
                 it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||

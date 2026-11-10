@@ -1,0 +1,31 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="shbui_kernel_example"
+version="1.0.0"
+displayName="SH-Better-UI Kernel Example"
+authors="dishanhai"
+description="Standalone client-side UI Kernel example."
+
+[[dependencies.shbui_kernel_example]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.shbui_kernel_example]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.251,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.shbui_kernel_example]]
+modId="sh_better_ui"
+type="required"
+versionRange="[1.0.5,)"
+ordering="AFTER"
+side="CLIENT"

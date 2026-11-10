@@ -1,0 +1,51 @@
+// Author: dishanhai
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+java { toolchain.languageVersion = JavaLanguageVersion.of(21) }
+repositories {
+    mavenCentral()
+    maven {
+        url = 'https://thedarkcolour.github.io/KotlinForForge/'
+        content { includeGroup 'thedarkcolour' }
+    }
+}
+
+def workspace = file('../../..')
+ext.uiLibrary = file(providers.gradleProperty('shBetterUiJar')
+        .orElse(new File(workspace, 'neoforge/build/libs/sh_better_ui-neoforge-1.21.1-1.0.5.jar').path).get())
+ext.loaderMetadata = 'META-INF/neoforge.mods.toml'
+ext.exampleLaunchArchive = tasks.named('jar', Jar).flatMap { it.archiveFile }
+apply from: '../example.gradle'
+
+dependencies {
+    // ModDevGradle supplies the full KotlinForForge dependency to the loader's JVM layers.
+    launcherImplementation 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
+}
+
+def run = project.ext.exampleRun
+boolean smoke = project.ext.exampleSmoke
+neoForge {
+    version = '21.1.251'
+    addModdingDependenciesTo(sourceSets.launcher)
+    runs {
+        client {
+            client()
+            sourceSet.set(sourceSets.launcher)
+            gameDirectory.set(run)
+            if (smoke) {
+                systemProperty 'shbui.example.smoke', run.absolutePath
+                systemProperty 'shb.music.disabled', 'true'
+                ['--width', '800', '--height', '480'].each { programArgument it }
+            }
+        }
+    }
+}
+
+def verify = tasks.register('verifyExampleJar') {
+    dependsOn jar
+    doLast { project.ext.verifyArchive(tasks.jar.archiveFile.get().asFile) }
+}
+tasks.named('build') { dependsOn verify }

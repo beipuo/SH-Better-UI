@@ -5,6 +5,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiLocalModal;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiOverlayHost;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
+import com.dishanhai.sh_better_ui.kernel.internal.ClientUiKernel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,17 +39,25 @@ final class UiClientRendering {
     static void screenClosing(Screen owner) {
         UiFrameScheduler.ownerClosing(owner, () -> {
             try {
-                try {
-                    UiLocalModal.interrupt(owner);
-                } finally {
-                    UiPointerCapture.ownerClosed(owner);
-                    UiOverlayHost overlay = UiOverlayHost.current(owner);
-                    if (overlay != null) overlay.ownerClosed();
-                }
+                ClientUiKernel.screenClosing(owner);
             } finally {
-                clearBlur();
+                closeLegacyOverlays(owner);
             }
         });
+    }
+
+    private static void closeLegacyOverlays(Screen owner) {
+        try {
+            try {
+                UiLocalModal.interrupt(owner);
+            } finally {
+                UiPointerCapture.ownerClosed(owner);
+                UiOverlayHost overlay = UiOverlayHost.current(owner);
+                if (overlay != null) overlay.ownerClosed();
+            }
+        } finally {
+            clearBlur();
+        }
     }
 
     static void endFrame() {

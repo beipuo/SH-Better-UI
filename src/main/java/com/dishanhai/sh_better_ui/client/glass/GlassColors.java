@@ -1,5 +1,8 @@
 package com.dishanhai.sh_better_ui.client.glass;
 
+import com.dishanhai.sh_better_ui.theme.ThemeSnapshot;
+import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
+
 /** 山海：共用深色与中性浅色玻璃的语义色；仅决定显示颜色，不读取业务配置。 */
 public final class GlassColors {
     public static final GlassColors DARK = new GlassColors(
@@ -48,6 +51,20 @@ public final class GlassColors {
     }
 
     public static GlassColors select(boolean clear) { return clear ? CLEAR : DARK; }
+
+    static GlassColors fromSnapshot(ThemeSnapshot theme) {
+        int accent = theme.resolve(ThemeTokens.ACCENT).argb();
+        int text = theme.resolve(ThemeTokens.TEXT).argb();
+        int secondaryText = theme.resolve(ThemeTokens.TEXT_SECONDARY).argb();
+        int surface = theme.resolve(ThemeTokens.SURFACE).argb();
+        int secondarySurface = theme.resolve(ThemeTokens.SURFACE_SECONDARY).argb();
+        int elevated = theme.resolve(ThemeTokens.SURFACE_ELEVATED).argb();
+        int edge = theme.resolve(ThemeTokens.BORDER).argb();
+        return new GlassColors(accent, text, text, secondaryText, secondaryText,
+                theme.resolve(ThemeTokens.TEXT_DISABLED).argb(), theme.resolve(ThemeTokens.SUCCESS).argb(),
+                edge, surface, elevated, edge, secondarySurface, theme.resolve(ThemeTokens.BACKGROUND).argb(),
+                edge, surface, elevated, edge, surface, DARK.LIT);
+    }
 
     /** 山海：可复用的深色染色玻璃，结构色随基底变化，正文和交易语义保持可读。 */
     public static GlassColors tintedDark(int accent, int surface) {

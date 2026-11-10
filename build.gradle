@@ -60,7 +60,8 @@ minecraft {
         client {
             workingDirectory file('run/client')
             args '--mixin', 'sh_better_ui.text.mixins.json',
-                    '--mixin', 'sh_better_ui.text_compat.mixins.json'
+                    '--mixin', 'sh_better_ui.text_compat.mixins.json',
+                    '--mixin', 'sh_better_ui.kernel.mixins.json'
             mods { sh_better_ui { source sourceSets.main } }
         }
         server {
@@ -71,7 +72,7 @@ minecraft {
 }
 
 ext.sourceRoot = projectDir
-apply from: 'gradle/windows-media.gradle'
+apply from: 'gradle/kernel.gradle'
 
 processResources {
     from('LICENSE')
@@ -91,7 +92,7 @@ jar {
                         'Implementation-Title': mod_name,
                         'Implementation-Version': mod_version,
                         'Implementation-Vendor': mod_authors,
-                        'MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json')
+                        'MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json,sh_better_ui.kernel.mixins.json')
     finalizedBy 'reobfJar'
 }
 
@@ -100,7 +101,7 @@ tasks.register('devJar', Jar) {
     dependsOn classes
     archiveClassifier = 'dev'
     from sourceSets.main.output
-    manifest.attributes('MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json')
+    manifest.attributes('MixinConfigs': 'sh_better_ui.text.mixins.json,sh_better_ui.text_compat.mixins.json,sh_better_ui.kernel.mixins.json')
 }
 tasks.register('releaseJar', Copy) {
     dependsOn 'reobfJar'
@@ -116,7 +117,7 @@ tasks.register('verifyLibraryJar') {
         def zip = new java.util.zip.ZipFile(artifact)
         try {
             def required = ['META-INF/mods.toml', 'pack.mcmeta', 'kubejs.plugins.txt',
-                            'sh_better_ui.text.mixins.json', 'sh_better_ui.text_compat.mixins.json',
+                            'sh_better_ui.text.mixins.json', 'sh_better_ui.text_compat.mixins.json', 'sh_better_ui.kernel.mixins.json',
                             'com/dishanhai/sh_better_ui/ShBetterUi.class',
                             'com/dishanhai/sh_better_ui/client/UiClient.class',
                             'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
@@ -131,6 +132,9 @@ tasks.register('verifyLibraryJar') {
             }
             def missing = required.findAll { zip.getEntry(it) == null }
             if (!missing.isEmpty()) throw new GradleException("UI library entries missing: ${missing}")
+            if (zip.entries().any { it.name.contains('/kernel/smoke/') || it.name == 'META-INF/sh_better_ui.modules' }) {
+                throw new GradleException('Kernel smoke fixtures must stay out of the release JAR')
+            }
             def forbidden = zip.entries().findAll {
                 it.name.startsWith('META-INF/jarjar/') || it.name.startsWith('kotlin/') ||
                 it.name.startsWith('kotlinx/') || it.name.startsWith('thedarkcolour/') ||

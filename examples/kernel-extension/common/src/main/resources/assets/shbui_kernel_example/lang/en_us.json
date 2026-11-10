@@ -1,0 +1,7 @@
+{
+  "shbui_kernel_example.title": "UI Kernel Example",
+  "shbui_kernel_example.increase": "Count %1$s · Add %2$s",
+  "shbui_kernel_example.undo": "Undo",
+  "shbui_kernel_example.minecraft_narration": "Uses the Minecraft narrator",
+  "shbui_kernel_example.system_reader_available": "A system screen reader capability is available"
+}

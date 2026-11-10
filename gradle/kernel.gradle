@@ -1,0 +1,55 @@
+// Author: dishanhai
+def kernel = sourceSets.create('kernel') {
+    java.setSrcDirs([new File(sourceRoot, 'src/kernel/java')])
+    compileClasspath = files()
+}
+def contracts = sourceSets.create('kernelTest') {
+    java.setSrcDirs([new File(sourceRoot, 'src/kernelTest/java')])
+    compileClasspath += kernel.output.classesDirs
+    runtimeClasspath += kernel.output.classesDirs
+}
+
+// Include the compiled kernel in the mod's normal class directories and jars.
+sourceSets.named('main') {
+    compileClasspath += kernel.output.classesDirs
+    output.classesDirs.from(kernel.output.classesDirs)
+}
+tasks.named('sourcesJar', Jar) {
+    from kernel.allJava
+}
+
+// Kotlin's JVM plugin can add its stdlib to custom source sets.
+configurations.named(contracts.implementationConfigurationName) {
+    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib'
+}
+dependencies {
+    kernelTestImplementation platform('org.junit:junit-bom:5.10.2')
+    kernelTestImplementation 'org.junit.jupiter:junit-jupiter'
+    // Gradle 8.8 supplies the launcher for its Test worker. Gradle 9 requires it explicitly.
+    if (GradleVersion.current() >= GradleVersion.version('9.0')) {
+        kernelTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+}
+
+def java17 = JavaLanguageVersion.of(17)
+def compiler17 = javaToolchains.compilerFor { languageVersion = java17 }
+[kernel, contracts].each { sources ->
+    tasks.named(sources.compileJavaTaskName, JavaCompile) {
+        javaCompiler = compiler17
+        options.release = 17
+    }
+}
+
+def kernelTest = tasks.register('kernelTest', Test) {
+    group = 'verification'
+    description = 'Runs the shared Java 17 UI kernel contract tests.'
+    testClassesDirs = contracts.output.classesDirs
+    classpath = contracts.runtimeClasspath
+    javaLauncher = javaToolchains.launcherFor { languageVersion = java17 }
+    useJUnitPlatform()
+}
+tasks.named('check') {
+    dependsOn kernelTest
+}
+
+apply from: new File(sourceRoot, 'gradle/kernel-benchmark.gradle')

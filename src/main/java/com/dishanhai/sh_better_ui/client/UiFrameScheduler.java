@@ -82,6 +82,10 @@ public final class UiFrameScheduler {
         beginFrame(rawNowMs(), UiFrameScheduler::minecraftScreen);
     }
 
+    static void beginFrame(long nowMs) {
+        beginFrame(nowMs, UiFrameScheduler::minecraftScreen);
+    }
+
     static void beginFrame(long nowMs, Supplier<Screen> activeScreen) {
         FRAME.set(new Frame(nowMs, activeScreen));
     }

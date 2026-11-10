@@ -6,6 +6,8 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.LiquidGlassTheme;
 import com.dishanhai.sh_better_ui.client.gui.scaled.RoundedCorners;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
+import com.dishanhai.sh_better_ui.theme.ThemeSnapshot;
+import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -96,6 +98,15 @@ public class GlassTheme {
                 colors.DISPLAY_FILL, colors.DISPLAY_FILL, colors.ROW_FILL, colors.ROW_FILL_HOVER,
                 colors.ROW_FILL_HOVER, colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER,
                 colors.ROW_EDGE, colors.DISPLAY_FILL, colors.ROW_EDGE, materialGroup);
+    }
+
+    /** Projects the shared semantic palette onto the glass controls used by host screens. */
+    public static GlassTheme fromSnapshot(ThemeSnapshot theme) {
+        var colors = GlassColors.fromSnapshot(theme);
+        return new GlassTheme(true, colors, colors.ACCENT, colors.BUTTON_EDGE, colors.PANEL_FILL,
+                colors.DISPLAY_FILL, colors.DISPLAY_FILL, colors.ROW_FILL, colors.ROW_FILL_HOVER,
+                theme.resolve(ThemeTokens.SELECTED).argb(), colors.BUTTON_FILL, colors.BUTTON_FILL_HOVER,
+                colors.ROW_EDGE, colors.DISPLAY_FILL, colors.ROW_EDGE, "clearGlass");
     }
 
     private GlassTheme(String group, int accent, int edge, int panel, int inner, int row, int hover,

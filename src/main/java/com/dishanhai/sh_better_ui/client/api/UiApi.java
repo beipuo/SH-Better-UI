@@ -18,6 +18,8 @@ public interface UiApi {
 
     default MaterialsApi materials() { return ShBetterUiApi.materials(); }
 
+    default BackgroundRegistry backgrounds() { return ShBetterUiApi.backgrounds(); }
+
     default BlurApi blur() { return ShBetterUiApi.blur(); }
 
     default GraphicsApi graphics() { return ShBetterUiApi.graphics(); }

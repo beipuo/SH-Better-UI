@@ -1,5 +1,10 @@
 package com.dishanhai.sh_better_ui.client.gui.scaled;
 
+import com.dishanhai.sh_better_ui.kernel.api.ModuleContext;
+import com.dishanhai.sh_better_ui.kernel.api.OwnershipLease;
+import com.dishanhai.sh_better_ui.kernel.api.ScopeHandle;
+import com.dishanhai.sh_better_ui.kernel.api.UiId;
+import com.dishanhai.sh_better_ui.kernel.internal.ClientUiKernel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
@@ -9,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 /** 山海：把客户端控件已经处理的按键交给同一手势处理至放开。 */
 public final class UiPointerCapture {
@@ -44,10 +50,31 @@ public final class UiPointerCapture {
 
     /** 仅在控件处理按下时调用。坐标沿用 Screen 的 GUI 坐标。 */
     public static boolean start(Screen owner, int button, Handler handler) {
+        return start(owner, button, handler, ClientUiKernel.hasNativeAuthority()
+                ? revoke -> ClientUiKernel.claimNativePointer(owner, null, null, null, revoke) : null, null);
+    }
+
+    /** Internal bridge for a permission-checked kernel module capture. */
+    public static boolean startScoped(Screen owner, int button, Handler handler, ModuleContext module,
+                                      ScopeHandle node, UiId claim) {
+        Objects.requireNonNull(module);
+        return start(owner, button, handler,
+                revoke -> ClientUiKernel.claimNativePointer(owner, module, node, claim, revoke), module);
+    }
+
+    private static boolean start(Screen owner, int button, Handler handler, Function<Runnable, OwnershipLease> acquire,
+                                 ModuleContext module) {
         Objects.requireNonNull(owner);
         Objects.requireNonNull(handler);
         if (button < 0 || active != null || blocked(owner)) return false;
-        active = new Capture(owner, button, handler);
+        var capture = new Capture(owner, button, handler, module);
+        if (acquire != null) {
+            capture.lease = acquire.apply(() -> {
+                if (active == capture) abandonCapture(owner);
+            });
+            if (capture.lease == null) return false;
+        }
+        active = capture;
         return true;
     }
 
@@ -82,7 +109,7 @@ public final class UiPointerCapture {
         if (pendingReleases.contains(button)) return true;
         if (!matches(owner, button)) return false;
         Capture capture = active;
-        if (!capture.cancelled) capture.handler.drag(x, y);
+        if (!capture.cancelled) capture.drag(x, y);
         return true;
     }
 
@@ -92,7 +119,8 @@ public final class UiPointerCapture {
         if (!matches(owner, button)) return false;
         Capture capture = active;
         active = null;
-        if (!capture.cancelled) capture.handler.release(x, y);
+        capture.releaseLease();
+        if (!capture.cancelled) capture.release(x, y);
         return true;
     }
 
@@ -106,7 +134,11 @@ public final class UiPointerCapture {
         if (active == null || active.owner != owner) return;
         Capture capture = active;
         active = null;
-        capture.cancel();
+        try {
+            capture.releaseLease();
+        } finally {
+            capture.cancel();
+        }
     }
 
     public static void ownerClosed(Screen owner) {
@@ -118,6 +150,11 @@ public final class UiPointerCapture {
             registration.closed = true;
             return true;
         });
+    }
+
+    /** Drops a captured gesture immediately, while remembering the matching native button release. */
+    public static void windowLost(Screen owner) {
+        abandonCapture(owner);
     }
 
     private static void abandonCapture(Screen owner) {
@@ -146,18 +183,52 @@ public final class UiPointerCapture {
         private final Screen owner;
         private final int button;
         private final Handler handler;
+        private final ModuleContext module;
         private boolean cancelled;
+        private OwnershipLease lease;
 
-        private Capture(Screen owner, int button, Handler handler) {
+        private Capture(Screen owner, int button, Handler handler, ModuleContext module) {
             this.owner = owner;
             this.button = button;
             this.handler = handler;
+            this.module = module;
+        }
+
+        private void drag(double x, double y) {
+            try {
+                handler.drag(x, y);
+            } catch (RuntimeException | LinkageError | AssertionError failure) {
+                if (module == null) throw failure;
+                ClientUiKernel.nativeCaptureFailed(module, "drag", failure);
+                if (active == this) cancel();
+            }
+        }
+
+        private void release(double x, double y) {
+            try {
+                handler.release(x, y);
+            } catch (RuntimeException | LinkageError | AssertionError failure) {
+                if (module == null) throw failure;
+                ClientUiKernel.nativeCaptureFailed(module, "release", failure);
+            }
         }
 
         private void cancel() {
             if (cancelled) return;
             cancelled = true;
-            handler.cancel();
+            try {
+                handler.cancel();
+            } catch (RuntimeException | LinkageError | AssertionError failure) {
+                if (module == null) throw failure;
+                ClientUiKernel.nativeCaptureFailed(module, "cancel", failure);
+            }
+        }
+
+        private void releaseLease() {
+            if (lease == null) return;
+            var previous = lease;
+            lease = null;
+            previous.close();
         }
     }
 

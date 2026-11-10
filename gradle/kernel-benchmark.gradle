@@ -1,0 +1,33 @@
+// Author: dishanhai
+def kernel = sourceSets.named('kernel').get()
+def benchmark = sourceSets.create('kernelBenchmark') {
+    java.setSrcDirs([new File(sourceRoot, 'src/kernelBenchmark/java')])
+    compileClasspath = kernel.output.classesDirs
+    runtimeClasspath = output.classesDirs + kernel.output.classesDirs
+}
+
+def java17 = JavaLanguageVersion.of(17)
+tasks.named(benchmark.compileJavaTaskName, JavaCompile) {
+    javaCompiler = javaToolchains.compilerFor { languageVersion = java17 }
+    options.release = 17
+}
+
+tasks.register('kernelBenchmark', JavaExec) {
+    group = 'verification'
+    description = 'Measures shared UI kernel workloads in a fresh Java 17 process.'
+    classpath = benchmark.runtimeClasspath
+    mainClass = 'com.dishanhai.sh_better_ui.kernel.internal.KernelBenchmark'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = java17 }
+    minHeapSize = '512m'
+    maxHeapSize = '512m'
+    jvmArgs '-XX:+UseG1GC', '-XX:ActiveProcessorCount=4'
+    def defaultPlatform = project.findProperty('minecraft_version') == '1.21.1'
+            ? 'NEOFORGE_1_21_1' : 'FORGE_1_20_1'
+    def reportDirectory = providers.gradleProperty('kernelBenchmarkOutput').map { file(it) }
+            .getOrElse(layout.buildDirectory.dir('reports/kernel-benchmark').get().asFile)
+    args '--output', reportDirectory.absolutePath,
+            '--platform', providers.gradleProperty('kernelBenchmarkPlatform').getOrElse(defaultPlatform),
+            '--warmup', providers.gradleProperty('kernelBenchmarkWarmup').getOrElse('2000'),
+            '--samples', providers.gradleProperty('kernelBenchmarkSamples').getOrElse('2000'),
+            '--scenario', providers.gradleProperty('kernelBenchmarkScenario').getOrElse('all')
+}

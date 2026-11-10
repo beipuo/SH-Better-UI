@@ -3,19 +3,11 @@
 
 Forge 1.20.1 的生产类使用 Java 17，NeoForge 1.21.1 使用 Java 21。两个加载器只在物理客户端启动同一份 Java 服务。联机断开不会关闭服务；退出游戏时停止采集与后台线程。音乐数据不发给 Minecraft 服务器。客户端可加 `-Dshb.music.disabled=true` 停用系统媒体读取。
 
-- **Windows**：GSMTC（Windows 10 1809 或更新版本）。仅当播放器向系统公开媒体会话时才有数据；浏览器也一样。Windows 同一应用 ID 的会话保留一条。应用未公开曲目唯一 ID 时以曲名与艺术家构造曲目键；不能分辨字段完全相同的录音。桥不访问播放器私有 API。
+- **Windows**：通过 Minecraft 已附带的 JNA 直接读取 GSMTC（Windows 10 1809 或更新版本）。播放器和浏览器需要向系统公开媒体会话。每个 Windows 应用 ID 保留一条会话。曲目键由曲名和艺术家组成，相同字段的录音共享同一个键。
 - **Linux**：通过 `playerctl` 读取当前用户 D-Bus 的 MPRIS 元数据、播放状态及时间轴。可用 `-Dshb.music.playerctl=/path/to/playerctl` 指定工具。未安装时返回不支持；当前版本不读取 MPRIS 封面。Linux 真机尚未验证。
 - **macOS**：通过「音乐」App 的公开脚本字典提供实验性来源。默认关闭；使用 `-Dshb.music.macAutomation=true` 启用，并在系统提示时为 Minecraft 启动器授权「自动化 → 音乐」。只读已运行的「音乐」App；未公开的曲目字段保持未知。尚未在 Mac 真机验证，不覆盖 Spotify、浏览器或其他 macOS 播放器。
 
-## Windows 桥构建和启动
-
-在装有 .NET 10 SDK 的 Windows 构建机运行：
-
-```bash
-dotnet publish native/windows-media -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o native/windows-media/bin/publish-x64
-```
-
-两个加载器的普通构建会自动带入上述产物，Gradle 的 `clean` 会保留原生发布目录。ARM64 对应 `win-arm64` 和 `native/windows-media/bin/publish-arm64`。也可用 `-PmusicBridgeX64=<可执行文件绝对路径>` 或 `-PmusicBridgeArm64=<可执行文件绝对路径>` 覆盖。游戏会自动解包、启动及结束内置桥。自包含桥已带 .NET 运行时。未随 JAR 打包时，可在客户端 JVM 参数中指定 `-Dshb.music.windowsBridge=<桥接程序绝对路径>`。默认后台轮询间隔 750 毫秒，可用 `-Dshb.music.pollMillis=1000` 调整。标准输入输出先确认协议版本，再发送有界快照，桥崩溃时最多自动重试五次，可由宿主调用 `retry()`。
+Windows 媒体读取随两个加载器的常规构建提供。默认后台轮询间隔为 750 毫秒，可用 `-Dshb.music.pollMillis=1000` 调整。轮询出错时服务最多自动重试五次，宿主也可调用 `retry()`。
 
 ## 接入界面
 
