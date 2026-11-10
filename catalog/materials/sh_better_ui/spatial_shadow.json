@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:spatial_shadow",
+  "materialRevision": "1.0.0",
+  "name": "Spatial Shadows and Elevation",
+  "localizedNames": {
+    "zh_cn": "空间阴影与高度",
+    "zh_tw": "空間陰影與高度"
+  },
+  "aliases": [
+    "spatial shadow",
+    "SDF shadow",
+    "inner shadow",
+    "drop shadow",
+    "elevation"
+  ],
+  "category": "shadow",
+  "tags": [
+    "spatial",
+    "sdf",
+    "shadow",
+    "elevation"
+  ],
+  "description": "Scope-owned node shadows with elevation tokens, clipping, and independently configurable outer and inner layers.",
+  "visualCharacteristics": [
+    "外投影",
+    "内阴影",
+    "接触阴影"
+  ],
+  "useCases": [
+    "悬浮卡片",
+    "凹陷输入框"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialStyle.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialScene.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialUI.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/spatial/SpatialRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/kernel/internal/ClientSpatial.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#shadows",
+    "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#elevation",
+    "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#shadowClip",
+    "com.dishanhai.sh_better_ui.spatial.SpatialStyle.Theme#DEFAULT",
+    "com.dishanhai.sh_better_ui.kernel.api.RenderService.Context#spatial",
+    "com.dishanhai.sh_better_ui.spatial.SpatialUI#mount"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#shadows",
+  "requiredCapabilities": [
+    "sh_better_ui:spatial",
+    "sh_better_ui:render"
+  ],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/spatial.fsh",
+    "sh_better_ui:shaders/core/spatial.json",
+    "sh_better_ui:shaders/core/spatial.vsh"
+  ],
+  "parameters": {
+    "elevation": {
+      "type": "enum",
+      "defaultValue": "SURFACE",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": [
+        "SURFACE",
+        "RAISED",
+        "FLOATING",
+        "OVERLAY",
+        "MODAL",
+        "DRAGGING"
+      ]
+    },
+    "shadow": {
+      "type": "object",
+      "defaultValue": {
+        "layers": []
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "spatial-order-and-clip",
+    "outer-sdf-shadow",
+    "surface",
+    "inner-sdf-shadow"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "SpatialSceneTest",
+    "docs/SPATIAL_VERIFICATION.md",
+    "docs/spatial/ShadowEngine.md demonstrates explicit shadows. Default SURFACE elevation emits no themed shadows."
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

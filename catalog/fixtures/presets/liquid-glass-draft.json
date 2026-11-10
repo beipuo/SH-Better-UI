@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "0.9.0",
+  "catalogVersion": "0.9.0",
+  "materialId": "liquid_glass",
+  "materialRevision": "0.9.0",
+  "parameters": { "opticalBlur": 7.25, "foreground": "DARK" }
+}

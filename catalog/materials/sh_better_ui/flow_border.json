@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:flow_border",
+  "materialRevision": "1.0.0",
+  "name": "Flow Border",
+  "localizedNames": {
+    "zh_cn": "流动边框",
+    "zh_tw": "流動邊框"
+  },
+  "aliases": [
+    "flowBorder",
+    "flow border",
+    "animated outline"
+  ],
+  "category": "animation",
+  "tags": [
+    "animation",
+    "outline",
+    "feedback"
+  ],
+  "description": "A thin highlight travels clockwise along the four sides of a rectangular control.",
+  "visualCharacteristics": [
+    "顺时针流光边"
+  ],
+  "useCases": [
+    "强调控件",
+    "边缘状态提示"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GlassEffectRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GlassEffectMotion.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#drawFlowBorder",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.GlassEffectRenderer#drawFlowBorder"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MotionApi#drawFlowBorder",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "enabled": {
+      "type": "boolean",
+      "defaultValue": true,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "speed": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0.1,
+      "maximum": 4,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "basePeriodMs": {
+      "type": "duration",
+      "defaultValue": 2000,
+      "minimum": 2000,
+      "maximum": 2000,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "perimeter-fill"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "ThemeEffectPreview flowBorder",
+    "GlassEffectMotion.FLOW_PERIOD_MS",
+    "GlassEffectRendererTest",
+    "docs/effects.md"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

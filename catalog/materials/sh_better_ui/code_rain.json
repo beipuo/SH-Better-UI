@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:code_rain",
+  "materialRevision": "1.0.0",
+  "name": "Code Rain",
+  "localizedNames": {
+    "zh_cn": "代码雨",
+    "zh_tw": "程式碼雨"
+  },
+  "aliases": [
+    "codeRain",
+    "code_rain",
+    "matrix rain",
+    "代码雨背景"
+  ],
+  "category": "dynamic-background",
+  "tags": [
+    "glyph",
+    "character",
+    "background",
+    "animation"
+  ],
+  "description": "Falling character columns with trailing opacity and optional glyph effect callbacks.",
+  "visualCharacteristics": [
+    "下落字符列",
+    "透明尾迹"
+  ],
+  "useCases": [
+    "动态字符背景",
+    "终端风格界面"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRain.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainProfile.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CodeRainEffects.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/BuiltinBackgrounds.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#codeRain",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.CodeRain#draw",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.CodeRainProfile#builder"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.GraphicsApi#codeRain",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "mode": {
+      "type": "enum",
+      "defaultValue": "RAIN",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": [
+        "RAIN",
+        "ASCII"
+      ]
+    },
+    "glyphs": {
+      "type": "object",
+      "defaultValue": {
+        "characters": ".:+=xX0S8#@"
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "cellSize": {
+      "type": "integer",
+      "defaultValue": 12,
+      "minimum": 6,
+      "maximum": 128,
+      "step": 1,
+      "unit": "gui",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "density": {
+      "type": "float",
+      "defaultValue": 0.85,
+      "minimum": 0,
+      "maximum": 1,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "speed": {
+      "type": "float",
+      "defaultValue": 8,
+      "minimum": 0,
+      "maximum": 64,
+      "step": 0.01,
+      "unit": "rows/s",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "trailLength": {
+      "type": "integer",
+      "defaultValue": 12,
+      "minimum": 1,
+      "maximum": 128,
+      "step": 1,
+      "unit": "cells",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "color": {
+      "type": "color",
+      "defaultValue": "#FF56F6A0",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "argb",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "seed": {
+      "type": "integer",
+      "defaultValue": 0,
+      "minimum": -2147483648,
+      "maximum": 2147483647,
+      "step": 1,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:code_rain",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "glyph-grid-update",
+    "minecraft-font-draw"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "BuiltinBackgrounds registers codeRain",
+    "DeveloperSamples code_rain",
+    "CodeRainProfile validates 1–128 renderable code points",
+    "docs/API_REFERENCE.md 代码雨与 ASCII 字符场"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

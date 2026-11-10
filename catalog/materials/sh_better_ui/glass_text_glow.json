@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:glass_text_glow",
+  "materialRevision": "1.0.0",
+  "name": "Glass Text Glow",
+  "localizedNames": {
+    "zh_cn": "玻璃文字柔光",
+    "zh_tw": "玻璃文字柔光"
+  },
+  "aliases": [
+    "glass text glow",
+    "drawGlassText",
+    "soft text glow"
+  ],
+  "category": "typography",
+  "tags": [
+    "text",
+    "glass",
+    "glow",
+    "contrast"
+  ],
+  "description": "Glass foreground text is drawn with a low-alpha fringe selected from the current foreground color.",
+  "visualCharacteristics": [
+    "柔光文字边缘",
+    "高对比时普通文字"
+  ],
+  "useCases": [
+    "玻璃表面前景",
+    "格式化标签"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassSurface.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#drawGlassText",
+    "com.dishanhai.sh_better_ui.client.glass.GlassSurface#drawString"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MaterialsApi#drawGlassText",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {},
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "glyph-fringe",
+    "foreground-glyphs"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "GlassTextGlowTest",
+    "docs/previews/2026-11-07-text-glow-detail.png"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

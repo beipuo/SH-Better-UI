@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:network_surface",
+  "materialRevision": "1.0.0",
+  "name": "Network Surface",
+  "localizedNames": {
+    "zh_cn": "网络界面表面",
+    "zh_tw": "網路介面表面"
+  },
+  "aliases": [
+    "network",
+    "network_tab",
+    "network panel"
+  ],
+  "category": "surface",
+  "tags": [
+    "surface",
+    "network",
+    "tab",
+    "theme"
+  ],
+  "description": "A blue-toned panel and field style for network views, with an independently drawable surface.",
+  "visualCharacteristics": [
+    "蓝色强调边缘",
+    "统一底板"
+  ],
+  "useCases": [
+    "网络面板",
+    "表单字段"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/NetworkTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/GraphicsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#drawNetworkPanel",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#drawNetworkField",
+    "com.dishanhai.sh_better_ui.client.glass.GlassTheme#NETWORK"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.GraphicsApi#drawNetworkPanel",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/capsule.fsh",
+    "sh_better_ui:shaders/core/capsule.json",
+    "sh_better_ui:shaders/core/capsule.vsh"
+  ],
+  "parameters": {
+    "colorOverrides": {
+      "type": "object",
+      "defaultValue": {
+        "fill": "",
+        "edge": "",
+        "text": "",
+        "accent": ""
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "opacity": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:network_tab",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "network-panel-fill",
+    "network-border",
+    "host-content"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "DeveloperSamples network_tab",
+    "NetworkIconTest",
+    "ThemeEffectPreview network"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

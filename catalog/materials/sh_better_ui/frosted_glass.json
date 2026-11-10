@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:frosted_glass",
+  "materialRevision": "1.0.0",
+  "name": "Frosted Glass Backdrop",
+  "localizedNames": {
+    "zh_cn": "磨砂玻璃背景",
+    "zh_tw": "霧面玻璃背景"
+  },
+  "aliases": [
+    "frosted_glass",
+    "frosted glass",
+    "磨砂玻璃"
+  ],
+  "category": "glass",
+  "tags": [
+    "glass",
+    "blur",
+    "backdrop",
+    "frosted"
+  ],
+  "description": "Neutral smoky glass with gentle tint, fine grain, and a soft edge, without edge refraction.",
+  "visualCharacteristics": [
+    "烟灰磨砂",
+    "柔和亮边"
+  ],
+  "useCases": [
+    "面板背景",
+    "可读文字底板"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/BlurApi.java",
+    "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
+    "src/main/java/com/dishanhai/sh_better_ui/client/blur/GaussBlur.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/blur/GlassStyle.java",
+    "src/main/java/com/dishanhai/sh_better_ui/config/GlassBackdropSettings.java",
+    "neoforge/src/main/java/com/dishanhai/sh_better_ui/client/blur/GaussBlur.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.BlurApi#tryBackdrop",
+    "com.dishanhai.sh_better_ui.client.blur.GlassStyle#FROSTED"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.BlurApi#tryBackdrop",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "radiusVirtual": {
+      "type": "float",
+      "defaultValue": 12,
+      "minimum": 0,
+      "maximum": 32,
+      "step": null,
+      "unit": "gui",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "cornerRadius": {
+      "type": "float",
+      "defaultValue": 4,
+      "minimum": 0,
+      "maximum": null,
+      "step": null,
+      "unit": "gui",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:frosted_glass",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "main-to-swap-horizontal-blur",
+    "swap-to-main-vertical-composite"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "MaterialPreviewScenes.Glass uses strength=1, radius=12 GUI, corner=4 GUI",
+    "GlassStyleTest",
+    "DeveloperSamples frosted_glass"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

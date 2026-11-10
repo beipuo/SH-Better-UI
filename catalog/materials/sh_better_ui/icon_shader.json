@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:icon_shader",
+  "materialRevision": "1.0.0",
+  "name": "Icon Shader Effects",
+  "localizedNames": {
+    "zh_cn": "动态着色图标",
+    "zh_tw": "動態著色圖示"
+  },
+  "aliases": [
+    "icon_gradient_sweep",
+    "icon_color_cycle",
+    "icon_energy_wave",
+    "icon_pulse",
+    "icon shader",
+    "gradient sweep",
+    "color cycle",
+    "energy wave"
+  ],
+  "category": "lighting",
+  "tags": [
+    "icon",
+    "texture",
+    "color",
+    "lighting",
+    "animation"
+  ],
+  "description": "An icon texture can bind one of four animated shaders while preserving the host alpha and scissor.",
+  "visualCharacteristics": [
+    "斜向扫光",
+    "色相循环",
+    "能量波或亮度脉动"
+  ],
+  "useCases": [
+    "高亮图标",
+    "动态状态标记"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicIcon.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicIconShader.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java",
+    "neoforge/src/main/java/com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/GraphicsApi.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon#withShader",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIconShader#GRADIENT_SWEEP",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIconShader#COLOR_CYCLE",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIconShader#ENERGY_WAVE",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIconShader#PULSE",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#iconShader"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon#withShader",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/icon_color_cycle.fsh",
+    "sh_better_ui:shaders/core/icon_color_cycle.json",
+    "sh_better_ui:shaders/core/icon_energy_wave.fsh",
+    "sh_better_ui:shaders/core/icon_energy_wave.json",
+    "sh_better_ui:shaders/core/icon_gradient_sweep.fsh",
+    "sh_better_ui:shaders/core/icon_gradient_sweep.json",
+    "sh_better_ui:shaders/core/icon_gradient_sweep.vsh",
+    "sh_better_ui:shaders/core/icon_pulse.fsh",
+    "sh_better_ui:shaders/core/icon_pulse.json"
+  ],
+  "parameters": {
+    "periodsMs": {
+      "type": "object",
+      "defaultValue": {
+        "GRADIENT_SWEEP": 2400,
+        "COLOR_CYCLE": 3600,
+        "ENERGY_WAVE": 2000,
+        "PULSE": 1800
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "icon-texture-sample",
+    "alpha-preserving-shader-composite"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "GraphicIconShaderTest",
+    "docs/effects.md 图标着色器",
+    "docs/previews/2026-11-08-dynamic-icon-shaders.png"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

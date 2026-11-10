@@ -1,0 +1,40 @@
+{
+  "sceneId": "liquid-glass",
+  "width": 640,
+  "height": 384,
+  "guiScale": 1,
+  "dpi": 1,
+  "seed": 24011009,
+  "texture": "liquid-glass.png",
+  "colorSpace": "srgb",
+  "durationMs": 2400,
+  "fps": 60,
+  "timesMs": [0, 800, 1600, 2400],
+  "materialId": "sh_better_ui:liquid_glass",
+  "materialRevision": "1.0.0",
+  "parameters": {},
+  "surface": { "x": 138, "y": 110, "width": 364, "height": 164, "radius": 30, "shape": "CONTINUOUS" },
+  "pointer": [
+    { "timeMs": 0, "x": 0.25, "y": 0.16 },
+    { "timeMs": 800, "x": 0.68, "y": 0.23 },
+    { "timeMs": 1600, "x": 0.80, "y": 0.64 },
+    { "timeMs": 2400, "x": 0.31, "y": 0.73 }
+  ],
+  "inputEvents": [
+    { "timeMs": 0, "type": "pointerenter" },
+    { "timeMs": 800, "type": "pointerdown" },
+    { "timeMs": 1600, "type": "pointerup" },
+    { "timeMs": 2400, "type": "pointerleave" }
+  ],
+  "movingObject": {
+    "width": 58,
+    "height": 58,
+    "color": "#ffd479",
+    "points": [
+      { "timeMs": 0, "x": 38, "y": 168 },
+      { "timeMs": 800, "x": 195, "y": 188 },
+      { "timeMs": 1600, "x": 407, "y": 132 },
+      { "timeMs": 2400, "x": 546, "y": 172 }
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:liquid_glass_surface",
+  "materialRevision": "1.0.0",
+  "name": "Liquid Glass Control Surface",
+  "localizedNames": {
+    "zh_cn": "液态玻璃控件底板",
+    "zh_tw": "液態玻璃控制項底板"
+  },
+  "aliases": [
+    "liquid_button",
+    "LiquidGlassTheme",
+    "liquid toolbar",
+    "liquid popover"
+  ],
+  "category": "surface",
+  "tags": [
+    "glass",
+    "surface",
+    "backdrop",
+    "control"
+  ],
+  "description": "Legacy Liquid Glass control surfaces draw rounded tint, optional backdrop sampling, and a solid fallback for toolbars, inputs, and popovers.",
+  "visualCharacteristics": [
+    "半透明圆角底板",
+    "边缘描边",
+    "浮层柔影"
+  ],
+  "useCases": [
+    "工具栏",
+    "输入框",
+    "多层浮层"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LiquidGlassTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTheme.java",
+    "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidPopover",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidToolbar",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidLayeredPopover",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidInput",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidButton",
+    "com.dishanhai.sh_better_ui.client.glass.GlassTheme#LIQUID_GLASS"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MaterialsApi#liquidPopover",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/capsule.fsh",
+    "sh_better_ui:shaders/core/capsule.json",
+    "sh_better_ui:shaders/core/capsule.vsh",
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {
+    "colorOverrides": {
+      "type": "object",
+      "defaultValue": {
+        "fill": "",
+        "edge": "",
+        "text": "",
+        "accent": ""
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "opacity": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:liquid_button",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "optional-backdrop-sample",
+    "rounded-fill-and-border",
+    "host-foreground"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "DeveloperSamples liquid_button uses UiStyle.LIQUID_GLASS",
+    "docs/effects.md 背景模糊与移动浮层",
+    "GlassMaterialThemeTest"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

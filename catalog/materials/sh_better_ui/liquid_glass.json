@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:liquid_glass",
+  "materialRevision": "1.0.0",
+  "name": "Liquid Glass",
+  "localizedNames": { "zh_cn": "液态玻璃", "zh_tw": "液態玻璃" },
+  "aliases": ["liquid_glass", "liquidGlass", "managed glass", "液态玻璃材质"],
+  "category": "glass",
+  "tags": ["dynamic", "transparent", "refraction", "backdrop", "blur", "edge highlight", "光学", "玻璃"],
+  "description": "UUK 受管光学玻璃从已绘制背景采样，提供可调透射、折射、模糊和边缘高光。背景或指针变化会实时反映在玻璃上。",
+  "visualCharacteristics": ["背景折射", "透明动态背景", "柔和边缘高光", "自然动画", "background sampling", "foreground contrast"],
+  "useCases": ["工具栏", "弹出面板", "玻璃卡片", "toolbar", "overlay", "translucent panel"],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/kernel/api/UIApis.java",
+    "src/main/java/com/dishanhai/sh_better_ui/kernel/api/RenderService.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/kernel/api/glass/GlassService.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/kernel/api/glass/GlassMaterial.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/kernel/api/glass/GlassOptics.java",
+    "src/main/resources/assets/sh_better_ui/shaders/managed_glass.fsh",
+    "src/main/resources/assets/sh_better_ui/shaders/managed_glass.vsh"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.kernel.api.UIApis#GLASS",
+    "com.dishanhai.sh_better_ui.kernel.api.glass.GlassService#material",
+    "com.dishanhai.sh_better_ui.kernel.api.glass.GlassMaterial#preset",
+    "com.dishanhai.sh_better_ui.kernel.api.glass.GlassOptics",
+    "com.dishanhai.sh_better_ui.kernel.api.RenderService.Context#glass"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.kernel.api.RenderService.Context#glass",
+  "requiredCapabilities": ["sh_better_ui:render"],
+  "requiredResources": ["sh_better_ui:shaders/managed_glass.vsh", "sh_better_ui:shaders/managed_glass.fsh"],
+  "parameters": {
+    "transmission": { "type": "float", "defaultValue": 0.85, "minimum": 0, "maximum": 1, "step": 0.01, "unit": "ratio", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "refraction": { "type": "float", "defaultValue": 3.3, "minimum": 0, "maximum": 32, "step": 0.1, "unit": "gui", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "lensing": { "type": "float", "defaultValue": 0.3, "minimum": 0, "maximum": 1, "step": 0.01, "unit": "ratio", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "scattering": { "type": "float", "defaultValue": 0.66, "minimum": 0, "maximum": 1, "step": 0.01, "unit": "ratio", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "edgeHighlight": { "type": "float", "defaultValue": 0.62, "minimum": 0, "maximum": 1, "step": 0.01, "unit": "ratio", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "thickness": { "type": "float", "defaultValue": 3.2, "minimum": 0, "maximum": 32, "step": 0.1, "unit": "gui", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "blurRadius": { "type": "float", "defaultValue": 3.6, "minimum": 0, "maximum": 32, "step": 0.1, "unit": "gui", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": true, "dependsOn": [], "constraints": [], "choices": [] },
+    "quality": { "type": "enum", "defaultValue": "BALANCED", "minimum": null, "maximum": null, "step": null, "unit": "", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": false, "dependsOn": [], "constraints": [], "choices": ["ULTRA", "BALANCED", "PERFORMANCE", "FALLBACK"] },
+    "foreground": { "type": "enum", "defaultValue": "LIGHT", "minimum": null, "maximum": null, "step": null, "unit": "", "editable": true, "requiresResourceRebuild": false, "runtimeUpdate": true, "animatable": false, "dependsOn": [], "constraints": [], "choices": ["LIGHT", "DARK"] }
+  },
+  "nativePreviewId": "sh_better_ui:liquid_glass",
+  "webRendererId": "managed-liquid-glass",
+  "rendererVersion": "1.0.0",
+  "previewScene": "liquid-glass",
+  "renderPassDependencies": ["background", "scene-capture", "managed-optics", "foreground"],
+  "loaderCompatibility": { "forge": "client-verified", "neoforge": "client-verified" },
+  "webCompatibility": "web-approximation",
+  "validationStatus": "client-verified",
+  "validationEvidence": [
+    "src/kernelTest/java/com/dishanhai/sh_better_ui/kernel/GlassMaterialContractTest.java",
+    "src/kernelSmoke/java/com/dishanhai/sh_better_ui/kernel/smoke/GlassOpticsSmoke.java",
+    "examples/kernel-extension/common/src/main/java/com/dishanhai/shbui_kernel_example/ExampleUiModule.java",
+    "docs/validation-report.md"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

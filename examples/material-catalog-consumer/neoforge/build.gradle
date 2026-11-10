@@ -1,0 +1,27 @@
+// Author: dishanhai
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+java { toolchain.languageVersion = JavaLanguageVersion.of(21) }
+repositories { mavenCentral() }
+
+def shBetterUiJar = file(providers.gradleProperty('shBetterUiJar').get())
+ext.consumerLibrary = shBetterUiJar
+ext.consumerMetadata = 'META-INF/neoforge.mods.toml'
+
+sourceSets.main {
+    java.srcDir('../common/src/main/java')
+    resources.srcDir('../common/src/main/resources')
+}
+dependencies { compileOnly files(shBetterUiJar) }
+neoForge { version = '21.1.251' }
+
+apply from: '../consumer.gradle'
+
+def verify = tasks.register('verifyConsumerJar') {
+    dependsOn jar
+    doLast { project.ext.verifyConsumerArchive(tasks.jar.archiveFile.get().asFile) }
+}
+tasks.named('build') { dependsOn verify }

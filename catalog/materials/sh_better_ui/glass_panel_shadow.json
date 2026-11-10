@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:glass_panel_shadow",
+  "materialRevision": "1.0.0",
+  "name": "Glass Panel Shadow",
+  "localizedNames": {
+    "zh_cn": "玻璃根板柔影",
+    "zh_tw": "玻璃根板柔影"
+  },
+  "aliases": [
+    "rootShadow",
+    "glass panel shadow"
+  ],
+  "category": "shadow",
+  "tags": [
+    "shadow",
+    "glass",
+    "surface",
+    "fallback"
+  ],
+  "description": "A reusable downward soft shadow paints three fading bands around a glass theme root panel.",
+  "visualCharacteristics": [
+    "下偏柔影",
+    "三层衰减"
+  ],
+  "useCases": [
+    "根板背面",
+    "层级区分"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/glass/GlassTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.glass.GlassTheme#rootShadow",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#glassTheme"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.glass.GlassTheme#rootShadow",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "bands": {
+      "type": "integer",
+      "defaultValue": 3,
+      "minimum": 3,
+      "maximum": 3,
+      "step": 1,
+      "unit": "layers",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "offsetY": {
+      "type": "integer",
+      "defaultValue": 2,
+      "minimum": 2,
+      "maximum": 2,
+      "step": 1,
+      "unit": "gui",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "three-gui-shadow-fills"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "GlassTheme.rootShadow called by glass host and skips high contrast",
+    "docs/API_REFERENCE.md 主题、玻璃与模糊"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

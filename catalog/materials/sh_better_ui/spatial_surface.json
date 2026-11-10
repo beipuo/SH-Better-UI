@@ -1,0 +1,222 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:spatial_surface",
+  "materialRevision": "1.0.0",
+  "name": "Spatial Surface Materials",
+  "localizedNames": {
+    "zh_cn": "空间表面材质",
+    "zh_tw": "空間表面材質"
+  },
+  "aliases": [
+    "spatial surface",
+    "SpatialStyle.Material",
+    "spatial glass",
+    "metallic",
+    "holographic",
+    "soft raised",
+    "soft inset"
+  ],
+  "category": "spatial",
+  "tags": [
+    "spatial",
+    "surface",
+    "glass",
+    "sdf",
+    "metallic",
+    "holographic"
+  ],
+  "description": "Reusable node material presets for flat, raised, inset, glass, metallic, and holographic surfaces inside a scoped Spatial scene.",
+  "visualCharacteristics": [
+    "轮廓高光",
+    "深浅变化",
+    "可选背景模糊"
+  ],
+  "useCases": [
+    "空间卡片",
+    "凹面输入",
+    "玻璃面板"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialStyle.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialScene.java",
+    "src/kernel/java/com/dishanhai/sh_better_ui/spatial/SpatialUI.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/spatial/SpatialRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/kernel/internal/ClientSpatial.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#material",
+    "com.dishanhai.sh_better_ui.spatial.SpatialStyle.Material#FLAT",
+    "com.dishanhai.sh_better_ui.spatial.SpatialStyle.Material#GLASS",
+    "com.dishanhai.sh_better_ui.spatial.SpatialStyle.Material#HOLOGRAPHIC",
+    "com.dishanhai.sh_better_ui.kernel.api.RenderService.Context#spatial",
+    "com.dishanhai.sh_better_ui.spatial.SpatialUI#mount"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.spatial.SpatialScene.Node#material",
+  "requiredCapabilities": [
+    "sh_better_ui:spatial",
+    "sh_better_ui:render"
+  ],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/spatial.fsh",
+    "sh_better_ui:shaders/core/spatial.json",
+    "sh_better_ui:shaders/core/spatial.vsh",
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {
+    "preset": {
+      "type": "enum",
+      "defaultValue": "FLAT",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": [
+        "FLAT",
+        "SOFT_RAISED",
+        "SOFT_INSET",
+        "GLASS",
+        "METALLIC",
+        "HOLOGRAPHIC"
+      ]
+    },
+    "color": {
+      "type": "color",
+      "defaultValue": "#FF283244",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "argb",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "opacity": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "roughness": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "highlight": {
+      "type": "float",
+      "defaultValue": 0,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "border": {
+      "type": "float",
+      "defaultValue": 0,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "depth": {
+      "type": "float",
+      "defaultValue": 0,
+      "minimum": -1,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "blur": {
+      "type": "float",
+      "defaultValue": 0,
+      "minimum": 0,
+      "maximum": 32,
+      "step": null,
+      "unit": "gui",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "spatial-order-and-clip",
+    "optional-gaussian-backdrop",
+    "sdf-surface-and-content"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "SpatialSceneTest",
+    "SpatialClientServiceTest",
+    "docs/SPATIAL_VERIFICATION.md",
+    "docs/spatial/Materials.md"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

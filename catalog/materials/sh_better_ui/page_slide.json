@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:page_slide",
+  "materialRevision": "1.0.0",
+  "name": "Page Slide",
+  "localizedNames": {
+    "zh_cn": "单页滑动",
+    "zh_tw": "單頁滑動"
+  },
+  "aliases": [
+    "page_slide",
+    "pageSlide",
+    "page slide"
+  ],
+  "category": "animation",
+  "tags": [
+    "transition",
+    "slide",
+    "depth",
+    "blur"
+  ],
+  "description": "A clipped single-page entrance with four directions, optional depth, and optional progressive or realtime blur.",
+  "visualCharacteristics": [
+    "横向或纵向进入",
+    "可选立体倾斜"
+  ],
+  "useCases": [
+    "标签页切换",
+    "单页入场"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiPageSlide.java",
+    "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#drawPageSlide",
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#pageSlide",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiPageSlide#start"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MotionApi#drawPageSlide",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {
+    "enabled": {
+      "type": "boolean",
+      "defaultValue": true,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "speed": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0.1,
+      "maximum": 4,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "baseDurationMs": {
+      "type": "duration",
+      "defaultValue": 320,
+      "minimum": 320,
+      "maximum": 320,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "direction": {
+      "type": "enum",
+      "defaultValue": "RIGHT",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": [
+        "LEFT",
+        "RIGHT",
+        "UP",
+        "DOWN"
+      ]
+    },
+    "motion": {
+      "type": "enum",
+      "defaultValue": "FLAT",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": [
+        "FLAT",
+        "DEPTH"
+      ]
+    },
+    "progressiveBlur": {
+      "type": "boolean",
+      "defaultValue": false,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "realtimeBlur": {
+      "type": "boolean",
+      "defaultValue": false,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:page_slide",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "viewport-scissor",
+    "translated-page",
+    "optional-visual-reveal-or-blur"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "DeveloperSamples page_slide",
+    "UiPageSlide.DURATION_MS, STILL and Effects.NONE",
+    "docs/API_REFERENCE.md 动画与画面过渡"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

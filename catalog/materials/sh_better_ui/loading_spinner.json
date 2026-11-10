@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:loading_spinner",
+  "materialRevision": "1.0.0",
+  "name": "Loading Spinner",
+  "localizedNames": {
+    "zh_cn": "加载转圈",
+    "zh_tw": "載入轉圈"
+  },
+  "aliases": [
+    "loading_spinner",
+    "spinner",
+    "edge spinner"
+  ],
+  "category": "animation",
+  "tags": [
+    "loading",
+    "feedback",
+    "progress"
+  ],
+  "description": "A drawn progress ring or spinning edge indicator for indeterminate loading.",
+  "visualCharacteristics": [
+    "圆弧旋转",
+    "边缘加载提示"
+  ],
+  "useCases": [
+    "等待反馈",
+    "页面加载"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiLoading.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#spinner",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#edgeSpinner"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#spinner",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "spinPeriodMs": {
+      "type": "duration",
+      "defaultValue": 900,
+      "minimum": 900,
+      "maximum": 900,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "edgeDiameter": {
+      "type": "integer",
+      "defaultValue": 12,
+      "minimum": 12,
+      "maximum": 12,
+      "step": 1,
+      "unit": "gui",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:loading_spinner",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "loading-ring-fill"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "UiLoadingTest",
+    "DeveloperSamples loading_spinner",
+    "UiLoading source constants"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

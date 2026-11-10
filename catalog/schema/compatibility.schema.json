@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compatibility.schema.json",
+  "type": "object",
+  "required": ["forge", "neoforge"],
+  "additionalProperties": false,
+  "properties": {
+    "forge": { "$ref": "#/$defs/status" },
+    "neoforge": { "$ref": "#/$defs/status" }
+  },
+  "$defs": { "status": { "enum": ["source-verified", "client-verified", "unsupported", "unverified"] } }
+}

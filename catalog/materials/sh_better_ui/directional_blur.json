@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:directional_blur",
+  "materialRevision": "1.0.0",
+  "name": "Directional Blur",
+  "localizedNames": {
+    "zh_cn": "定向模糊",
+    "zh_tw": "方向模糊"
+  },
+  "aliases": [
+    "directional blur",
+    "directional_pixels"
+  ],
+  "category": "distortion",
+  "tags": [
+    "blur",
+    "direction",
+    "framebuffer"
+  ],
+  "description": "An immediate or queued framebuffer blur with a caller-specified sample axis.",
+  "visualCharacteristics": [
+    "沿指定方向扩散"
+  ],
+  "useCases": [
+    "滑动反馈",
+    "方向性动态遮罩"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/BlurApi.java",
+    "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
+    "src/main/java/com/dishanhai/sh_better_ui/client/blur/GaussBlur.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/blur/GlassStyle.java",
+    "src/main/java/com/dishanhai/sh_better_ui/config/GlassBackdropSettings.java",
+    "neoforge/src/main/java/com/dishanhai/sh_better_ui/client/blur/GaussBlur.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.BlurApi#directionalPixelsNow",
+    "com.dishanhai.sh_better_ui.client.api.BlurApi#requestDirectionalPixels"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.BlurApi#directionalPixelsNow",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {},
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "framebuffer-sample",
+    "directional-gaussian-composite"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "BlurApi forwards axisX/axisY to GaussBlur",
+    "ShaderUniformContractTest",
+    "No fixed default for caller-supplied axis and radius"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:loading_skeleton",
+  "materialRevision": "1.0.0",
+  "name": "Loading Skeleton",
+  "localizedNames": {
+    "zh_cn": "加载骨架屏",
+    "zh_tw": "載入骨架畫面"
+  },
+  "aliases": [
+    "loading_skeleton",
+    "skeleton shimmer",
+    "skeleton loading"
+  ],
+  "category": "animation",
+  "tags": [
+    "loading",
+    "skeleton",
+    "shimmer",
+    "shape"
+  ],
+  "description": "Independent placeholder blocks follow the intended layout and optionally show a traveling highlight.",
+  "visualCharacteristics": [
+    "圆角占位块",
+    "扫光"
+  ],
+  "useCases": [
+    "前向页面骨架",
+    "加载占位"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiSkeleton.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/RoundedCorners.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton#draw",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton#card"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton#draw",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/capsule.fsh",
+    "sh_better_ui:shaders/core/capsule.json",
+    "sh_better_ui:shaders/core/capsule.vsh"
+  ],
+  "parameters": {
+    "periodMs": {
+      "type": "duration",
+      "defaultValue": 1800,
+      "minimum": 1800,
+      "maximum": 1800,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "defaultBlockCornerRadius": {
+      "type": "float",
+      "defaultValue": 3,
+      "minimum": 0,
+      "maximum": null,
+      "step": null,
+      "unit": "gui",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:loading_skeleton",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "placeholder-layout",
+    "rounded-skeleton-paint"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "DeveloperSamples loading_skeleton",
+    "UiSkeleton.Block and PERIOD_MS",
+    "docs/previews/2026-11-08-forward-skeleton.png"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

@@ -1,0 +1,42 @@
+// Author: dishanhai
+group = 'com.dishanhai'
+version = '1.0.0'
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(Jar).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// The reviewed patch can be compiled from an isolated copy of the shared source tree.
+providers.gradleProperty('catalogConsumerSource').orNull?.with { patchedSource ->
+    sourceSets.main.java.setSrcDirs(['src/main/java', patchedSource])
+}
+
+def metadata = project.ext.consumerMetadata
+def library = project.ext.consumerLibrary
+tasks.named('compileJava') {
+    doFirst {
+        if (!library.isFile()) throw new GradleException("Missing external SH-Better-UI JAR: ${library}")
+        new java.util.zip.ZipFile(library).withCloseable { zip ->
+            if (zip.getEntry(metadata) == null
+                    || zip.getEntry('com/dishanhai/sh_better_ui/kernel/api/material/MaterialCatalog.class') == null) {
+                throw new GradleException("Expected a matching SH-Better-UI Material Catalog JAR: ${library}")
+            }
+        }
+    }
+}
+
+project.ext.verifyConsumerArchive = { File artifact ->
+    new java.util.zip.ZipFile(artifact).withCloseable { zip ->
+        def required = [metadata, 'pack.mcmeta', 'META-INF/sh_better_ui.modules',
+                        'com/dishanhai/shbui_catalog_consumer/CatalogConsumerModule.class']
+        required += ['en_us', 'zh_cn', 'zh_tw'].collect { "assets/shbui_catalog_consumer/lang/${it}.json" }
+        def missing = required.findAll { zip.getEntry(it) == null }
+        if (!missing.isEmpty()) throw new GradleException("Consumer JAR entries missing: ${missing}")
+        if (zip.entries().any { it.name.startsWith('com/dishanhai/sh_better_ui/')
+                || it.name.startsWith('assets/sh_better_ui/') || it.name.startsWith('META-INF/jarjar/') }) {
+            throw new GradleException('The consumer JAR must keep SH-Better-UI external')
+        }
+    }
+}

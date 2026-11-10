@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:screen_crossfade",
+  "materialRevision": "1.0.0",
+  "name": "Screen Return and Crossfade",
+  "localizedNames": {
+    "zh_cn": "旧页淡出与返回",
+    "zh_tw": "舊頁淡出與返回"
+  },
+  "aliases": [
+    "screenReturn",
+    "screenCrossfade",
+    "screen crossfade",
+    "old page fade"
+  ],
+  "category": "animation",
+  "tags": [
+    "transition",
+    "fade",
+    "composition",
+    "framebuffer"
+  ],
+  "description": "A native screen handoff blends a captured old page or a prepared parent with the new background.",
+  "visualCharacteristics": [
+    "旧页淡出",
+    "目标底层渐入"
+  ],
+  "useCases": [
+    "Screen 切换",
+    "返回页背景"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiScreenReturn.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiFrameHandoff.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiCapsuleReveal.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#screenCrossfade",
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#screenReturn",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn#renderCrossfade"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MotionApi#screenCrossfade",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "enabled": {
+      "type": "boolean",
+      "defaultValue": true,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "fadeEnd": {
+      "type": "float",
+      "defaultValue": 0.54,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": true,
+      "dependsOn": [],
+      "constraints": [
+        {
+          "op": "gt",
+          "value": 0
+        }
+      ],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "previous-main-framebuffer-copy",
+    "snapshot-crossfade",
+    "owner-close-release"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "docs/API_REFERENCE.md 旧页淡出",
+    "UiCapsuleReveal.CONTENT_FADE_START=.54 when previous Screen exists, otherwise 1",
+    "ThemeEffectPreview screenReturn only demonstrates a simple fade"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

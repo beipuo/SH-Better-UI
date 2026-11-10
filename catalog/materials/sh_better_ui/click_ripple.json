@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:click_ripple",
+  "materialRevision": "1.0.0",
+  "name": "Local Click Ripple",
+  "localizedNames": {
+    "zh_cn": "点击涟漪",
+    "zh_tw": "點擊漣漪"
+  },
+  "aliases": [
+    "clickRipple",
+    "local ripple",
+    "click ripple"
+  ],
+  "category": "animation",
+  "tags": [
+    "animation",
+    "feedback",
+    "cursor",
+    "ripple"
+  ],
+  "description": "A local click highlight expands inside a control from its accepted click position.",
+  "visualCharacteristics": [
+    "由按下点向外扩散",
+    "低动效时淡出"
+  ],
+  "useCases": [
+    "按钮反馈",
+    "局部点击提示"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ClickRipple.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GlassEffectRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GlassEffectMotion.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#drawRipple",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.ClickRipple#trigger",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.GlassEffectRenderer#drawRipple"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MotionApi#drawRipple",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "enabled": {
+      "type": "boolean",
+      "defaultValue": true,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "durationMs": {
+      "type": "duration",
+      "defaultValue": 420,
+      "minimum": 420,
+      "maximum": 420,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "clipped-local-ripple-fill"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "ThemeEffectPreview clickRipple",
+    "ClickRipple.DURATION_MS",
+    "GlassEffectRendererTest",
+    "docs/effects.md"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

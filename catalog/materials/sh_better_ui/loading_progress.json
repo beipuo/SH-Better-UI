@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:loading_progress",
+  "materialRevision": "1.0.0",
+  "name": "Loading Progress",
+  "localizedNames": {
+    "zh_cn": "加载进度",
+    "zh_tw": "載入進度"
+  },
+  "aliases": [
+    "loading_progress",
+    "progress bar",
+    "loading top bar"
+  ],
+  "category": "animation",
+  "tags": [
+    "loading",
+    "feedback",
+    "progress"
+  ],
+  "description": "A drawn progress bar or screen-top indicator for determinate and indeterminate loading.",
+  "visualCharacteristics": [
+    "线性进度条",
+    "顶部扫光"
+  ],
+  "useCases": [
+    "等待反馈",
+    "页面加载"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiLoading.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#progressBar",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#topBar"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.gui.scaled.UiLoading#progressBar",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "indeterminateTopCycleMs": {
+      "type": "duration",
+      "defaultValue": 1600,
+      "minimum": 1600,
+      "maximum": 1600,
+      "step": 1,
+      "unit": "ms",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "topHeight": {
+      "type": "integer",
+      "defaultValue": 2,
+      "minimum": 2,
+      "maximum": 2,
+      "step": 1,
+      "unit": "gui",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:loading_progress",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "progress-track-and-fill"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "UiLoadingTest",
+    "DeveloperSamples loading_progress",
+    "UiLoading source constants"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}
