@@ -23,7 +23,8 @@ final class ServiceRegistry {
             .thenComparing(entry -> entry.origin().moduleId());
 
     private final Thread ownerThread = Thread.currentThread();
-    private final Map<UiId, Entry> entries = new TreeMap<>();
+    // Accepted replacements are ordered first. Keep predecessors owned by other modules until they stop.
+    private final Map<UiId, List<Entry>> entries = new TreeMap<>();
     private Transaction active;
     private boolean frozen;
     private long version;
@@ -76,10 +77,13 @@ final class ServiceRegistry {
         }
         var visible = new HashMap<UiId, Entry>();
         var ordered = new ArrayList<Entry>();
-        entries.forEach((id, entry) -> {
-            if (started.contains(entry.metadata().origin().moduleId())) {
-                visible.put(id, entry);
-                ordered.add(entry);
+        entries.forEach((id, candidates) -> {
+            for (Entry entry : candidates) {
+                if (started.contains(entry.metadata().origin().moduleId())) {
+                    visible.put(id, entry);
+                    ordered.add(entry);
+                    break;
+                }
             }
         });
         return new Catalog(Map.copyOf(visible), List.copyOf(ordered), version);
@@ -90,16 +94,45 @@ final class ServiceRegistry {
         if (active != null) {
             throw new IllegalStateException("Lifecycle removal cannot interrupt a UI registration transaction");
         }
-        boolean changed = entries.values().removeIf(entry -> {
-            if (!entry.metadata().origin().moduleId().equals(module)) {
-                return false;
+        boolean changed = false;
+        var groups = entries.entrySet().iterator();
+        while (groups.hasNext()) {
+            var group = groups.next();
+            var previous = group.getValue();
+            var remaining = withoutModule(previous, module);
+            if (previous.size() == remaining.size()) continue;
+            updateHandles(first(previous), first(remaining));
+            if (remaining.isEmpty()) {
+                groups.remove();
+            } else {
+                group.setValue(remaining);
             }
-            entry.handle().status = RegistrationHandle.Status.REVOKED;
-            return true;
-        });
+            changed = true;
+        }
         if (changed) {
             version++;
         }
+    }
+
+    private static List<Entry> withoutModule(List<Entry> candidates, UiId owner) {
+        return candidates.stream().filter(entry -> !entry.metadata().origin().moduleId().equals(owner)).toList();
+    }
+
+    private static Entry first(List<Entry> candidates) {
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    private static void updateHandles(Entry previous, Entry next) {
+        if (previous == next) return;
+        if (previous != null) previous.handle().status = RegistrationHandle.Status.REVOKED;
+        if (next != null) next.handle().status = RegistrationHandle.Status.ACTIVE;
+    }
+
+    private void setCandidates(UiId id, List<Entry> candidates) {
+        var previous = entries.getOrDefault(id, List.of());
+        if (candidates.isEmpty()) entries.remove(id);
+        else entries.put(id, candidates);
+        updateHandles(first(previous), first(candidates));
     }
 
     private void assertOwner() {
@@ -174,14 +207,14 @@ final class ServiceRegistry {
                 return;
             }
             assertOwner();
-            Entry entry = entries.get(id);
+            var candidates = entries.getOrDefault(id, List.of());
+            Entry entry = first(candidates);
             if (active == null || entry == null || entry.handle() != this
                     || !entry.metadata().origin().moduleId().equals(active.module.id())) {
                 throw new IllegalStateException("UI service can only be withdrawn in its owner's registration window: " + id);
             }
             active.remember(id);
-            entries.remove(id);
-            status = Status.REVOKED;
+            setCandidates(id, candidates.subList(1, candidates.size()));
         }
     }
 
@@ -202,7 +235,7 @@ final class ServiceRegistry {
     private final class Transaction implements ServiceRegistrar {
         private final ModuleDiscovery.Module module;
         private final Consumer<UIPermission> authorize;
-        private final Map<UiId, Entry> originals = new HashMap<>();
+        private final Map<UiId, List<Entry>> originals = new HashMap<>();
 
         private Transaction(ModuleDiscovery.Module module, Consumer<UIPermission> authorize) {
             this.module = module;
@@ -228,17 +261,18 @@ final class ServiceRegistry {
                 throw new IllegalArgumentException("UI service " + id + " must implement " + key.type().getName());
             }
             var metadata = new RegistrySnapshot.Entry(descriptor, module.origin());
-            var previous = entries.get(id);
+            var candidates = entries.getOrDefault(id, List.of());
+            var previous = first(candidates);
             if (previous != null && !replace(previous.metadata(), metadata, policy)) {
                 return Skipped.INSTANCE;
             }
 
             remember(id);
             var handle = new Handle(id);
-            entries.put(id, new Entry(metadata, service, handle));
-            if (previous != null) {
-                previous.handle().status = RegistrationHandle.Status.REVOKED;
-            }
+            var next = new ArrayList<Entry>();
+            next.add(new Entry(metadata, service, handle));
+            next.addAll(withoutModule(candidates, module.id()));
+            setCandidates(id, List.copyOf(next));
             return handle;
         }
 
@@ -269,22 +303,11 @@ final class ServiceRegistry {
         }
 
         private void remember(UiId id) {
-            if (!originals.containsKey(id)) {
-                originals.put(id, entries.get(id));
-            }
+            originals.computeIfAbsent(id, key -> entries.getOrDefault(key, List.of()));
         }
 
         private void rollback() {
-            originals.forEach((id, previous) -> {
-                var current = entries.remove(id);
-                if (current != null) {
-                    current.handle().status = RegistrationHandle.Status.REVOKED;
-                }
-                if (previous != null) {
-                    previous.handle().status = RegistrationHandle.Status.ACTIVE;
-                    entries.put(id, previous);
-                }
-            });
+            originals.forEach(ServiceRegistry.this::setCandidates);
         }
     }
 }

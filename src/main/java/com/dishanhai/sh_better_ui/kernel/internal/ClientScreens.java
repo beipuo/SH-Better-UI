@@ -43,6 +43,8 @@ final class ClientScreens implements UIPlatform, ScreenService {
 
     ScopeHandle activeScope(Screen owner) { return owner == screen ? scope : null; }
 
+    boolean acceptsConnection(Object candidate) { return candidate != null && candidate == connection && hasClientSession(); }
+
     @Override public ScopeHandle session(ModuleContext module, UiId id) {
         host.assertOwner();
         if (!hasClientSession()) throw new IllegalStateException("No active native client session");

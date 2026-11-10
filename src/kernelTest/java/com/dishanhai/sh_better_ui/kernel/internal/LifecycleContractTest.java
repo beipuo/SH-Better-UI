@@ -120,6 +120,46 @@ class LifecycleContractTest {
     }
 
     @Test
+    void replacementCannotHideAStartedServiceUntilItRunsAndRestoresItsPredecessorOnRemoval() {
+        var slot = new EnginePublication();
+        var replaceable = new ServiceDescriptor<>(KEY, RELEASE, ServiceDescriptor.Visibility.PUBLIC, 0, true);
+        var originalHandle = new AtomicReference<RegistrationHandle>();
+        var backupHandle = new AtomicReference<RegistrationHandle>();
+        var brokenHandle = new AtomicReference<RegistrationHandle>();
+        var original = candidate(module("a_original").build(), Set.of(), false,
+                ctx -> originalHandle.set(ctx.services().register(replaceable, new ExampleService("original"))),
+                ctx -> assertEquals("original", ctx.engine().require(KEY).value()), ctx -> {});
+        var replace = UIPermission.REPLACE_SERVICE;
+        var policy = RegistrationConflictPolicy.REPLACE_IF_ALLOWED;
+        var backup = candidate(module("b_backup").requestPermission(replace).build(), Set.of(replace), false,
+                ctx -> backupHandle.set(ctx.services().register(replaceable, new ExampleService("backup"), policy)),
+                ctx -> assertEquals("backup", ctx.engine().require(KEY).value()), ctx -> {});
+        var broken = candidate(module("c_broken").requestPermission(replace).build(), Set.of(replace), false,
+                ctx -> brokenHandle.set(ctx.services().register(replaceable, new ExampleService("broken"), policy)),
+                ctx -> { throw new IllegalStateException("Replacement failed to initialize"); }, ctx -> {});
+
+        try (var host = new KernelHost(FORGE_1_20_1, slot)) {
+            host.startNative(List.of(broken, backup, original));
+            var registry = slot.current().registry();
+            var before = registry.snapshot();
+            assertEquals("backup", registry.require(KEY).value());
+            assertEquals(backup.module().descriptor().id(), before.entries().get(0).origin().moduleId());
+            assertEquals(RegistrationHandle.Status.ACTIVE, backupHandle.get().status());
+            assertEquals(RegistrationHandle.Status.REVOKED, brokenHandle.get().status());
+
+            host.stopModule(backup.module().descriptor().id());
+            var after = registry.snapshot();
+            assertEquals("original", registry.require(KEY).value());
+            assertEquals(original.module().descriptor().id(), after.entries().get(0).origin().moduleId());
+            assertEquals(RegistrationHandle.Status.ACTIVE, originalHandle.get().status());
+            assertEquals(RegistrationHandle.Status.REVOKED, backupHandle.get().status());
+            assertTrue(after.version() > before.version());
+            host.stopModule(original.module().descriptor().id());
+            assertTrue(registry.find(KEY).isEmpty());
+        }
+    }
+
+    @Test
     void runtimeStopRemovesTheTransitiveModuleSetInOneSnapshot() throws Exception {
         var slot = new EnginePublication();
         var host = new KernelHost(FORGE_1_20_1, slot);

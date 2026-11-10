@@ -14,6 +14,8 @@ public final class BenchmarkSamples {
     public static final String RAW_HEADER = "scenario,sample,elapsed_ns,allocated_bytes\n";
     public static final String SUMMARY_HEADER = "scenario,samples,mean_ns,p95_ns,p99_ns,"
             + "mean_allocated_bytes,p95_allocated_bytes,p99_allocated_bytes\n";
+    public static final String MEDIAN_SUMMARY_HEADER = "scenario,samples,mean_ns,p50_ns,p95_ns,p99_ns,"
+            + "mean_allocated_bytes,p50_allocated_bytes,p95_allocated_bytes,p99_allocated_bytes\n";
 
     private final ThreadMXBean allocations = allocationBean();
     private final long ownerId = Thread.currentThread().getId();
@@ -54,8 +56,17 @@ public final class BenchmarkSamples {
     }
 
     public void writeSummary(Writer out, String scenario) throws IOException {
+        writeSummary(out, scenario, false);
+    }
+
+    public void writeSummaryWithMedian(Writer out, String scenario) throws IOException {
+        writeSummary(out, scenario, true);
+    }
+
+    private void writeSummary(Writer out, String scenario, boolean includeMedian) throws IOException {
         requireComplete();
-        out.write(scenario + "," + count + "," + statistics(elapsed) + "," + statistics(allocated) + "\n");
+        out.write(scenario + "," + count + "," + statistics(elapsed, includeMedian) + ","
+                + statistics(allocated, includeMedian) + "\n");
     }
 
     private void requireComplete() {
@@ -80,15 +91,16 @@ public final class BenchmarkSamples {
         }
     }
 
-    private static String statistics(long[] values) {
+    private static String statistics(long[] values, boolean includeMedian) {
         double sum = 0;
         for (long value : values) {
-            if (value < 0) return "NA,NA,NA";
+            if (value < 0) return includeMedian ? "NA,NA,NA,NA" : "NA,NA,NA";
             sum += value;
         }
         var ordered = values.clone();
         Arrays.sort(ordered);
-        return String.format(Locale.ROOT, "%.2f,%d,%d", sum / ordered.length,
+        String median = includeMedian ? percentile(ordered, 0.50) + "," : "";
+        return String.format(Locale.ROOT, "%.2f,%s%d,%d", sum / ordered.length, median,
                 percentile(ordered, 0.95), percentile(ordered, 0.99));
     }
 

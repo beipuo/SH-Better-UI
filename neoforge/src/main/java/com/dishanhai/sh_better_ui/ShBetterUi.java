@@ -1,12 +1,14 @@
 package com.dishanhai.sh_better_ui;
 
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
+import com.dishanhai.sh_better_ui.spatial.SpatialStyle;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
 import com.dishanhai.sh_better_ui.config.DynamicThemeSettings;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.TabScrollSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
 import com.dishanhai.sh_better_ui.config.ThemeOverrides;
+import com.dishanhai.sh_better_ui.kernel.internal.live.network.PlatformLiveActivityNetwork;
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.concurrent.ConcurrentCommentedConfig;
 import com.electronwill.nightconfig.core.io.WritingException;
@@ -28,6 +30,7 @@ public final class ShBetterUi {
     private static volatile ModConfig clientConfig;
 
     public ShBetterUi(ModContainer container) {
+        PlatformLiveActivityNetwork.register(container.getEventBus());
         var defaults = ClientUiSettings.DEFAULT;
         var backdrop = defaults.backdrop();
         var builder = new ModConfigSpec.Builder().push(BACKDROP_SECTION);
@@ -69,6 +72,12 @@ public final class ShBetterUi {
         var dynamicSpeed = builder.defineInRange("dynamicAnimationPercent", defaults.dynamicTheme().animationPercent(),
                 0, DynamicThemeSettings.MAX_ANIMATION_PERCENT);
         var dynamicLowPerformance = builder.define("dynamicLowPerformance", defaults.dynamicTheme().lowPerformance());
+        var spatialEnabled = builder.define("spatialEnabled", defaults.spatial().enabled());
+        var spatialShadows = builder.define("spatialShadows", defaults.spatial().shadows());
+        var spatialLighting = builder.define("spatialLighting", defaults.spatial().lighting());
+        var spatialBlur = builder.define("spatialBlur", defaults.spatial().blur());
+        var spatialQuality = builder.defineEnum("spatialQuality", defaults.spatial().quality());
+        var spatialProfiling = builder.define("spatialProfiling", defaults.spatial().profiling());
         var spec = builder.pop().build();
         container.getEventBus().addListener((ModConfigEvent event) -> {
             if (event.getConfig().getSpec() != spec) return;
@@ -86,7 +95,9 @@ public final class ShBetterUi {
                             new ThemeSettings(themeMode.get(), themeBase.get(), themeBackground.get(),
                                     themeSurface.get(), themeBorder.get(), themeText.get(), themeAccent.get(),
                                         new ThemeOverrides(themeEffects.get())),
-                                new DynamicThemeSettings(dynamicTheme.get(), dynamicSpeed.get(), dynamicLowPerformance.get()))
+                                new DynamicThemeSettings(dynamicTheme.get(), dynamicSpeed.get(), dynamicLowPerformance.get()),
+                                new SpatialStyle.Settings(spatialEnabled.get(), spatialShadows.get(), spatialLighting.get(),
+                                        spatialBlur.get(), spatialQuality.get(), spatialProfiling.get()))
                     : defaults);
         });
         container.registerConfig(ModConfig.Type.CLIENT, spec);
@@ -144,6 +155,13 @@ public final class ShBetterUi {
         updatedUi.set("dynamicFixedTheme", dynamic.fixedTheme());
         updatedUi.set("dynamicAnimationPercent", dynamic.animationPercent());
         updatedUi.set("dynamicLowPerformance", dynamic.lowPerformance());
+        var spatial = settings.spatial();
+        updatedUi.set("spatialEnabled", spatial.enabled());
+        updatedUi.set("spatialShadows", spatial.shadows());
+        updatedUi.set("spatialLighting", spatial.lighting());
+        updatedUi.set("spatialBlur", spatial.blur());
+        updatedUi.set("spatialQuality", spatial.quality().name());
+        updatedUi.set("spatialProfiling", spatial.profiling());
 
         replaceSections(data, updatedBackdrop, updatedUi);
         spec.afterReload();

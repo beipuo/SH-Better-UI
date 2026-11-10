@@ -10,6 +10,7 @@ public final class CollisionWorld {
     public enum Axis { AUTO, HORIZONTAL, VERTICAL }
 
     private final LayoutSolver solver;
+    private final boolean presentationEnabled;
     private final HashMap<Integer, Group> groupsById = new HashMap<>();
     private final ArrayList<Group> groups = new ArrayList<>();
     private final ArrayList<CollisionEvent> events = new ArrayList<>();
@@ -26,8 +27,18 @@ public final class CollisionWorld {
     }
 
     public CollisionWorld(CollisionShape viewport, LayoutSolver solver) {
+        this(viewport, solver, true);
+    }
+
+    private CollisionWorld(CollisionShape viewport, LayoutSolver solver, boolean presentationEnabled) {
         this.viewport = Objects.requireNonNull(viewport);
         this.solver = Objects.requireNonNull(solver);
+        this.presentationEnabled = presentationEnabled;
+    }
+
+    /** Reuses this solver for detached analysis without creating live animation channels. */
+    public static CollisionWorld layoutOnly(CollisionShape viewport, LayoutSolver solver) {
+        return new CollisionWorld(viewport, solver, false);
     }
 
     public CollisionWorld viewport(CollisionShape viewport) {
@@ -57,7 +68,7 @@ public final class CollisionWorld {
     }
 
     public CollisionBody add(CollisionShape desired) {
-        var body = new CollisionBody(this, nextOrder++, Objects.requireNonNull(desired));
+        var body = new CollisionBody(this, nextOrder++, Objects.requireNonNull(desired), presentationEnabled);
         addToGroup(body, 0);
         return body;
     }
@@ -130,6 +141,7 @@ public final class CollisionWorld {
             target.set(work.x, work.y, work.width, work.height);
             body.pendingPlacement = false;
         }
+        if (!presentationEnabled) { body.mounted = true; return; }
         if (!body.mounted || body.direct || reducedMotion) {
             body.transition.snap(target.x, target.y, target.width, target.height);
         } else {

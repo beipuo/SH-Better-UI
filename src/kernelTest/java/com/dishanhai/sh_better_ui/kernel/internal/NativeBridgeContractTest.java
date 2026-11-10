@@ -96,13 +96,19 @@ class NativeBridgeContractTest {
     @Test
     void nativeStartupRejectsBrokenExtensionsAndKeepsIndependentModules() {
         var bad = candidate(module("bad").apiContractVersion(99).build());
-        var missing = candidate(module("missing").dependency(UiId.parse("example:absent"), VersionRange.ANY, true).build());
+        var missingId = UiId.parse("example:missing");
+        var missing = candidate(module("missing").dependency(UiId.parse("example:absent"), VersionRange.ANY, true).build(),
+                Set.of(), false, ctx -> fail("rejected module registered"), ctx -> fail("rejected module started"),
+                ctx -> fail("rejected module stopped"));
+        var dependent = candidate(module("dependent").dependency(missingId, VersionRange.ANY, true).build());
         var good = candidate(module("good").build());
         try (var host = new KernelHost(FORGE_1_20_1, new EnginePublication())) {
-            host.startNative(List.of(bad, missing, good));
+            host.startNative(List.of(bad, missing, dependent, good));
             assertEquals(EngineState.RUNNING, host.lifecycle().state());
             var snapshot = host.lifecycle().snapshot();
             assertEquals(ModuleLifecycle.RUNNING, snapshot.modules().get(UiId.parse("example:good")));
+            assertEquals(ModuleLifecycle.BLOCKED, snapshot.modules().get(missingId));
+            assertEquals(ModuleLifecycle.BLOCKED, snapshot.modules().get(dependent.module().descriptor().id()));
             assertTrue(snapshot.diagnostics().stream().anyMatch(value -> value.contains("example:bad")));
             assertTrue(snapshot.diagnostics().stream().anyMatch(value -> value.contains("example:missing")));
         }

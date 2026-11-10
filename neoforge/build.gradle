@@ -26,6 +26,7 @@ repositories {
 
 // Share stable drawing and motion API; only loader/render entry points are overridden.
 def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
+        'com/dishanhai/sh_better_ui/kernel/internal/live/network/PlatformLiveActivityNetwork.java',
         'com/dishanhai/sh_better_ui/client/UiClient.java',
         'com/dishanhai/sh_better_ui/client/ForgePlatformBridge.java',
         'com/dishanhai/sh_better_ui/client/api/PlatformUiApi.java',
@@ -33,6 +34,7 @@ def platformFiles = ['com/dishanhai/sh_better_ui/ShBetterUi.java',
         'com/dishanhai/sh_better_ui/client/lyrics/render/LyricGlyphPlatform.java',
         'com/dishanhai/sh_better_ui/compat/kubejs/ShBetterUiKubeJsPlugin.java',
         'com/dishanhai/sh_better_ui/client/blur/GaussBlur.java',
+        'com/dishanhai/sh_better_ui/client/spatial/PlatformSpatialVertices.java',
         'com/dishanhai/sh_better_ui/client/gui/display/IconShaderRenderer.java',
         'com/dishanhai/sh_better_ui/client/gui/scaled/CapsuleRenderer.java',
         'com/dishanhai/sh_better_ui/client/gui/scaled/VisualRevealRenderer.java',
@@ -118,7 +120,10 @@ tasks.register('verifyLibraryJar') {
              'sh_better_ui.kernel.mixins.json',
              'com/dishanhai/sh_better_ui/client/blur/GaussBlur.class',
              'com/dishanhai/sh_better_ui/compat/ldlib2/LdLib2UiBridge.class',
-             'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh'].each {
+             'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh',
+             'assets/sh_better_ui/shaders/core/spatial.json',
+             'assets/sh_better_ui/shaders/core/spatial.vsh',
+             'assets/sh_better_ui/shaders/core/spatial.fsh'].each {
                 if (zip.getEntry(it) == null) throw new GradleException("Missing library entry: ${it}")
             }
             if (zip.entries().any { it.name.contains('/kernel/smoke/') || it.name == 'META-INF/sh_better_ui.modules' }) {

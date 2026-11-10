@@ -1,0 +1,53 @@
+// Author: dishanhai
+// Records isolated dedicated server startup, including the EULA gate where applicable.
+if (gradle.startParameter.taskNames != ['runServer']) {
+    throw new GradleException('The live surface server smoke check requires only runServer')
+}
+
+gradle.beforeProject { p ->
+    p.afterEvaluate {
+        boolean forge = p.plugins.hasPlugin('net.minecraftforge.gradle')
+        if (!forge && !p.plugins.hasPlugin('net.neoforged.moddev')) return
+        File root = forge ? p.projectDir : p.projectDir.parentFile
+        String platform = forge ? 'forge' : 'neoforge'
+        File run = new File(root, "build/live-surface-verification/server-${platform}")
+        String classLog = '-Xlog:class+load=info:file=class-loading.log'
+
+        if (forge) {
+            p.minecraft.runs.named('server').configure {
+                workingDirectory run
+                args '--nogui'
+                jvmArgs classLog
+            }
+        } else {
+            p.neoForge.runs.named('server').configure {
+                gameDirectory.set(run)
+                jvmArguments.add(classLog)
+            }
+        }
+
+        p.tasks.matching { it.name == 'runServer' }.configureEach {
+            // The console queues this command for the first server tick when startup reaches it.
+            standardInput = new ByteArrayInputStream('stop\n'.getBytes('UTF-8'))
+            doFirst {
+                run.mkdirs()
+                File eula = new File(run, 'eula.txt')
+                if (eula.isFile()) {
+                    Properties settings = new Properties()
+                    eula.withInputStream { settings.load(it) }
+                    if ('true'.equalsIgnoreCase(settings.getProperty('eula'))) {
+                        throw new GradleException("The isolated EULA gate is already accepted in ${eula}")
+                    }
+                }
+                File config = new File(run, 'server.properties')
+                Properties settings = new Properties()
+                if (config.isFile()) config.withInputStream { settings.load(it) }
+                settings.setProperty('server-ip', '127.0.0.1')
+                settings.setProperty('server-port', '0')
+                settings.setProperty('enable-query', 'false')
+                settings.setProperty('enable-rcon', 'false')
+                config.withOutputStream { settings.store(it, 'Isolated live surface server smoke') }
+            }
+        }
+    }
+}

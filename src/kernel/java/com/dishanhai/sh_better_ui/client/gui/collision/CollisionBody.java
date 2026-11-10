@@ -35,11 +35,15 @@ public final class CollisionBody {
     int laneIndex;
 
     CollisionBody(CollisionWorld owner, long order, CollisionShape desired) {
+        this(owner, order, desired, true);
+    }
+
+    CollisionBody(CollisionWorld owner, long order, CollisionShape desired, boolean presentationEnabled) {
         this.owner = owner;
         this.order = order;
         this.desired = desired;
         solved.set(desired.x(), desired.y(), desired.width(), desired.height());
-        transition = new TransitionController(desired);
+        transition = presentationEnabled ? new TransitionController(desired) : null;
     }
 
     public CollisionBody desired(CollisionShape shape) {
@@ -125,15 +129,15 @@ public final class CollisionBody {
 
     public CollisionShape desired() { return desired; }
     public CollisionShape target() { return solved.snapshot(); }
-    public CollisionShape visual() { return transition.visual(); }
+    public CollisionShape visual() { return transition == null ? target() : transition.visual(); }
     public Strategy strategy() { return strategy; }
     public CompressionModel compression() { return compression; }
     public int priority() { return priority; }
     public int group() { return group; }
-    public float visualX() { return transition.x(); }
-    public float visualY() { return transition.y(); }
-    public float visualRight() { return transition.right(); }
-    public float visualBottom() { return transition.bottom(); }
+    public float visualX() { return transition == null ? solved.x : transition.x(); }
+    public float visualY() { return transition == null ? solved.y : transition.y(); }
+    public float visualRight() { return transition == null ? solved.x + solved.width : transition.right(); }
+    public float visualBottom() { return transition == null ? solved.y + solved.height : transition.bottom(); }
 
     float anchorFraction(boolean horizontal) {
         return (horizontal ? horizontalAnchor : verticalAnchor).fraction;

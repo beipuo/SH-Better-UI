@@ -69,6 +69,10 @@ final class ClientTheme implements ThemeService {
         return scopes.get(target);
     }
 
+    ThemeScope nativeScope(ModuleContext module, ScopeHandle node) {
+        return ((Bound) scope(module, node)).theme();
+    }
+
     private void requireOpen() {
         if (!lifetime.isOpen()) throw new IllegalStateException("The client theme service is closed");
     }

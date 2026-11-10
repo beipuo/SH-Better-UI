@@ -201,14 +201,22 @@ void main() {
     bool waveActive = WaveRadius > 0.5;
     vec2 baseUv = uv;
     float glowAdd = 0.0;
+    float waveFeather = 0.0;
     if (waveActive) {
         vec2 origin = WaveOrigin;
         vec2 deltaPx = (uv - origin) * InSize;          // v 轴朝上，长度仍然正确
         float distPx = length(deltaPx);
         vec2 dir = distPx > 0.001 ? deltaPx / distPx : vec2(0.0);
         float band = max(WaveThickness, 1.0);
+        float outer = WaveRadius + 2.0 * band;
+        if (distPx >= outer) {
+            fragColor = texture(DiffuseSampler, uv);
+            return;
+        }
         float ring = distPx - WaveRadius;               // 0 就是波峰所在圆
         float crest = exp(-0.5 * (ring * ring) / (band * band));
+        crest *= 1.0 - smoothstep(WaveRadius + band, outer, distPx);
+        waveFeather = band;
         float lens = 1.0 - smoothstep(0.0, max(WaveRadius, 1.0), distPx);
         float fall = 1.0 - smoothstep(WaveRadius * 0.55, max(WaveRadius, 1.0), distPx);
         // 模糊跟着圆盘走：中心最重，到波峰归零，圆外完全不糊
@@ -217,7 +225,7 @@ void main() {
             // 波峰径向折射：采样点往圆心收，画面看起来被向外推开——这是“液态玻璃”最直观的一层
             baseUv -= dir * (WaveRefract * crest) / InSize;
             // 圆盘内的透镜放大：采样向圆心收，内容看起来被顶起来
-            baseUv -= (uv - origin) * (0.12 * lens);
+            baseUv -= (uv - origin) * (0.12 * lens * k);
         }
         if (lastPass) {
             // 波峰高光，光从左上来，让圆环有方向感而不是一圈均匀白边
@@ -269,6 +277,12 @@ void main() {
     if (firstPass && GlassEdge.x > 0.0) {
         // 透镜边：越靠边越多地采到内侧的内容，边缘看起来被拉伸、弯折。
         baseUv += inward * (GlassEdge.x * k) / InSize;
+    }
+    if (waveActive) {
+        // 第一趟读原图，折射可以越过绘制范围；第二趟只读取已更新的中间纹理。
+        vec2 halfTexel = oneTexel * 0.5;
+        lo = firstPass ? halfTexel : lo + halfTexel;
+        hi = firstPass ? 1.0 - halfTexel : max(lo, hi - halfTexel);
     }
 
     vec3 rgb;
@@ -342,5 +356,11 @@ void main() {
         // 两趟分别混回当前输入；第二趟的边缘取样仍可能包含第一趟保留的角外背景。
         rgb = mix(texture(DiffuseSampler, uv).rgb, rgb, smoothstep(0.0, 1.0, edgeD));
     }
-    fragColor = vec4(rgb, 1.0);
+    if (waveActive) {
+        // 调用方限制区域时，把第一圈像素原样送回，折射和高光一同淡出。
+        float fade = smoothstep(0.5, 0.5 + waveFeather, edgeD);
+        fragColor = mix(texture(DiffuseSampler, uv), vec4(rgb, 1.0), fade);
+    } else {
+        fragColor = vec4(rgb, 1.0);
+    }
 }

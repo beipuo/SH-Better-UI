@@ -5,6 +5,8 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation;
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.kernel.api.*;
+import com.dishanhai.sh_better_ui.kernel.api.glass.GlassService;
+import com.dishanhai.sh_better_ui.kernel.internal.GlassCaptureSmoke;
 import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.SharedConstants;
@@ -55,10 +57,14 @@ public final class KernelClientSmoke implements UIModule {
     private long resourceVersion;
     private long initialMisses;
     private long sessionFrames;
+    private long hudGlassBefore;
     private ScopeHandle worldScope;
+    private LiveSurfaceSmoke live;
+    private MaterialCatalogSmoke materialCatalog;
     private AnimationService.Track animation;
     private TaskHandle screenDraw;
     private TaskHandle hudDraw;
+    private GlassService glass;
     private double animated;
     private boolean stopped;
     private int captures;
@@ -105,7 +111,8 @@ public final class KernelClientSmoke implements UIModule {
         if (started == 0) started = System.nanoTime();
         try {
             require(System.nanoTime() - started < 120_000_000_000L, "Timed out at "
-                    + (instance == null ? "discovery" : instance.stage));
+                    + (instance == null ? "discovery" : instance.stage
+                    + (instance.live == null ? "" : "/" + instance.live.stage())));
             if (client.getOverlay() != null) return;
             if (instance == null) {
                 require(!(client.screen instanceof TitleScreen), "Loader did not discover the kernel fixture");
@@ -124,7 +131,9 @@ public final class KernelClientSmoke implements UIModule {
         var output = System.getProperty("shb.kernel.smoke");
         if (output == null || instance == null || !done || !instance.stopped || UnifiedUI.isAvailable()) return;
         try {
-            Files.writeString(Path.of(output, "stopped.txt"), "module stopped and facade withdrawn\n");
+            var stats = instance.glass.diagnostics();
+            require(stats.captureBytes() == 0 && !stats.shaderReady(), "Glass retained GPU resources after shutdown");
+            Files.writeString(Path.of(output, "stopped.txt"), "module stopped, facade withdrawn, glass resources released\n");
         } catch (Exception failure) {
             throw new IllegalStateException("Could not record kernel shutdown", failure);
         }
@@ -141,6 +150,7 @@ public final class KernelClientSmoke implements UIModule {
                 require(game.optionalPresent() == Boolean.getBoolean("shb.kernel.smoke.optional"),
                         "Optional mod load state differs from the requested variant");
                 require(engine.capabilities().supports(UIApis.NATIVE_RENDER), "Render capability unavailable");
+                glass = engine.glass();
                 engine.require(UIApis.THEME).snapshot();
                 engine.require(UIApis.ACCESSIBILITY).preferences(null);
                 title = client.screen;
@@ -164,8 +174,12 @@ public final class KernelClientSmoke implements UIModule {
                 screenDraw = engine.require(UIApis.RENDER).submit(module, probe.tree, RenderService.Surface.SCREEN,
                         RenderService.Layer.OVERLAY, 0, context -> {
                             require(context.frame().surface() == RenderService.Surface.SCREEN, "Wrong draw surface");
-                            context.clip(12, 60, 32, 80, () -> context.fill(8, 56, 36, 84, MARKER));
+                            context.clip(12, 60, 32, 80, () -> {
+                                GlassCaptureSmoke.verify(BACKGROUND);
+                                context.fill(8, 56, 36, 84, MARKER);
+                            });
                             context.fill(36, 66, 40, 74, MARKER);
+                            GlassOpticsSmoke.draw(context);
                         });
                 stage = Stage.DRAW;
             }
@@ -175,6 +189,7 @@ public final class KernelClientSmoke implements UIModule {
                     require(pixel(image, client, 19, 70) == MARKER, "Framebuffer did not contain the render pass");
                     require(pixel(image, client, 10, 70) == BACKGROUND, "Render clip leaked outside its bounds");
                     require(pixel(image, client, 37, 70) == MARKER, "Render clip was not restored");
+                    GlassOpticsSmoke.verify(image, client);
                     image.writeToFile(output.resolve("screen.png").toFile());
                 }
                 var resource = engine.require(UIApis.RESOURCES);
@@ -193,9 +208,36 @@ public final class KernelClientSmoke implements UIModule {
                 if (!reload.isDone()) return;
                 reload.join();
                 require(engine.require(UIApis.RESOURCES).version() > resourceVersion, "Resource generation did not advance");
+                require(engine.glass().diagnostics().captureBytes() == 0 && !engine.glass().diagnostics().shaderReady(),
+                        "Liquid Glass retained GPU resources after reload");
                 require(probe.assets.texture(texture(), 1).isPresent() && probe.assets.stats().misses() > initialMisses,
                         "Native resource reload kept stale texture cache");
                 require(animated > 0 && animation.value() > 0, "Frame-clock animation did not advance");
+                screenDraw = engine.require(UIApis.RENDER).submit(module, probe.tree, RenderService.Surface.SCREEN,
+                        RenderService.Layer.OVERLAY, 0, GlassOpticsSmoke::drawReload);
+                stage = Stage.BROKEN_SHADER;
+            }
+            case BROKEN_SHADER -> {
+                require(screenDraw.status() == TaskHandle.Status.SUCCEEDED, "Broken shader did not fall back");
+                var stats = glass.diagnostics();
+                require(!stats.shaderReady() && stats.captureBytes() == 0 && stats.fallbackDraws() == 2,
+                        "Broken shader did not produce a solid fallback " + stats);
+                Files.delete(brokenGlassShader(output));
+                reload = client.reloadResourcePacks();
+                stage = Stage.RELOAD_SHADER;
+            }
+            case RELOAD_SHADER -> {
+                if (!reload.isDone()) return;
+                reload.join();
+                screenDraw = engine.require(UIApis.RENDER).submit(module, probe.tree, RenderService.Surface.SCREEN,
+                        RenderService.Layer.OVERLAY, 0, GlassOpticsSmoke::drawReload);
+                stage = Stage.RECOVERED_SHADER;
+            }
+            case RECOVERED_SHADER -> {
+                var stats = glass.diagnostics();
+                require(screenDraw.status() == TaskHandle.Status.SUCCEEDED && stats.shaderReady()
+                                && stats.passesWithCapture() == 2 && stats.opticalDraws() == 7,
+                        "Reload did not recover the Liquid Glass renderer " + stats);
                 var pending = module.engine().scheduler().submit(UITask.ui(probe.tree, UIPhase.STATE_MUTATION,
                         UIPriority.NORMAL, () -> { throw new AssertionError("Closed Screen task ran"); })
                         .delayed(60_000_000_000L));
@@ -228,30 +270,56 @@ public final class KernelClientSmoke implements UIModule {
                 require(engine.platform().hasClientSession(), "Native login did not open the session");
                 worldScope = engine.require(UIApis.SCREENS).session(module, id("smoke/session"));
                 sessionFrames = engine.scheduler().snapshot().frame();
+                hudGlassBefore = glass.diagnostics().opticalDraws();
                 hudDraw = engine.require(UIApis.RENDER).submit(module, worldScope, RenderService.Surface.HUD,
                         RenderService.Layer.OVERLAY, 0, context -> {
                             require(context.frame().surface() == RenderService.Surface.HUD, "Wrong HUD surface");
                             context.fill(12, 12, 18, 18, MARKER);
+                            GlassOpticsSmoke.drawWorld(context);
                         });
                 stage = Stage.HUD;
             }
             case HUD -> {
                 if (!hudDraw.status().isTerminal() && engine.scheduler().snapshot().frame() < sessionFrames + 100) return;
                 require(hudDraw.status() == TaskHandle.Status.SUCCEEDED, "Native HUD pass did not run");
+                if (live == null) {
+                    require(glass.diagnostics().opticalDraws() == hudGlassBefore + 1, "World HUD glass did not draw");
+                    try (var image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+                        image.writeToFile(output.resolve("liquid-glass-world.png").toFile());
+                    }
+                    client.options.guiScale().set(2);
+                    client.resizeDisplay();
+                    live = new LiveSurfaceSmoke(module, worldScope);
+                }
+                if (!live.advance(client, game, output)) return;
                 stage = Stage.LEAVE;
                 game.leave(client, title);
             }
             case LEAVE -> {
-                if (client.level != null || client.screen != title) return;
-                require(!engine.platform().hasClientSession(), "Native logout did not release the session");
-                require(!worldScope.isOpen(), "Native logout left an extension session open");
-                require(UnifiedUI.isAvailable(), "Screen/session closure stopped the engine");
+                if (!CorrectnessSmoke.started()) {
+                    if (client.level != null || client.screen != title) return;
+                    require(!engine.platform().hasClientSession(), "Native logout did not release the session");
+                    require(!worldScope.isOpen(), "Native logout left an extension session open");
+                    live.verifyLogout();
+                    require(UnifiedUI.isAvailable(), "Screen/session closure stopped the engine");
+                }
+                if (materialCatalog == null) {
+                    if (!CorrectnessSmoke.advance(module, client, game, output)) return;
+                    materialCatalog = new MaterialCatalogSmoke();
+                }
+                if (!materialCatalog.advance(client, game, output)) return;
                 var result = engine.platform().info() + " Java " + Runtime.version().feature()
                         + " optional=" + game.optionalPresent()
                         + "\nloader discovery, vanilla Tab, pointer press/drag/release/move, wheel, native focus, "
                         + "key press/repeat/release, UTF-16 input, GUI scale, window loss, framebuffer/clip, "
                         + "scoped theme, animation, resource pack/cache, remount cancellation, "
-                        + "reentrant input, capture failure, world login/HUD/logout\n";
+                        + "reentrant input, capture failure, world login/HUD/logout, live surface split/expand, "
+                        + "live local action, 32 continuous retargets, network publish/action/result, "
+                        + "window resize, GUI scale 1 and three live resource reloads\n"
+                        + "Liquid Glass: shared native capture, optical and contrast pixels, GL state, solid fallback, "
+                        + "shader compile failure and reload recovery, world HUD, shutdown release\n"
+                        + "Material catalog: stable and alias routes, native optics, reduced motion, frame step/reset, "
+                        + "four fixed keyframes, keyboard draft, A/B, GUI scale and reload retention, close and fresh draft\n";
                 Files.writeString(output.resolve("success.txt"), result);
                 System.out.println("KERNEL_SMOKE_OK " + result);
                 done = true;
@@ -281,6 +349,10 @@ public final class KernelClientSmoke implements UIModule {
         focus.close();
         require(probe.getFocused() == original, "Native focus was not restored");
 
+        move(client, 90, 30);
+        button(client, GLFW.GLFW_PRESS);
+        button(client, GLFW.GLFW_RELEASE);
+        require(captures == 0, "The transparent glass corner acquired pointer capture");
         move(client, 105, 42);
         button(client, GLFW.GLFW_PRESS);
         move(client, 145, 65);
@@ -349,7 +421,8 @@ public final class KernelClientSmoke implements UIModule {
                 tree = engine.require(UIApis.SCREENS).mount(module, this, id("smoke/tree"));
                 var input = engine.require(UIApis.INPUT);
                 pointerTarget = input.target(module, tree, 5, event -> event instanceof NativeInput.Pointer pointer
-                        && (pointer.action() == NativeInput.PointerAction.MOVE || pointer.x() >= 90));
+                        && (pointer.action() == NativeInput.PointerAction.MOVE
+                        || GlassOpticsSmoke.DRAG_ZONE.contains(pointer.x(), pointer.y())));
                 module.engine().events().subscribe(InputService.POINTER_MOVED, tree, UIEventPhase.TARGET, 0,
                         event -> moves++);
                 module.engine().events().subscribe(InputService.EVENT, tree, UIEventPhase.TARGET, 0, event -> {
@@ -413,18 +486,18 @@ public final class KernelClientSmoke implements UIModule {
 
     private static long window(Minecraft client) { return client.getWindow().getWindow(); }
 
-    private static void key(Minecraft client, int key, int action) {
+    static void key(Minecraft client, int key, int action) {
         client.keyboardHandler.keyPress(window(client), key, GLFW.glfwGetKeyScancode(key), action, 0);
     }
 
-    private static void move(Minecraft client, double x, double y) throws Exception {
+    static void move(Minecraft client, double x, double y) throws Exception {
         var window = client.getWindow();
         invoke(client.mouseHandler, "onMove", new Class<?>[] {long.class, double.class, double.class}, window(client),
                 x * window.getScreenWidth() / window.getGuiScaledWidth(),
                 y * window.getScreenHeight() / window.getGuiScaledHeight());
     }
 
-    private static void button(Minecraft client, int action) throws Exception {
+    static void button(Minecraft client, int action) throws Exception {
         invoke(client.mouseHandler, "onPress", new Class<?>[] {long.class, int.class, int.class, int.class},
                 window(client), GLFW.GLFW_MOUSE_BUTTON_LEFT, action, 0);
     }
@@ -435,7 +508,7 @@ public final class KernelClientSmoke implements UIModule {
         method.invoke(target, values);
     }
 
-    private static int pixel(NativeImage image, Minecraft client, int x, int y) {
+    static int pixel(NativeImage image, Minecraft client, int x, int y) {
         double scale = client.getWindow().getGuiScale();
         return image.getPixelRGBA((int) (x * scale), (int) (y * scale)) | 0xff000000;
     }
@@ -455,9 +528,16 @@ public final class KernelClientSmoke implements UIModule {
             image.setPixelRGBA(0, 0, -1);
             image.writeToFile(textures.resolve("kernel_smoke.png").toFile());
         }
+        var broken = brokenGlassShader(output);
+        Files.createDirectories(broken.getParent());
+        Files.writeString(broken, "#version 150\ninvalid fixture\n");
         var repository = client.getResourcePackRepository();
         repository.reload();
         require(repository.addPack("file/kernel-smoke"), "Native resource pack could not be selected");
+    }
+
+    private static Path brokenGlassShader(Path output) {
+        return output.resolve("resourcepacks/kernel-smoke/assets/sh_better_ui/shaders/managed_glass.fsh");
     }
 
     static LevelSettings settings() {
@@ -474,9 +554,9 @@ public final class KernelClientSmoke implements UIModule {
 
     private static UiId id(String path) { return new UiId("sh_better_ui", path); }
 
-    private static void require(boolean condition, String message) {
+    static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
     }
 
-    private enum Stage { START, DRAW, RELOAD, JOIN, HUD, LEAVE }
+    private enum Stage { START, DRAW, RELOAD, BROKEN_SHADER, RELOAD_SHADER, RECOVERED_SHADER, JOIN, HUD, LEAVE }
 }

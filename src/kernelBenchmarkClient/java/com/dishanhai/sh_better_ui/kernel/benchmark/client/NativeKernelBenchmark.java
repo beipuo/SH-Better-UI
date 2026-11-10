@@ -6,14 +6,19 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.InterruptibleAnimation.Blend
 import com.dishanhai.sh_better_ui.client.gui.scaled.Spring;
 import com.dishanhai.sh_better_ui.kernel.api.*;
 import com.dishanhai.sh_better_ui.kernel.internal.ClientUiKernel;
+import com.dishanhai.sh_better_ui.spatial.SpatialScene;
+import com.dishanhai.sh_better_ui.spatial.SpatialUI;
 import com.dishanhai.sh_better_ui.theme.token.ThemeTokens;
 import com.sun.management.ThreadMXBean;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackType;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -40,9 +45,14 @@ public final class NativeKernelBenchmark implements UIModule {
     private static final int POINTERS_PER_FRAME = 16;
     private static final int RELOAD_WARMUP = 3;
 
-    private enum Work { IDLE, DIRTY, ANIMATION, POINTER, THEME, CONFIG, CHURN, RENDER, RELOAD }
+    private enum Work {
+        IDLE, DIRTY, ANIMATION, POINTER, THEME, CONFIG, CHURN, RENDER, RELOAD,
+        SPATIAL, SPATIAL_VISUAL, SPATIAL_RELOAD, SPATIAL_FALLBACK
+    }
 
-    private record Scenario(String name, Work work, int count) {}
+    private record Scenario(String name, Work work, int count, SpatialBenchmark.Mode spatialMode) {
+        Scenario(String name, Work work, int count) { this(name, work, count, null); }
+    }
 
     private static final List<Scenario> SCENARIOS = List.of(
             new Scenario("idle-100", Work.IDLE, 100), new Scenario("idle-1000", Work.IDLE, 1000),
@@ -52,6 +62,19 @@ public final class NativeKernelBenchmark implements UIModule {
             new Scenario("theme-1000", Work.THEME, 1000), new Scenario("config-64", Work.CONFIG, 64),
             new Scenario("screen-churn-100", Work.CHURN, 100), new Scenario("render-1000", Work.RENDER, 1000),
             new Scenario("reload", Work.RELOAD, 0));
+
+    private static List<Scenario> spatialScenarios() {
+        var list = new ArrayList<Scenario>();
+        list.add(new Scenario("spatial-visual", Work.SPATIAL_VISUAL, 0));
+        list.add(new Scenario("spatial-reload", Work.SPATIAL_RELOAD, 0));
+        list.add(new Scenario("spatial-fallback", Work.SPATIAL_FALLBACK, 0));
+        for (var mode : SpatialBenchmark.Mode.values()) {
+            for (int count : new int[]{100, 500, 1000, 5000}) {
+                list.add(new Scenario("spatial-" + mode.label() + "-" + count, Work.SPATIAL, count, mode));
+            }
+        }
+        return list;
+    }
 
     private static NativeKernelBenchmark running;
     private static boolean finished;
@@ -90,6 +113,7 @@ public final class NativeKernelBenchmark implements UIModule {
     private long reloadAllocation;
     private long resourceGeneration;
     private long resourceApplied;
+    private boolean recoveringSpatialShader;
     private long previousHits;
     private long previousMisses;
     private AlignmentAssets assets;
@@ -161,8 +185,16 @@ public final class NativeKernelBenchmark implements UIModule {
         reloadSamples = count("reload", 20, 1, 120);
         String filter = System.getProperty("shb.kernel.bench.filter", "");
         var names = List.of(filter.split(","));
-        scenarios = SCENARIOS.stream().filter(value -> filter.isEmpty() || names.contains(value.name())).toList();
-        require(!scenarios.isEmpty() && (filter.isEmpty() || scenarios.size() == names.size()), "Unknown or duplicate scenario");
+        if (filter.isEmpty()) {
+            scenarios = SCENARIOS;
+        } else if (filter.equals("spatial")) {
+            scenarios = spatialScenarios();
+        } else {
+            var available = new ArrayList<>(SCENARIOS);
+            available.addAll(spatialScenarios());
+            scenarios = available.stream().filter(value -> names.contains(value.name())).toList();
+            require(scenarios.size() == names.size(), "Unknown or duplicate scenario");
+        }
         cpu = ManagementFactory.getThreadMXBean();
         cpuAvailable = cpu.isCurrentThreadCpuTimeSupported();
         if (cpuAvailable && !cpu.isThreadCpuTimeEnabled()) cpu.setThreadCpuTimeEnabled(true);
@@ -184,7 +216,8 @@ public final class NativeKernelBenchmark implements UIModule {
         }
         int java = engine.platform().info() == ModuleDescriptor.Platform.FORGE_1_20_1 ? 17 : 21;
         require(Runtime.version().feature() == java, "Unexpected game Java " + Runtime.version());
-        require(client.getWindow().getGuiScale() == 2, "Expected GUI Scale 2");
+        int scale = count("scale", 2, 1, 2);
+        require(client.getWindow().getGuiScale() == scale, "Unexpected GUI Scale");
         client.setWindowActive(true);
         Files.writeString(output.resolve("environment.txt"),
                 "platform=" + engine.platform().info() + "\nlabel=" + System.getProperty("shb.kernel.bench.label")
@@ -201,7 +234,7 @@ public final class NativeKernelBenchmark implements UIModule {
         beginScenario(client);
     }
 
-    private void beginScenario(Minecraft client) {
+    private void beginScenario(Minecraft client) throws IOException {
         lastProgress = System.nanoTime();
         scenario = scenarios.get(scenarioIndex);
         System.out.println("KERNEL_NATIVE_BENCHMARK " + scenario.name());
@@ -214,6 +247,12 @@ public final class NativeKernelBenchmark implements UIModule {
             require(assets.texture(TEXTURE, 1).isPresent(), "Benchmark texture is missing");
             resources.observe(module, screen.tree, generation -> resourceApplied = System.nanoTime() - reloadStart);
             beginReload(client);
+        } else if (scenario.work() == Work.SPATIAL_RELOAD || scenario.work() == Work.SPATIAL_FALLBACK) {
+            resources = engine.require(UIApis.RESOURCES);
+            recoveringSpatialShader = false;
+            if (scenario.work() == Work.SPATIAL_FALLBACK) installBrokenSpatialShader(client);
+            resourceGeneration = resources.version();
+            reload = client.reloadResourcePacks();
         } else {
             prepareFrame(client);
         }
@@ -221,6 +260,17 @@ public final class NativeKernelBenchmark implements UIModule {
 
     private void advance(Minecraft client) throws IOException {
         require(client.screen == screen, "Benchmark Screen changed during " + scenario.name());
+        if (spatialVisual() && reload != null && (scenario.work() != Work.SPATIAL_VISUAL)) {
+            if (!reload.isDone() || client.getOverlay() != null) return;
+            reload.join();
+            require(resources.version() > resourceGeneration, "Spatial reload did not publish a resource generation");
+            boolean fallback = scenario.work() == Work.SPATIAL_FALLBACK && !recoveringSpatialShader;
+            require(engine.require(SpatialUI.KEY).capability(SpatialUI.Capability.SDF_SHADOWS)
+                    == (fallback ? SpatialUI.Support.DEGRADED : SpatialUI.Support.SUPPORTED),
+                    "Unexpected SDF shader state after spatial reload");
+            reload = null;
+            lastProgress = System.nanoTime();
+        }
         if (scenario.work() == Work.RELOAD) {
             if (!reload.isDone()) return;
             if (reloadStart != 0) {
@@ -272,6 +322,13 @@ public final class NativeKernelBenchmark implements UIModule {
                     require(pending.animations == scenario.count(), "Not all animation tracks advanced");
                 }
                 if (scenario.work() == Work.POINTER) require(pending.moves == POINTERS_PER_FRAME, "Pointer events were lost");
+                if (spatialVisual() && iteration == warmup + samples - 1) {
+                    try (var image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+                        image.writeToFile(output.resolve(scenario.name() + ".png").toFile());
+                        SpatialVisualCheck.verify(image, client.getWindow().getGuiScaledWidth(),
+                                client.getWindow().getGuiScaledHeight(), scenario.work() != Work.SPATIAL_FALLBACK);
+                    }
+                }
                 rows.add(pending);
             }
             pending = null;
@@ -281,8 +338,29 @@ public final class NativeKernelBenchmark implements UIModule {
         if (iteration < warmup + samples) {
             if (pending == null) prepareFrame(client);
         } else if (collectGpuResults()) {
-            nextScenario(client);
+            if (scenario.work() == Work.SPATIAL_FALLBACK && !recoveringSpatialShader) {
+                require(client.getResourcePackRepository().removePack("file/spatial-broken-shader"),
+                        "Could not deselect the broken spatial shader pack");
+                recoveringSpatialShader = true;
+                resourceGeneration = resources.version();
+                reload = client.reloadResourcePacks();
+            } else {
+                nextScenario(client);
+            }
         }
+    }
+
+    private void installBrokenSpatialShader(Minecraft client) throws IOException {
+        var pack = output.resolve("resourcepacks/spatial-broken-shader");
+        var shaders = pack.resolve("assets/sh_better_ui/shaders/core");
+        Files.createDirectories(shaders);
+        int format = SharedConstants.getCurrentVersion().getPackVersion(PackType.CLIENT_RESOURCES);
+        Files.writeString(pack.resolve("pack.mcmeta"),
+                "{\"pack\":{\"pack_format\":" + format + ",\"description\":\"Spatial shader fallback fixture\"}}");
+        Files.writeString(shaders.resolve("spatial.json"), "{}");
+        var repository = client.getResourcePackRepository();
+        repository.reload();
+        require(repository.addPack("file/spatial-broken-shader"), "Could not select the broken spatial shader pack");
     }
 
     private void beginReload(Minecraft client) {
@@ -344,6 +422,7 @@ public final class NativeKernelBenchmark implements UIModule {
                 client.setScreen(screen);
                 require(!previous.isOpen() && screen.tree.isOpen(), "Screen scope did not remount");
             }
+            case SPATIAL -> screen.spatialBenchmark.update(iteration);
             default -> {}
         }
         row.workNanos = System.nanoTime() - start;
@@ -402,10 +481,32 @@ public final class NativeKernelBenchmark implements UIModule {
                         + row.applied() + "," + row.generation() + "," + row.hits() + "," + row.misses() + "\n");
             }
         }
+        if (rows.stream().anyMatch(row -> row.spatial != null)) {
+            try (BufferedWriter out = Files.newBufferedWriter(output.resolve("spatial.csv"))) {
+                out.write("scenario,sample,scene_cpu_ns,visible_nodes,shadow_commands,paint_commands,"
+                        + "active_lights,cache_hits,cache_misses,quality,batches,backdrop_samples,submission_ns,engine_gpu_ns\n");
+                for (Row row : rows) {
+                    var profile = row.spatial;
+                    if (profile == null) continue;
+                    out.write(row.scenario + "," + row.sample + "," + profile.cpuNanos() + ","
+                            + profile.visibleNodes() + "," + profile.shadowCommands() + "," + profile.paintCommands()
+                            + "," + profile.activeLights() + "," + profile.cacheHits() + "," + profile.cacheMisses()
+                            + "," + profile.quality() + "," + profile.batches() + "," + profile.backdropSamples()
+                            + "," + profile.submissionNanos() + "," + profile.gpuNanos() + "\n");
+                }
+            }
+        }
     }
 
     private long allocated() { return allocation == null ? -1 : allocation.getCurrentThreadAllocatedBytes(); }
     private long cpuTime() { return cpuAvailable ? cpu.getCurrentThreadCpuTime() : -1; }
+
+    private boolean spatialVisual() {
+        return switch (scenario.work()) {
+            case SPATIAL_VISUAL, SPATIAL_RELOAD, SPATIAL_FALLBACK -> true;
+            default -> false;
+        };
+    }
 
     private static long difference(long end, long begin) { return begin < 0 || end < 0 ? -1 : end - begin; }
 
@@ -418,6 +519,8 @@ public final class NativeKernelBenchmark implements UIModule {
         private long arranges;
         private long animations;
         private long moves;
+        private SpatialScene spatial;
+        private SpatialBenchmark spatialBenchmark;
 
         ProbeScreen() { super(Component.translatable("gui.done")); }
 
@@ -426,6 +529,15 @@ public final class NativeKernelBenchmark implements UIModule {
             tree = engine.require(UIApis.SCREENS).mount(module, this, TREE);
             Work work = scenario.work();
             int count = scenario.count();
+            if (work == Work.SPATIAL || spatialVisual()) {
+                var service = engine.require(SpatialUI.KEY);
+                require(service.capability(SpatialUI.Capability.SDF_SHADOWS) == SpatialUI.Support.SUPPORTED,
+                        "The spatial SDF shader is unavailable");
+                spatial = service.mount(module, tree);
+                if (spatialVisual()) SpatialVisualCheck.install(spatial);
+                else spatialBenchmark = new SpatialBenchmark(service, spatial, scenario.spatialMode(), count);
+                return;
+            }
             if (work == Work.IDLE || work == Work.DIRTY) layout = new LayoutService.Binding[count];
             if (work == Work.THEME) {
                 theme = engine.require(UIApis.THEME).scope(module, tree);
@@ -461,7 +573,7 @@ public final class NativeKernelBenchmark implements UIModule {
         @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             var row = pending;
             if (row == null || row.drawn || !frameOpen) return;
-            int rectangles = scenario.work() == Work.RENDER ? scenario.count() : 1;
+            int rectangles = spatial != null ? 0 : scenario.work() == Work.RENDER ? scenario.count() : 1;
             render.submit(module, tree, RenderService.Surface.SCREEN, RenderService.Layer.CONTENT, 0,
                     context -> draw(graphics, context, row, rectangles));
         }
@@ -473,6 +585,15 @@ public final class NativeKernelBenchmark implements UIModule {
         long bytes = allocated();
         long start = System.nanoTime();
         try {
+            if (screen.spatial != null) {
+                boolean visual = spatialVisual();
+                if (visual) context.fill(0, 0, context.frame().width(), context.frame().height(), SpatialVisualCheck.BACKGROUND);
+                context.spatial(screen.spatial);
+                if (visual) context.fill(32, 72, 52, 86, SpatialVisualCheck.MARKER);
+                row.spatial = screen.spatial.profile();
+                require(row.spatial.visibleNodes() > 0 && row.spatial.paintCommands() > 0,
+                        "Spatial draw did not submit visible geometry");
+            }
             for (int i = 0; i < rectangles; i++) {
                 int x = 2 + 3 * (i % 120);
                 int y = 2 + 3 * (i / 120);
@@ -496,6 +617,7 @@ public final class NativeKernelBenchmark implements UIModule {
         long measures, arranges, animations, moves, themeReads, rectangles, queued, deferred;
         int gpuStart, gpuEnd;
         boolean drawn;
+        SpatialScene.Profile spatial;
 
         Row(String scenario, int sample) {
             this.scenario = scenario;

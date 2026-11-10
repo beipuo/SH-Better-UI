@@ -17,6 +17,26 @@ sourceSets.named('main') {
 tasks.named('sourcesJar', Jar) {
     from kernel.allJava
 }
+tasks.named('processResources') {
+    def materialCatalog = new File(sourceRoot, 'catalog/generated/catalog.json')
+    def fixtureRoot = new File(sourceRoot, 'catalog/fixtures')
+    def fixtures = ['liquid-glass.json', 'liquid-glass.png']
+    from(materialCatalog) { into 'assets/sh_better_ui/material_catalog' }
+    from(fixtureRoot) {
+        include fixtures
+        into 'assets/sh_better_ui/material_catalog/fixtures'
+    }
+    doFirst {
+        if (!materialCatalog.isFile()) {
+            throw new GradleException('Missing material catalog. Run node catalog/build.mjs first.')
+        }
+        fixtures.each { fixture ->
+            if (!new File(fixtureRoot, fixture).isFile()) {
+                throw new GradleException("Missing shared material fixture: ${fixture}")
+            }
+        }
+    }
+}
 
 // Kotlin's JVM plugin can add its stdlib to custom source sets.
 configurations.named(contracts.implementationConfigurationName) {
