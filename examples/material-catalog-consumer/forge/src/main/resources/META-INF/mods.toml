@@ -1,0 +1,32 @@
+# Author: dishanhai
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="shbui_catalog_consumer"
+version="1.0.0"
+displayName="SH-Better-UI Material Consumer"
+authors="dishanhai"
+displayTest="IGNORE_ALL_VERSION"
+
+[[dependencies.shbui_catalog_consumer]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.shbui_catalog_consumer]]
+modId="forge"
+mandatory=true
+versionRange="[47.4.16,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.shbui_catalog_consumer]]
+modId="sh_better_ui"
+mandatory=true
+versionRange="[1.0.6,)"
+ordering="AFTER"
+side="CLIENT"

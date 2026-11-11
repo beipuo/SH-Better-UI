@@ -39,8 +39,6 @@ final class MaterialPreviewScenes {
     private MaterialPreviewScenes() {}
 
     static final class CodeRainPreview implements PreviewScene {
-        private static final CodeRainProfile ASCII = CodeRainProfile.builder()
-                .mode(CodeRainProfile.Mode.ASCII).color(0xFF78C8FF).build();
         private final CodeRainEffects.Interaction interaction =
                 CodeRainEffects.interaction(true, CodeRainEffects.Click.WAVE, .18f);
         private final CodeRain rain = new CodeRain(CodeRainProfile.DEFAULT, interaction);
@@ -53,7 +51,8 @@ final class MaterialPreviewScenes {
             font = host.font();
             canvas = effectCanvas(host.viewport());
             mode = addButton(host, effectButton(canvas, false), modeName(), GraphicIcon.CODE, () -> {
-                rain.setProfile(rain.profile().mode() == CodeRainProfile.Mode.RAIN ? ASCII : CodeRainProfile.DEFAULT);
+                rain.setProfile(rain.profile().mode() == CodeRainProfile.Mode.RAIN
+                        ? CodeRainProfile.ASCII : CodeRainProfile.DEFAULT);
                 mode.setMessage(modeName());
             });
             mode.setPreview(label("gallery.code_rain.mode_hint"));

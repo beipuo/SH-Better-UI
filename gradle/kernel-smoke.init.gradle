@@ -11,7 +11,11 @@ gradle.beforeProject { p ->
         if (!forge && !p.plugins.hasPlugin('net.neoforged.moddev')) return
         File root = forge ? p.projectDir : p.projectDir.parentFile
         String optional = p.findProperty('kernelSmokeOptional') ?: ''
+        boolean materialConsumer = p.hasProperty('kernelSmokeMaterialConsumer')
         String variant = optional ? '-optional' : ''
+        String label = p.findProperty('kernelSmokeLabel') ?: ''
+        if (!label.matches('[A-Za-z0-9_-]*')) throw new GradleException('Invalid kernel smoke label')
+        if (label) variant += '-' + label
         File run = new File(root, "build/kernel-verification/client-${forge ? 'forge' : 'neoforge'}${variant}")
         p.sourceSets.main.java.srcDir(new File(root, 'src/kernelSmoke/java'))
         p.sourceSets.main.java.srcDir(new File(root, "src/kernelSmoke/${forge ? 'forge' : 'neoforge'}"))
@@ -43,6 +47,7 @@ gradle.beforeProject { p ->
                 workingDirectory run
                 property 'shb.kernel.smoke', run.absolutePath
                 property 'shb.kernel.smoke.optional', optional ? 'true' : 'false'
+                if (materialConsumer) property 'shb.kernel.smoke.materialConsumer', 'true'
                 property 'shb.music.disabled', 'true'
                 if (optional) {
                     property 'mixin.env.remapRefMap', 'true'
@@ -56,6 +61,7 @@ gradle.beforeProject { p ->
                 gameDirectory.set(run)
                 systemProperty 'shb.kernel.smoke', run.absolutePath
                 systemProperty 'shb.kernel.smoke.optional', optional ? 'true' : 'false'
+                if (materialConsumer) systemProperty 'shb.kernel.smoke.materialConsumer', 'true'
                 systemProperty 'shb.music.disabled', 'true'
                 programArgument '--width'
                 programArgument '800'
@@ -68,12 +74,16 @@ gradle.beforeProject { p ->
             doFirst {
                 run.mkdirs()
                 ['success.txt', 'stopped.txt'].each { java.nio.file.Files.deleteIfExists(new File(run, it).toPath()) }
+                if (materialConsumer) java.nio.file.Files.deleteIfExists(new File(run, 'material-catalog-consumer.txt').toPath())
                 File options = new File(run, 'options.txt')
-                options.setText('onboardAccessibility:false\nguiScale:2\n', 'UTF-8')
+                options.setText('onboardAccessibility:false\nguiScale:2\npauseOnLostFocus:false\n', 'UTF-8')
             }
             doLast {
                 if (!new File(run, 'success.txt').isFile() || !new File(run, 'stopped.txt').isFile()) {
                     throw new GradleException('The client did not complete the kernel smoke and shutdown checks')
+                }
+                if (materialConsumer && !new File(run, 'material-catalog-consumer.txt').isFile()) {
+                    throw new GradleException('The client did not complete the material consumer GUI check')
                 }
             }
         }

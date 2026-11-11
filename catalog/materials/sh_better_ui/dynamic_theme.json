@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:dynamic_theme",
+  "materialRevision": "1.0.0",
+  "name": "Dynamic Theme Surface",
+  "localizedNames": {
+    "zh_cn": "动态主题表面",
+    "zh_tw": "動態主題表面"
+  },
+  "aliases": [
+    "dynamic_theme",
+    "dynamic themes",
+    "resource-pack theme",
+    "sh_better_ui:aurora"
+  ],
+  "category": "surface",
+  "tags": [
+    "theme",
+    "palette",
+    "transition",
+    "resource-pack"
+  ],
+  "description": "A theme-rule surface that resolves typed palette tokens against scope, environment, and accessibility preferences before drawing.",
+  "visualCharacteristics": [
+    "环境联动配色",
+    "作用域主题过渡"
+  ],
+  "useCases": [
+    "资源包主题",
+    "画面配色"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/theme/ThemeManager.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/theme/MinecraftThemes.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiTheme.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.ShBetterUiApi#themes",
+    "com.dishanhai.sh_better_ui.kernel.api.UIApis#THEME",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#findTheme"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.ShBetterUiApi#themes",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:ui/themes/aurora.json"
+  ],
+  "parameters": {},
+  "nativePreviewId": "sh_better_ui:dynamic_theme",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "theme-rule-resolution",
+    "token-transition",
+    "host-surface-renderer"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "BuiltinPreviews dynamic_theme",
+    "ThemeManagerTest",
+    "ThemeResourcesTest",
+    "docs/DYNAMIC_THEMES.md"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

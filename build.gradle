@@ -128,7 +128,10 @@ tasks.register('verifyLibraryJar') {
                             'assets/sh_better_ui/shaders/post/shop_gauss_blur.json',
                             'assets/sh_better_ui/shaders/program/shop_gauss_blur.json',
                             'assets/sh_better_ui/shaders/program/shop_gauss_blur.fsh',
-                            'assets/sh_better_ui/shaders/program/shop_gauss_blur.vsh']
+                            'assets/sh_better_ui/shaders/program/shop_gauss_blur.vsh',
+                            'assets/sh_better_ui/shaders/core/spatial.json',
+                            'assets/sh_better_ui/shaders/core/spatial.vsh',
+                            'assets/sh_better_ui/shaders/core/spatial.fsh']
             sourceSets.main.output.classesDirs.files.each { classesDir ->
                 fileTree(classesDir).matching { include '**/*.class' }.files.each { classFile ->
                     required.add(classesDir.toPath().relativize(classFile.toPath()).toString().replace('\\', '/'))

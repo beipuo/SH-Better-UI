@@ -1,6 +1,7 @@
 package com.dishanhai.sh_better_ui.client.gui.panel;
 
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewSpec.Category;
+import com.dishanhai.sh_better_ui.kernel.api.RenderService;
 import com.dishanhai.sh_better_ui.client.gui.scaled.ThemeEffects;
 
 import com.dishanhai.sh_better_ui.client.blur.GaussBlur;
@@ -26,6 +27,7 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** 山海：在同一画面试用公共控件、检查渲染状态并复制接入示例。 */
@@ -104,6 +106,16 @@ public final class DeveloperPanelScreen extends Screen implements UiScreenReturn
     public static Screen fullscreenSample(Screen parent, String id, UiPreferences preferences,
                                           Supplier<? extends GuiEventListener> returnFocus) {
         return DeveloperGalleryScreen.fullscreen(parent, id, preferences, returnFocus);
+    }
+
+    public static Screen fullscreenMaterial(Screen parent, String id, UiPreferences preferences,
+                                            Supplier<? extends GuiEventListener> returnFocus) {
+        return DeveloperGalleryScreen.fullscreenMaterial(parent, id, preferences, returnFocus);
+    }
+
+    /** Shared kernel hook for the built-in optical scene. Third-party scenes use RenderService.submit. */
+    public static Consumer<RenderService.Context> takeMaterialDraw(Screen owner) {
+        return owner instanceof DeveloperGalleryScreen gallery ? gallery.takeMaterialDraw() : null;
     }
 
     DeveloperPanelScreen(Screen parent, UiPreferences preferences, Supplier<UiButton> source) {

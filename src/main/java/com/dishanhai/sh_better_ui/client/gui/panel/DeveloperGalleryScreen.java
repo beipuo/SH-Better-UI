@@ -31,6 +31,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiScreenReturn;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiSkeleton;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiTextDetails;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
+import com.dishanhai.sh_better_ui.kernel.api.RenderService;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
@@ -95,6 +97,7 @@ final class DeveloperGalleryScreen extends Screen {
     private List<UiSkeleton.Block> inactiveBlocks = List.of();
     private Supplier<UiButton> entranceSource;
     private PreviewSpec selected;
+    private NativeMaterialRoute materialRoute;
     private PreviewSession session;
     private Bounds preview;
     private Bounds toolbar;
@@ -165,8 +168,20 @@ final class DeveloperGalleryScreen extends Screen {
 
     static Screen fullscreen(Screen parent, String id, UiPreferences preferences,
                              Supplier<? extends GuiEventListener> returnFocus) {
+        return fullscreen(parent, requirePreview(id), preferences, returnFocus);
+    }
+
+    static Screen fullscreenMaterial(Screen parent, String id, UiPreferences preferences,
+                                     Supplier<? extends GuiEventListener> returnFocus) {
+        var route = NativeMaterialRoute.require(id, ShBetterUiApi.developerPreviews());
+        var screen = fullscreen(parent, route.preview(), preferences, returnFocus);
+        screen.materialRoute = route;
+        return screen;
+    }
+
+    private static DeveloperGalleryScreen fullscreen(Screen parent, PreviewSpec spec, UiPreferences preferences,
+                                                      Supplier<? extends GuiEventListener> returnFocus) {
         Objects.requireNonNull(returnFocus);
-        PreviewSpec spec = requirePreview(id);
         return new DeveloperGalleryScreen(parent, preferences, spec.category(), spec.id(), spec, () -> {
             var target = returnFocus.get();
             if (target != null && parent != null && parent.children().contains(target)) parent.setFocused(target);
@@ -364,12 +379,14 @@ final class DeveloperGalleryScreen extends Screen {
         }
     }
 
-    void returnFromDirectory(String id) {
+    void returnFromDirectory(String id, NativeMaterialRoute route) {
         if (id != null) {
             PreviewSpec previous = selected;
-            if (previous != null && !previous.id().equals(id)) rememberScene();
+            boolean routeChanged = !Objects.equals(materialRoute, route);
+            if (previous != null && (!previous.id().equals(id) || materialRoute == null && routeChanged)) rememberScene();
             selectFromRegistry(registry.entries(), id);
-            if (previous != selected) {
+            materialRoute = route;
+            if (previous != selected || routeChanged) {
                 restoreSceneFocus = null;
                 resetPreviewState();
             }
@@ -379,6 +396,7 @@ final class DeveloperGalleryScreen extends Screen {
     }
 
     void abandonDirectory() {
+        rememberScene();
         closeScene();
         failed = false;
     }
@@ -491,6 +509,11 @@ final class DeveloperGalleryScreen extends Screen {
                 if (!(fullscreenOnly && selected == null)) rebuildWidgets();
             }
             if (!isActiveOwner()) return;
+            if (hasRevokedMaterialSession()) {
+                remounts.remove(selected);
+                closeScene();
+                if (directoryButton != null) setInitialFocus(directoryButton);
+            }
             if (needsMissingPreviewReturn()) {
                 triedMissingPreviewReturn = true;
                 returnToParent();
@@ -553,6 +576,7 @@ final class DeveloperGalleryScreen extends Screen {
         if (!isActiveOwner()) return;
         sampleIndex += step;
         selected = samples.get(sampleIndex);
+        materialRoute = null;
         resetPreviewState();
         if (!isActiveOwner()) return;
         rebuildWidgets();
@@ -605,12 +629,20 @@ final class DeveloperGalleryScreen extends Screen {
     }
 
     private boolean selectedRegistered() {
-        return selected != null && (registryEntries == registry.entries()
+        return selected != null && materialRouteAvailable() && (registryEntries == registry.entries()
                 || registry.find(selected.id()).orElse(null) == selected);
     }
 
+    private boolean materialRouteAvailable() {
+        return materialRoute == null || materialRoute.available(registry);
+    }
+
+    private boolean hasRevokedMaterialSession() {
+        return session != null && !materialRouteAvailable();
+    }
+
     private boolean needsMissingPreviewReturn() {
-        return fullscreenOnly && selected == null && !triedMissingPreviewReturn;
+        return fullscreenOnly && !selectedRegistered() && !triedMissingPreviewReturn;
     }
 
     private void clearSampleHandoff() {
@@ -634,7 +666,7 @@ final class DeveloperGalleryScreen extends Screen {
         } finally {
             returning.renderHandoff(graphics, preferences);
         }
-        if (changeFullscreen || pendingStep != 0 || retryQueued || registryEntries != registry.entries()
+        if (changeFullscreen || pendingStep != 0 || retryQueued || hasRevokedMaterialSession() || registryEntries != registry.entries()
                 || needsMissingPreviewReturn()) queueChanges();
         LayoutContext layout = currentLayout();
         if (layout != null && !layout.pendingWidgets.isEmpty()) {
@@ -771,7 +803,9 @@ final class DeveloperGalleryScreen extends Screen {
         }
         LayoutContext layout = currentLayout();
         if (layout == null || !layout.isCurrent() || failed) {
-            drawCentered(graphics, label(failed ? "gallery.preview_failed" : "gallery.empty"),
+            String message = !materialRouteAvailable() ? "gallery.material_unavailable"
+                    : failed ? "gallery.preview_failed" : "gallery.empty";
+            drawCentered(graphics, label(message),
                     preview.x() + 8, preview.y() + (preview.height() - BUTTON_HEIGHT) / 2 - (failed ? 12 : 0),
                     preview.width() - 16);
             return;
@@ -800,6 +834,22 @@ final class DeveloperGalleryScreen extends Screen {
                 graphics.disableScissor();
             }
         }
+    }
+
+    Consumer<RenderService.Context> takeMaterialDraw() {
+        LayoutContext layout = currentLayout();
+        if (layout == null || !previewInteractive() || failed || UiLocalModal.current(this) != null
+                || !(session.scene instanceof LiquidGlassPreview scene)) return null;
+        var draw = scene.takeDraw();
+        if (draw == null) return null;
+        return context -> {
+            if (!layout.isCurrent() || !previewInteractive()) return;
+            try {
+                draw.accept(context);
+            } catch (RuntimeException | LinkageError error) {
+                failRendering(layout, error);
+            }
+        };
     }
 
     private void failRendering(LayoutContext layout, Throwable error) {

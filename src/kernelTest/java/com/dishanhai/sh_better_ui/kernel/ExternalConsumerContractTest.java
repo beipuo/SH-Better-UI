@@ -9,6 +9,8 @@ import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -35,6 +37,30 @@ class ExternalConsumerContractTest {
     void anExternalJava17ConsumerCanCompileAgainstOnlyTheKernel() throws Exception {
         var result = compile(CONSUMER.formatted("Layout", "return UnifiedUI.get().require(LAYOUT);"));
         assertTrue(result.success(), () -> result.diagnostics().toString());
+    }
+
+    @Test
+    void externalSpatialConsumerCompilesAndLinksWithOnlyJava17KernelClasses() throws Exception {
+        var result = compile("""
+                package example;
+                import com.dishanhai.sh_better_ui.kernel.api.*;
+                import com.dishanhai.sh_better_ui.spatial.*;
+                import com.dishanhai.sh_better_ui.spatial.SpatialGeometry.*;
+                public final class Consumer {
+                    public static String contract() {
+                        var spec = new SpatialScene.Spec(UiId.parse("example:card"), null,
+                                Shape.rounded(80, 36, 5), Transform.IDENTITY, 0, 1, true, false);
+                        return SpatialUI.KEY.id() + "/" + spec.id();
+                    }
+                }
+                """);
+        assertTrue(result.success(), () -> result.diagnostics().toString());
+        var kernel = UnifiedUI.class.getProtectionDomain().getCodeSource().getLocation();
+        try (var isolated = new URLClassLoader(new URL[]{directory.toUri().toURL(), kernel},
+                ClassLoader.getPlatformClassLoader())) {
+            var consumer = isolated.loadClass("example.Consumer");
+            assertEquals("sh_better_ui:spatial/example:card", consumer.getMethod("contract").invoke(null));
+        }
     }
 
     @Test

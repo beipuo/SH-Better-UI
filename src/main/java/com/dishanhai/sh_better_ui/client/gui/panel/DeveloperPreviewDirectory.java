@@ -13,13 +13,19 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiPreferences;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiStyle;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchField;
 import com.dishanhai.sh_better_ui.client.gui.search.SearchIndex;
+import com.dishanhai.sh_better_ui.kernel.api.material.MaterialCatalog;
+import com.dishanhai.sh_better_ui.kernel.api.material.MaterialCatalogSnapshot;
+import com.dishanhai.sh_better_ui.kernel.api.material.MaterialEntry;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
 
@@ -42,7 +48,10 @@ final class DeveloperPreviewDirectory extends Screen {
     private final PreviewSpec.Category category;
     private final PreviewRegistry registry;
     private final List<UiButton> rows = new ArrayList<>();
+    private final Map<PreviewSpec, List<MaterialEntry>> materials = new IdentityHashMap<>();
     private List<PreviewSpec> entries = List.of();
+    private MaterialCatalog catalog;
+    private MaterialCatalogSnapshot materialSnapshot;
     private SearchIndex<PreviewSpec> index = new SearchIndex<>(List.of());
     private List<SearchIndex.Entry<PreviewSpec>> matches = List.of();
     private Bounds panel;
@@ -54,6 +63,7 @@ final class DeveloperPreviewDirectory extends Screen {
     private String query = "";
     private int page;
     private boolean revealSelection;
+    private boolean opened;
     private boolean returning;
 
     DeveloperPreviewDirectory(DeveloperGalleryScreen parent, UiPreferences preferences,
@@ -67,7 +77,8 @@ final class DeveloperPreviewDirectory extends Screen {
 
     void open(PreviewSpec selected) {
         this.selected = selected;
-        revealSelection = query.isBlank() && selected != null;
+        revealSelection = query.isBlank() && selected != null && (category != PreviewSpec.Category.MATERIALS || !opened);
+        opened = true;
     }
 
     @Override
@@ -92,7 +103,8 @@ final class DeveloperPreviewDirectory extends Screen {
         search = addRenderableWidget(new SearchField<>(font, x, searchY, right - x - ARROW_WIDTH - 4, ROW_HEIGHT,
                 new SearchIndex<>(List.of()), UiStyle.LIQUID_GLASS, preferences));
         search.setSampleBackground(false);
-        search.setMessage(label("gallery.directory_search_hint"));
+        search.setMessage(label(category == PreviewSpec.Category.MATERIALS
+                ? "gallery.material_search_hint" : "gallery.directory_search_hint"));
         search.setTooltip(null);
         search.setValue(query);
         search.setResponder(value -> {
@@ -143,16 +155,45 @@ final class DeveloperPreviewDirectory extends Screen {
 
     @Override
     public void tick() {
-        if (panel != null && entries != registry.entries()) refreshIndex();
+        if (panel == null) return;
+        var service = materialCatalog();
+        if (entries != registry.entries() || catalog != service
+                || service != null && materialSnapshot != service.snapshot()) refreshIndex();
     }
 
     private void refreshIndex() {
         entries = registry.entries();
-        index = new SearchIndex<>(entries.stream().filter(spec -> spec.category() == category).map(spec -> {
+        catalog = materialCatalog();
+        materialSnapshot = catalog == null ? null : catalog.snapshot();
+        materials.clear();
+        if (catalog != null) {
+            for (var material : catalog.entries()) {
+                NativeMaterialRoute.preview(material, registry).ifPresent(spec ->
+                        materials.computeIfAbsent(spec, ignored -> new ArrayList<>()).add(material));
+            }
+        }
+        index = new SearchIndex<>(entries.stream().filter(spec -> spec.category() == category || materials.containsKey(spec))
+                .sorted(Comparator.comparing(spec -> spec.category() != category)).map(spec -> {
             String name = Component.translatable(spec.titleKey()).getString();
-            return new SearchIndex.Entry<>(spec, name.isBlank() ? spec.id() : name, List.of(spec.id()), List.of());
+            var ids = new ArrayList<String>();
+            var aliases = new ArrayList<String>();
+            var tags = new ArrayList<String>();
+            ids.add(spec.id());
+            for (var material : materials.getOrDefault(spec, List.of())) {
+                ids.add(material.id());
+                aliases.add(material.name());
+                aliases.addAll(material.localizedNames().values());
+                aliases.addAll(material.aliases());
+                tags.add(material.category());
+                tags.addAll(material.tags());
+            }
+            return new SearchIndex.Entry<>(spec, name.isBlank() ? spec.id() : name, ids, aliases, "", tags);
         }).toList());
         updateMatches();
+    }
+
+    private MaterialCatalog materialCatalog() {
+        return category == PreviewSpec.Category.MATERIALS ? NativeMaterialRoute.catalogService().orElse(null) : null;
     }
 
     private void updateMatches() {
@@ -198,8 +239,27 @@ final class DeveloperPreviewDirectory extends Screen {
     }
 
     private void choose(PreviewSpec spec) {
-        if (registry.find(spec.id()).orElse(null) == spec) returnToGallery(spec.id());
-        else refreshIndex();
+        if (registry.find(spec.id()).orElse(null) != spec) {
+            refreshIndex();
+            return;
+        }
+        var candidates = materials.getOrDefault(spec, List.of());
+        NativeMaterialRoute route = null;
+        if (!candidates.isEmpty()) {
+            var material = query.isBlank() ? candidates.get(0)
+                    : catalog.find(query).filter(found -> candidates.stream().anyMatch(item -> item == found))
+                            .orElse(candidates.get(0));
+            route = new NativeMaterialRoute(catalog, material, spec);
+            if (!route.available(registry)) {
+                refreshIndex();
+                return;
+            }
+            if (spec.category() != category) {
+                minecraft.setScreen(DeveloperGalleryScreen.fullscreenMaterial(this, material.id(), preferences, () -> search));
+                return;
+            }
+        }
+        returnToGallery(spec.id(), route);
     }
 
     // NeoForge 由 Screen.render 调用，Forge 1.20.1 使用不同签名。
@@ -217,7 +277,9 @@ final class DeveloperPreviewDirectory extends Screen {
             int contentWidth = panel.width() - 2 * PADDING;
             graphics.drawString(font, font.substrByWidth(getTitle(), contentWidth).getString(),
                     x, panel.y() + PADDING, LiquidGlassTheme.textColor(), false);
-            graphics.drawString(font, font.substrByWidth(label("gallery.directory_search"), contentWidth).getString(),
+            var searchLabel = label(category == PreviewSpec.Category.MATERIALS
+                    ? "gallery.material_search" : "gallery.directory_search");
+            graphics.drawString(font, font.substrByWidth(searchLabel, contentWidth).getString(),
                     x, search.getY() - 12, LiquidGlassTheme.mutedTextColor(), false);
             if (matches.isEmpty()) {
                 GalleryPreviewLayout.drawCentered(graphics, font,
@@ -249,13 +311,13 @@ final class DeveloperPreviewDirectory extends Screen {
 
     @Override
     public void onClose() {
-        returnToGallery(null);
+        returnToGallery(null, null);
     }
 
-    private void returnToGallery(String id) {
+    private void returnToGallery(String id, NativeMaterialRoute route) {
         returning = true;
         try {
-            parent.returnFromDirectory(id);
+            parent.returnFromDirectory(id, route);
         } finally {
             returning = false;
         }

@@ -39,7 +39,7 @@ final class ShapeWavesRenderer extends RenderType {
     private static final RenderType TYPE = create("sh_better_ui_shape_waves", DefaultVertexFormat.POSITION_TEX,
             VertexFormat.Mode.QUADS, 256, false, false, CompositeState.builder()
                     .setShaderState(new ShaderStateShard(() -> shader))
-                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setTransparencyState(WaveRenderState.ALPHA_BLEND)
                     .setDepthTestState(LEQUAL_DEPTH_TEST).setCullState(NO_CULL)
                     .setWriteMaskState(COLOR_WRITE).createCompositeState(false));
 
@@ -65,11 +65,12 @@ final class ShapeWavesRenderer extends RenderType {
     static boolean draw(GuiGraphics graphics, Bounds bounds, ShapeWavesProfile profile, float phase,
                         float driftXCells, float driftYCells, float intro, long now, WavePointer.Ripple[] ripples) {
         if (shader == null) return false;
-        graphics.flush();
+        WaveRenderState state = WaveRenderState.capture();
         int activeTexture = GlStateManager._getActiveTexture();
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
         int boundTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         try {
+            graphics.flush();
             configure(bounds, profile, phase, driftXCells, driftYCells, intro, now, ripples);
             VisualRevealRenderer.quad(graphics, TYPE, bounds.x(), bounds.y(), bounds.width(), bounds.height(),
                     graphics.pose().last().pose());
@@ -79,6 +80,7 @@ final class ShapeWavesRenderer extends RenderType {
             RenderSystem.activeTexture(GL13.GL_TEXTURE0);
             RenderSystem.bindTexture(boundTexture);
             RenderSystem.activeTexture(activeTexture);
+            state.restore();
         }
     }
 

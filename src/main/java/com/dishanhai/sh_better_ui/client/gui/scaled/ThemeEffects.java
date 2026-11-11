@@ -64,7 +64,7 @@ public final class ThemeEffects {
         defaults.put("lightRays", LightRaysProfile.DEFAULT);
         defaults.put("laserFlow", LaserFlowProfile.DEFAULT);
         defaults.put("codeRain", CodeRainProfile.DEFAULT);
-        defaults.put("ascii", CodeRainProfile.builder().mode(CodeRainProfile.Mode.ASCII).build());
+        defaults.put("ascii", CodeRainProfile.ASCII);
         defaults.put("patternWaves", PatternWavesProfile.Preset.SILK.profile());
         defaults.put("shapeWaves", ShapeWavesProfile.DEFAULT);
         defaults.put("electricLogo", ElectricLogoProfile.DEFAULT);
@@ -105,7 +105,7 @@ public final class ThemeEffects {
         };
     }
 
-    private static synchronized Record defaults(String group) {
+    static synchronized Record defaults(String group) {
         Record defaults = DEFAULTS.get(group);
         var extension = EXTENSIONS.get(group);
         return extension == null ? defaults : extension.defaults();
@@ -125,6 +125,14 @@ public final class ThemeEffects {
             if (previous == null) PREVIEW.remove();
             else PREVIEW.set(previous);
         }
+    }
+
+    public static ClientUiSettings previewSettings(ClientUiSettings settings, String group,
+                                                   JsonObject inherited, JsonObject local) {
+        var combined = ThemeOverrides.EMPTY.withGroup(group, inherited)
+                .overlay(ThemeOverrides.EMPTY.withGroup(group, local));
+        var theme = settings.theme().overlayEffects(combined);
+        return settings.withTheme(theme.withEffects(theme.effects().withGroup(group, combined.group(group))));
     }
 
     public static GlassBackdropSettings glass() {
@@ -187,13 +195,22 @@ public final class ThemeEffects {
         return result;
     }
 
-    private static JsonObject fields(Record value) {
+    static JsonObject fields(Record value) {
         JsonObject result = new JsonObject();
         try {
             for (var component : value.getClass().getRecordComponents()) {
                 Object field = component.getAccessor().invoke(value);
                 if (field instanceof Record record) result.add(component.getName(), fields(record));
-                else if (field instanceof DotMatrixProfile.Effect) result.addProperty(component.getName(), "TWINKLE");
+                else if (field instanceof DotMatrixProfile.Effect) {
+                    if (field == DotMatrixProfile.Effect.STEADY) result.addProperty(component.getName(), "STEADY");
+                    if (field == DotMatrixProfile.Effect.TWINKLE) result.addProperty(component.getName(), "TWINKLE");
+                    if (field == DotMatrixProfile.Effect.WAVE) result.addProperty(component.getName(), "WAVE");
+                } else if (field instanceof DotMatrixProfile.Flow) {
+                    if (field == DotMatrixProfile.Flow.RIGHT) result.addProperty(component.getName(), "RIGHT");
+                    if (field == DotMatrixProfile.Flow.DOWN) result.addProperty(component.getName(), "DOWN");
+                    if (field == DotMatrixProfile.Flow.DIAGONAL) result.addProperty(component.getName(), "DIAGONAL");
+                    if (field == DotMatrixProfile.Flow.OUTWARD) result.addProperty(component.getName(), "OUTWARD");
+                }
                 else if (component.getType().isInterface() && !(field instanceof java.util.List<?>)) continue;
                 else result.add(component.getName(), GSON.toJsonTree(field, component.getGenericType()));
             }
@@ -201,6 +218,30 @@ public final class ThemeEffects {
         } catch (ReflectiveOperationException e) {
             throw new IllegalArgumentException(e);
         }
+    }
+
+    /** Validates a local override in the same context in which it will render. */
+    public static void validate(String group, JsonObject inherited, JsonObject local) {
+        resolveEditor(group, inherited, local);
+    }
+
+    static JsonObject resolveEditor(String group, JsonObject inherited, JsonObject local) {
+        return resolveEditor(settings(), group, inherited, local);
+    }
+
+    static JsonObject resolveEditor(ClientUiSettings base, String group, JsonObject inherited, JsonObject local) {
+        var merged = ThemeOverrides.EMPTY.withGroup(group, inherited)
+                .overlay(ThemeOverrides.EMPTY.withGroup(group, local)).group(group);
+        Record fallback = switch (group) {
+            case "glass" -> base.backdrop();
+            case "tabs" -> base.tabs();
+            case "feedback" -> base.feedback();
+            default -> defaults(group);
+        };
+        if (fallback == null) throw new IllegalArgumentException(group);
+        var resolved = fields(apply(group, fallback, merged));
+        resolved.keySet().retainAll(template(group).keySet());
+        return resolved;
     }
 
     private static Record apply(String group, Record fallback, JsonObject overrides) {
@@ -253,6 +294,15 @@ public final class ThemeEffects {
                 case "STEADY" -> DotMatrixProfile.Effect.STEADY;
                 case "TWINKLE" -> DotMatrixProfile.Effect.TWINKLE;
                 case "WAVE" -> DotMatrixProfile.Effect.WAVE;
+                default -> throw new IllegalArgumentException();
+            };
+        }
+        if (raw == DotMatrixProfile.Flow.class) {
+            return switch (value.getAsString()) {
+                case "RIGHT" -> DotMatrixProfile.Flow.RIGHT;
+                case "DOWN" -> DotMatrixProfile.Flow.DOWN;
+                case "DIAGONAL" -> DotMatrixProfile.Flow.DIAGONAL;
+                case "OUTWARD" -> DotMatrixProfile.Flow.OUTWARD;
                 default -> throw new IllegalArgumentException();
             };
         }

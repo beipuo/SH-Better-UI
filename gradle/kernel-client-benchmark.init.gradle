@@ -21,6 +21,7 @@ gradle.beforeProject { p ->
                 'shb.kernel.bench.warmup' : p.findProperty('kernelNativeWarmup') ?: '120',
                 'shb.kernel.bench.samples': p.findProperty('kernelNativeSamples') ?: '300',
                 'shb.kernel.bench.reload' : p.findProperty('kernelNativeReloadSamples') ?: '20',
+                'shb.kernel.bench.scale'  : p.findProperty('kernelNativeGuiScale') ?: '2',
                 'shb.kernel.bench.filter' : p.findProperty('kernelNativeScenario') ?: '',
                 'shb.kernel.bench.label'  : label,
                 'shb.music.disabled'     : 'true'
@@ -54,10 +55,14 @@ gradle.beforeProject { p ->
         p.tasks.matching { it.name == 'runClient' }.configureEach {
             doFirst {
                 run.mkdirs()
-                ['frames.csv', 'reload.csv', 'environment.txt', 'success.txt', 'stopped.txt'].each {
+                ['frames.csv', 'reload.csv', 'spatial.csv', 'spatial-visual.png', 'spatial-reload.png',
+                 'spatial-fallback.png', 'environment.txt',
+                 'success.txt', 'stopped.txt'].each {
                     java.nio.file.Files.deleteIfExists(new File(run, it).toPath())
                 }
-                new File(run, 'options.txt').setText('onboardAccessibility:false\nguiScale:2\nenableVsync:false\nmaxFps:260\npauseOnLostFocus:false\n', 'UTF-8')
+                String scale = properties['shb.kernel.bench.scale']
+                if (!(scale in ['1', '2'])) throw new GradleException('kernelNativeGuiScale must be 1 or 2')
+                new File(run, 'options.txt').setText("onboardAccessibility:false\nguiScale:${scale}\nenableVsync:false\nmaxFps:260\npauseOnLostFocus:false\n", 'UTF-8')
             }
             doLast {
                 if (!new File(run, 'success.txt').isFile() || !new File(run, 'stopped.txt').isFile()) {

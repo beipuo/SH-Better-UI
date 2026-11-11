@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:radial_gradient",
+  "materialRevision": "1.0.0",
+  "name": "Radial Gradient",
+  "localizedNames": {
+    "zh_cn": "径向渐变",
+    "zh_tw": "徑向漸層"
+  },
+  "aliases": [
+    "radial gradient",
+    "drawRadialGradient"
+  ],
+  "category": "composition",
+  "tags": [
+    "gradient",
+    "surface",
+    "shader",
+    "background"
+  ],
+  "description": "A color gradient expands from a normalized local origin toward the farthest corner of a GUI rectangle.",
+  "visualCharacteristics": [
+    "局部中心颜色",
+    "柔和的径向过渡"
+  ],
+  "useCases": [
+    "背景铺色",
+    "纹理预览底层"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/VisualReveal.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/VisualRevealRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/BlurApi.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.BlurApi#drawRadialGradient",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.VisualReveal#drawRadialGradient"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.BlurApi#drawRadialGradient",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/visual_reveal.fsh",
+    "sh_better_ui:shaders/core/visual_reveal.json",
+    "sh_better_ui:shaders/core/visual_reveal.vsh"
+  ],
+  "parameters": {
+    "originU": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "uv",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "originV": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 1,
+      "step": null,
+      "unit": "uv",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "innerArgb": {
+      "type": "color",
+      "defaultValue": "#FFD6A37D",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "argb",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "outerArgb": {
+      "type": "color",
+      "defaultValue": "#FF778B78",
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "argb",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "radial-color-shader"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "VisualReveal.drawRadialGradient overload defaults",
+    "docs/effects.md standalone gradient example",
+    "BuiltinBackgrounds reveal composition"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

@@ -21,7 +21,7 @@ flowchart TD
     Legacy --> Adapter
 ```
 
-保留兩套獨立 Gradle 啟動點。共用 `src/kernel/java` 作為純 Java 17 source set，其中 `com.dishanhai.sh_better_ui.kernel.api` 是公開契約，`kernel.internal` 是實作。兩端透過同一份 `gradle/kernel.gradle` 把輸出接進 main、test、發行包和 sources JAR。核心使用 JDK 21 工具鏈及 `--release 17`，Forge 主程式亦保留 Java 17 位元碼，NeoForge 其餘源碼以 21 編譯。建置、既有測試與本輪客戶端驗證使用 GraalVM 21。既有測試中硬性要求 Java 17 執行期的斷言仍須與這個執行環境區分。雙端獨立的 `kernelTest` 共用 `src/kernelTest/java`。Minecraft 適配在既有的 main 源集，雙端以各自 `UiClient` 或明列的替換類接線。 [平台相容性](platform-compatibility.md)
+保留兩套獨立 Gradle 啟動點。共用 `src/kernel/java` 作為純 Java 17 source set，其中 `com.dishanhai.sh_better_ui.kernel.api` 是公開契約，`kernel.internal` 是實作。兩端透過同一份 `gradle/kernel.gradle` 把輸出接進 main、test、發行包和 sources JAR。核心使用 JDK 21 工具鏈及 `--release 17`，Forge 主程式亦保留 Java 17 位元碼，NeoForge 其餘源碼以 21 編譯。雙端獨立的 `kernelTest` 共用 `src/kernelTest/java`，以 Java 17 執行。Minecraft 適配在既有的 main 源集，雙端以各自 `UiClient` 或明列的替換類接線。 [平台相容性](platform-compatibility.md)
 
 沿用現有 mod ID、Forge 開發／重映射 JAR 與 NeoForge JAR。核心類由 SH-Better-UI 自身封裝一次。消費模組照現行方式聲明依賴。分離 source set 可用 `jdeps` 和 class major 檢查 Java 17 的依賴邊界。正式包以 ABI 比對驗證，原生行為以隔離的開發客戶端驗證。
 
@@ -37,7 +37,7 @@ flowchart TD
 - 獨占服務預設 `REJECT`。`KEEP_EXISTING` 對相容候選回傳可辨識的未取得結果。`REPLACE_IF_ALLOWED` 要求宿主授權、舊登記可替換，並保持型別、版本和可見性。模組私有服務保留原所有者。`SELECT_BY_PRIORITY` 要求雙方允許替換，再依優先級、提供者版本、模組 ID 排序。登記回呼失敗時恢復原登記，凍結後由生命週期管理移除。
 - `ModuleDescriptor` 為不可變的 builder 結果。欄位包括模組 ID／版本、API 版本、必要／選用／提供能力、模組依賴及版本區間、衝突、初始化階段、執行親和性、申請權限、設定 schema 參照、資源所有權與平台限制。Loader 來源和實際授權由內核儲存。 [模組開發](module-development.md)
 - `ForgePlatformBridge` 和 `NeoForgePlatformBridge` 由 Loader 的 mod 檔清單定位 `META-INF/sh_better_ui.modules`。UTF-8 檔案每行兩欄，以空白分隔 mod ID 和實作類的全名。空行與以 `#` 起首的註解行略過。mod ID 須屬於該檔，實作類須由該檔對應的具名 Java `Module` 載入，並實作 `UIModule` 及提供公開無參數建構式。實例化後驗證描述、平台、授權及依賴，再執行登記與啟動。資源包與一般 classpath 資源無法提供候選模組。
-- 必要依賴形成有向圖。用階段及模組 ID 做可用節點的穩定排序，缺失、衝突和版本不合各自診斷。對未排序子圖輸出完整的循環路徑。選用邊只有在提供者相容且不成環時加入，否則記錄降級。依賴排序先於優先級。
+- 必要依賴形成有向圖。用階段及模組 ID 做可用節點的穩定排序，缺失、衝突和版本不合各自診斷。對未排序子圖輸出完整的循環路徑。選用邊只有在提供者相容且不成環時加入，否則記錄降級。依賴排序先於優先級。原生啟動時，被依賴圖隔離的有效候選會在生命週期快照中顯示 `BLOCKED`。
 - `CapabilityKey` 指定能力 ID。`CapabilityDescriptor` 帶版本、提供者、優先級及 fallback 標記。解析器過濾相容版本後，依主要實作、優先級、版本和穩定 ID 選擇。結果列出必要及選用缺口。能力供給從已啟動的模組發布，隨其停止移除。會話、頁面及組件的可用狀態由對應服務和作用域提供。 [能力系統](capability-system.md)
 
 ## 生命週期和故障隔離

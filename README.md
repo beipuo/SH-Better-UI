@@ -193,7 +193,7 @@ cancelButton.setIcon(GraphicIcon.CLOSE);
 
 ### 对话框、气泡提示、动作面板与下拉刷新
 
-`UiOverlayHost` 提供原画面的提示框、确认框、底部动作面板与控件锚点气泡。`UiPullRefresh` 提供列表顶部下拉、键盘刷新、请求去重及回执状态。Forge 与 NeoForge 原生 `Screen` 共用这些接口，另有可选的 Forge LDLib 1.x Widget 和 NeoForge LDLib2 `UIElement` 适配。示例见[画面交互 API](SCREEN_INTERACTIONS.md)。
+`UiOverlayHost` 提供原画面的提示框、确认框、底部动作面板与控件锚点气泡。`UiPullRefresh` 提供列表顶部下拉、键盘刷新、请求去重及回执状态。Forge 与 NeoForge 原生 `Screen` 共用这些接口，另有可选的 Forge LDLib 1.x Widget 和 NeoForge LDLib2 `UIElement` 适配。示例见[画面交互 API](docs/SCREEN_INTERACTIONS.md)。
 
 ### 搜索、预测与自动填充
 
@@ -436,6 +436,16 @@ Forge 与 NeoForge 的原生 `Screen` 可使用 `client.gui.display` 下的图�
 
 内置图标的 64×64 透明副本位于 `sh_better_ui:textures/gui/display_64/<图标名>.png`，与 16×16 原图同名。副本按最近邻放大 4 倍，适用于按 64×64 读取完整纹理的调用方。内置 `GraphicIcon` 常数引用 16×16 原图。
 
+文件类图标有 `FOLDER`（文件夹）、`FILE`（通用文件）、`DOCUMENT`（文档）、`FILE_EXE`（.exe）、`FILE_MD`（.md）、`FILE_JAVA`（.java）和 `FILE_KT`（.kt）。模组与配方界面可用 `KUBEJS`（按 [KubeJS 项目图标](https://modrinth.com/mod/kubejs)重绘）、`AE2_PATTERN`（AE2 样板）和 `CRAFTING`（合成）。商店入口可用 `SHOP`。
+
+分类和统计可用 `CATEGORY`、`STATISTICS`，计划和目标可用 `PLAN`、`GOAL`。数学标记可用 `EQUATION`（方程）和 `FUNCTION`（函数）。撤销操作可用 `UNDO`，权限入口和拒绝访问状态分别用 `PERMISSIONS`、`ACCESS_DENIED`。
+
+内容卡片、通用频道、会员和地点可用 `CARD`、`CHANNEL`、`MEMBERSHIP`、`LOCATION`。浏览器入口使用带地址栏的 `BROWSER`，网页搜索使用地球加放大镜的 `WEB_SEARCH`。
+
+输入工具栏可用 `EMOJI`（表情）、`SYMBOL`（符号）、`TRANSLATE`（翻译）和 `CLIPBOARD`（剪贴板）。文本输入框和数字输入分别使用 `TEXT_INPUT`、`NUMBER_INPUT`。
+
+数据流向可用 `INPUT`（输入）和 `OUTPUT`（输出）。配置和模组入口可用 `CONFIG`、`MOD`。`GUIDEME` 按 [GuideME 模组图标](https://modrinth.com/mod/guideme)重绘，通用指南可用 `GUIDE`。界面相关入口可用 `GUI`（带指针的操作窗口）和 `UI`（带侧栏的布局面板）。
+
 HUD 行首可使用按 8 像素网格设计的 `COMPACT_SIGNAL`、`COMPACT_CLOCK`、`COMPACT_CALENDAR`、`COMPACT_WORLD`、`COMPACT_BIOME`、`COMPACT_LOCATION`、`COMPACT_CHUNK` 和 `COMPACT_TORCH`。用 0.5 倍 PoseStack 绘制时，8 个 GUI 像素即可保留完整轮廓。
 
 其他操作可用 `FILTER`、`SORT`、`EDIT`、`COPY`、`DELETE`、`FAVORITE`、`LOCK`、`UNLOCK`、`EXPAND`、`COLLAPSE`、`UPLOAD` 和 `DOWNLOAD`。例如用 `button.setLeadingIcon(GraphicIcon.FILTER)` 在筛选按钮的文字旁显示漏斗。
@@ -648,8 +658,10 @@ $env:TMP = 'C:\jtmp'
 
 两平台共用的 shader 将 `WaveOrigin` 声明为 GLSL `vec2`，匹配 Minecraft 的 `float/count=2` 上传。资源测试检查各平台的实际构建输出。
 
-NeoForge 版本提供原生 `Screen` API 和可选的 `compat.ldlib2.LdLib2UiBridge`。使用桥接时安装 LDLib2 `2.2.44`，首次构建时联网解析编译依赖。Forge 1.20.1 的 `compat.ldlib` 套件随 Forge 产物发布。测试与待验项目见 `neoforge/VERIFICATION.md` 与 `TODO.md`。
+NeoForge 版本提供原生 `Screen` API 和可选的 `compat.ldlib2.LdLib2UiBridge`。使用桥接时安装 LDLib2 `2.2.44`，首次构建时联网解析编译依赖。Forge 1.20.1 的 `compat.ldlib` 套件随 Forge 产物发布。测试与待验项目见 `docs/neoforge-verification.md` 与 `TODO.md`。
 
 ### 反重力粒子 API
+
+[文档索引](docs/README.md)
 
 通过 `ShBetterUiApi.graphics().antigravity()` 创建粒子场，独立输入跟踪使用 `ShBetterUiApi.interactions().pointerTracker()`。开发者控件图库提供四种形状、三种配色、暂停与重播。[接入与参数说明](docs/antigravity-api.md)。

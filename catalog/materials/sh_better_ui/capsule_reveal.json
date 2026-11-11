@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:capsule_reveal",
+  "materialRevision": "1.0.0",
+  "name": "Capsule Reveal",
+  "localizedNames": {
+    "zh_cn": "胶囊展开与收回",
+    "zh_tw": "膠囊展開與收回"
+  },
+  "aliases": [
+    "capsule",
+    "capsule reveal",
+    "fluid morph"
+  ],
+  "category": "animation",
+  "tags": [
+    "transition",
+    "mask",
+    "shape",
+    "glass"
+  ],
+  "description": "A local capsule morphs between a source or seed and a full panel, clipping skeleton and content to the presented shape.",
+  "visualCharacteristics": [
+    "胶囊形变",
+    "轮廓裁切",
+    "可选占位淡入"
+  ],
+  "useCases": [
+    "页面展开",
+    "返回源控件"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiCapsuleReveal.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/FluidMorph.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/CapsuleRenderer.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiSkeleton.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/LiquidGlassTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/ThemeEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#capsuleReveal",
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#fluidMorph",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal#renderInset",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiCapsuleReveal#close"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MotionApi#capsuleReveal",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/capsule.fsh",
+    "sh_better_ui:shaders/core/capsule.json",
+    "sh_better_ui:shaders/core/capsule.vsh",
+    "sh_better_ui:shaders/post/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.fsh",
+    "sh_better_ui:shaders/program/shop_gauss_blur.json",
+    "sh_better_ui:shaders/program/shop_gauss_blur.vsh"
+  ],
+  "parameters": {
+    "enabled": {
+      "type": "boolean",
+      "defaultValue": true,
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "strength": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0,
+      "maximum": 2,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    },
+    "speed": {
+      "type": "float",
+      "defaultValue": 1,
+      "minimum": 0.1,
+      "maximum": 4,
+      "step": 0.01,
+      "unit": "ratio",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "compute-current-morph",
+    "rounded-material",
+    "clipped-skeleton-and-content"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "ThemeEffectPreview capsule uses renderInset",
+    "UiCapsuleRevealTest",
+    "CapsuleMeshTest",
+    "docs/API_REFERENCE.md 胶囊展开与返回"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

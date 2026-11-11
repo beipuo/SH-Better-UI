@@ -10,7 +10,7 @@
 
 兩個發行包的純內核以 JDK 17 編譯，`kernelTest` 亦使用 JDK 17。Forge 現有一般測試需要 JDK 21，整套驗證需兩個工具鏈。Forge `-raw` 包仍處於開發映射，`releaseJar` 會使用 `reobfJar` 的結果。消費模組在 Loader metadata 宣告依賴 `sh_better_ui`，以外部依賴方式編譯，並保留獨立的消費 JAR 和 UI 庫 JAR。 [Forge 建置](../build.gradle) · [NeoForge 建置](../neoforge/build.gradle) · [第三方範例](../examples/kernel-extension/README.md)
 
-JEI、LDLib 和 KubeJS 維持選用。使用原生控件及內核服務時可省略。若用原有 `platform().ldlib()` 或 KubeJS 外掛，採該端對應版本和分組。平台差異限於 Loader 接線、原生入口、版本相關的 Minecraft 類別及圖形／資源適配。 [原有 API](../API_REFERENCE.md) · [KubeJS](../KUBEJS.md)
+JEI、LDLib 和 KubeJS 維持選用。使用原生控件及內核服務時可省略。若用原有 `platform().ldlib()` 或 KubeJS 外掛，採該端對應版本和分組。平台差異限於 Loader 接線、原生入口、版本相關的 Minecraft 類別及圖形／資源適配。 [原有 API](API_REFERENCE.md) · [KubeJS](KUBEJS.md)
 
 ## 原生路由
 

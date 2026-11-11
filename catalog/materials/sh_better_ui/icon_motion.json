@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:icon_motion",
+  "materialRevision": "1.0.0",
+  "name": "Icon Motion",
+  "localizedNames": {
+    "zh_cn": "图标动作",
+    "zh_tw": "圖示動作"
+  },
+  "aliases": [
+    "status_icon",
+    "icon motion",
+    "icon spin",
+    "icon float",
+    "icon bounce"
+  ],
+  "category": "animation",
+  "tags": [
+    "icon",
+    "spin",
+    "float",
+    "bounce",
+    "animation"
+  ],
+  "description": "Spin, float, and bounce adjust an icon pose in place and can compose with its shader.",
+  "visualCharacteristics": [
+    "旋转",
+    "上下浮动",
+    "弹跳"
+  ],
+  "useCases": [
+    "处理中图标",
+    "装饰动效"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicIcon.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/display/GraphicIconMotion.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon#withMotion",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon#draw",
+    "com.dishanhai.sh_better_ui.client.gui.display.GraphicIconMotion#sample"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon#withMotion",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "periodsMs": {
+      "type": "object",
+      "defaultValue": {
+        "SPIN": 1600,
+        "FLOAT": 1800,
+        "BOUNCE": 1100
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": "sh_better_ui:status_icon",
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "sample-icon-motion",
+    "icon-transform-and-draw"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "DeveloperSamples status_icon uses STATUS_PENDING with SPIN",
+    "GraphicIconMotionTest",
+    "docs/effects.md 图标动作"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

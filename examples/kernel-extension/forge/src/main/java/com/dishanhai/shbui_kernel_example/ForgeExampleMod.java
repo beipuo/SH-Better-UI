@@ -2,6 +2,7 @@
 package com.dishanhai.shbui_kernel_example;
 
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.GameShuttingDownEvent;
 import net.minecraftforge.event.TickEvent;
@@ -16,6 +17,14 @@ public final class ForgeExampleMod {
         @SubscribeEvent
         public static void screen(ScreenEvent.Init.Post event) {
             ExampleClient.addTitleEntry(event.getScreen(), event::addListener);
+        }
+
+        @SubscribeEvent public static void joined(ClientPlayerNetworkEvent.LoggingIn event) {
+            ExampleClient.joined(event.getConnection());
+        }
+
+        @SubscribeEvent public static void left(ClientPlayerNetworkEvent.LoggingOut event) {
+            ExampleClient.left(event.getConnection());
         }
 
         @SubscribeEvent(priority = EventPriority.LOWEST)

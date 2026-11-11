@@ -26,7 +26,7 @@
     "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassCell.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassCell.kt",
     "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassBlur.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/client/glass/GlassBlur.kt",
     "src/main/kotlin/com/dishanhai/gt_shanhai/client/gui/glass/GlassPanelTexture.kt": "src/main/kotlin/com/dishanhai/sh_better_ui/compat/ldlib/GlassPanelTexture.kt",
-    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/Spring.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/Spring.java",
+    "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/Spring.java": "src/kernel/java/com/dishanhai/sh_better_ui/client/gui/scaled/Spring.java",
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/SpringTable.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/SpringTable.java",
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/GuiMotion.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GuiMotion.java",
     "src/main/java/com/dishanhai/gt_shanhai/client/gui/scaled/GuiRenderUtil.java": "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/GuiRenderUtil.java",

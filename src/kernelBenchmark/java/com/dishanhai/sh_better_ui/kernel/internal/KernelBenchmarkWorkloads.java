@@ -304,8 +304,16 @@ final class KernelBenchmarkWorkloads {
             return host.rootScope().openChild(ScopeKind.SCREEN, SCREEN_ID);
         }
 
+        ModuleContext moduleContext() {
+            return module.context;
+        }
+
         void stepClock() {
-            clockNanos += STEP_NANOS;
+            stepClock(STEP_NANOS);
+        }
+
+        void stepClock(long nanos) {
+            clockNanos += nanos;
         }
 
         @Override

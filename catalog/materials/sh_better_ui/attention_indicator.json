@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:attention_indicator",
+  "materialRevision": "1.0.0",
+  "name": "Selection and Attention Indicator",
+  "localizedNames": {
+    "zh_cn": "选区与目标提示",
+    "zh_tw": "選區與目標提示"
+  },
+  "aliases": [
+    "selection indicator",
+    "attention target",
+    "UiAttention"
+  ],
+  "category": "animation",
+  "tags": [
+    "animation",
+    "selection",
+    "feedback",
+    "focus"
+  ],
+  "description": "A selection indicator and target decoration share a sampled animation frame with the content transform.",
+  "visualCharacteristics": [
+    "选区移动",
+    "目标高亮"
+  ],
+  "useCases": [
+    "选项切换",
+    "控件定位反馈"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/UiAttention.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/scaled/DarkModeTheme.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MotionApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/MaterialsApi.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#slateSelectionIndicator",
+    "com.dishanhai.sh_better_ui.client.api.MaterialsApi#slateAttentionTarget",
+    "com.dishanhai.sh_better_ui.client.api.MotionApi#attention",
+    "com.dishanhai.sh_better_ui.client.gui.scaled.UiAttention#sample"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.MaterialsApi#slateSelectionIndicator",
+  "requiredCapabilities": [],
+  "requiredResources": [
+    "sh_better_ui:shaders/core/capsule.fsh",
+    "sh_better_ui:shaders/core/capsule.json",
+    "sh_better_ui:shaders/core/capsule.vsh"
+  ],
+  "parameters": {
+    "contentOffset": {
+      "type": "float",
+      "defaultValue": 6,
+      "minimum": 6,
+      "maximum": 6,
+      "step": null,
+      "unit": "gui",
+      "editable": false,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "sample-attention-frame",
+    "selection-and-target-paint"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "UiAttentionTest",
+    "docs/attention-feedback.md",
+    "DarkModeTheme selection and target drawing"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

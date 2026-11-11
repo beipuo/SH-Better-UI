@@ -1,6 +1,8 @@
 // Author: dishanhai
 package com.dishanhai.sh_better_ui.kernel.api;
 
+import com.dishanhai.sh_better_ui.kernel.api.glass.GlassService;
+
 import java.util.Optional;
 
 /** Public view of an initialized UI engine. */
@@ -52,6 +54,15 @@ public interface UIEngine {
 
     default UIPlatform platform() {
         return require(UIPlatform.KEY);
+    }
+
+    default GlassService glass() {
+        return require(GlassService.KEY);
+    }
+
+    /** Declarative validation and prediction share this engine's registry, scopes and scheduler. */
+    default com.dishanhai.sh_better_ui.kernel.api.intelligence.UICorrectnessEngine correctness() {
+        return require(com.dishanhai.sh_better_ui.kernel.api.intelligence.UICorrectnessEngine.KEY);
     }
 
     /** Finds a visible service whose ID, Java type and contract version match the key. */

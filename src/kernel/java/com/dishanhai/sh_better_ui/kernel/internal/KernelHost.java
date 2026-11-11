@@ -103,10 +103,14 @@ final class KernelHost implements AutoCloseable {
     }
 
     boolean renderNativeFrame(ScopeHandle screen) {
+        return renderNativeFrame(screen, () -> {});
+    }
+
+    boolean renderNativeFrame(ScopeHandle screen, Runnable drawBuiltin) {
         assertRunning();
         var surface = screen == null ? null : scopes.checkedScope(screen);
         if (surface != null && (surface.kind() != ScopeKind.SCREEN || !surface.isOpen())) return false;
-        return scheduler.renderNativeFrame(scope -> scope.ancestor(ScopeKind.SCREEN) == surface, NO_PHASE_WORK);
+        return scheduler.renderNativeFrame(scope -> scope.ancestor(ScopeKind.SCREEN) == surface, phase -> drawBuiltin.run());
     }
 
     void finishNativeFrame() {
@@ -301,10 +305,10 @@ final class KernelHost implements AutoCloseable {
         try {
             var discovered = ModuleDiscovery.discover(platform, candidates, isolateExtensions ? this::report : null);
             discovered.diagnostics().forEach(lifecycle::diagnostic);
+            discovered.modules().forEach(module -> lifecycle.discover(module.id()));
             var plan = isolateExtensions ? resolveNative(discovered.modules()) : DependencyGraph.resolve(discovered.modules());
             plan.diagnostics().forEach(lifecycle::diagnostic);
             required = plan.requiredDependencies();
-            plan.order().forEach(module -> lifecycle.discover(module.id()));
 
             lifecycle.transition(EngineState.REGISTERING);
             register(plan);
@@ -333,7 +337,12 @@ final class KernelHost implements AutoCloseable {
             try {
                 return DependencyGraph.resolve(modules);
             } catch (DependencyGraph.Rejected failure) {
-                if (!modules.removeIf(module -> !module.trusted() && failure.affected().contains(module.id()))) throw failure;
+                boolean removed = modules.removeIf(module -> {
+                    if (module.trusted() || !failure.affected().contains(module.id())) return false;
+                    lifecycle.transition(module.id(), ModuleLifecycle.BLOCKED);
+                    return true;
+                });
+                if (!removed) throw failure;
                 report("Rejected client UI extension dependency graph", failure);
             }
         }

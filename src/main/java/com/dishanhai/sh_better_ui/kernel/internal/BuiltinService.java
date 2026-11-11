@@ -21,6 +21,7 @@ record BuiltinService<T extends UIService>(ModuleDescriptor descriptor, ServiceD
 
     @Override
     public void register(ModuleContext context) {
+        if (adapter instanceof AutoCloseable resource) context.scope().track(resource);
         context.services().register(service, adapter);
     }
 

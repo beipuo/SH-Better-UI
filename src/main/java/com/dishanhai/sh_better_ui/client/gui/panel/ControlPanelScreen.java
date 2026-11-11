@@ -41,8 +41,9 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiToggleButton;
 import com.dishanhai.sh_better_ui.config.ClientUiSettings;
 import com.dishanhai.sh_better_ui.config.DynamicThemeSettings;
 import com.dishanhai.sh_better_ui.config.ThemeSettings;
-import com.dishanhai.sh_better_ui.config.ThemeOverrides;
-import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
+import com.dishanhai.sh_better_ui.kernel.api.UIApis;
+import com.dishanhai.sh_better_ui.kernel.api.UnifiedUI;
 import net.minecraft.client.gui.components.EditBox;
 import com.dishanhai.sh_better_ui.config.GlassBackdropSettings;
 import com.dishanhai.sh_better_ui.config.ControlFeedbackSettings;
@@ -170,9 +171,8 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     private final ThemeEffectPreview themeEffectPreview = new ThemeEffectPreview();
     private int themeGroupIndex;
     private UiButton themeGroup;
-    private UiButton themeStage;
-    private UiButton themeTemplate;
-    private EditBox themeJson;
+    private UiButton themeConfigure;
+    private boolean restoreThemeConfigureFocus;
     private EditBox dynamicThemeId;
     private UiButton themeMode;
     private UiTheme previewTheme;
@@ -246,6 +246,10 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                 draft.settings().tabs(), UiScrollableSectionBar.DEFAULT_TAB_WIDTH));
         addFooter(x, innerWidth);
         buildPage();
+        if (restoreThemeConfigureFocus && themeConfigure != null && minecraft != null && minecraft.screen == this) {
+            setFocused(themeConfigure);
+            restoreThemeConfigureFocus = false;
+        }
         if (restoreDeveloperFocus && developer != null && minecraft != null && minecraft.screen == this) {
             setFocused(developer);
             restoreDeveloperFocus = false;
@@ -267,9 +271,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
         musicToggle = null;
         themeMode = null;
         themeGroup = null;
-        themeStage = null;
-        themeTemplate = null;
-        themeJson = null;
+        themeConfigure = null;
         dynamicThemeId = null;
         displayedAudioStatus = null;
         widgetBlur = null;
@@ -366,13 +368,8 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
             syncThemeEditor();
         }));
         themeGroup.setPreview(label("theme.group.tooltip"));
-        themeTemplate = row(button(x + half + GAP, 94, contentWidth - half - GAP, label("theme.template"),
-                GraphicIcon.RESET, false, () -> themeJson.setValue(ThemeEffects.template(themeGroupId()).toString())));
-        themeJson = row(new EditBox(font, x, 120, contentWidth, BUTTON_HEIGHT, label("theme.json")));
-        themeJson.setMaxLength(ThemeOverrides.MAX_LENGTH);
-        themeJson.setTooltip(Tooltip.create(label("theme.json.tooltip")));
-        themeStage = row(button(x, 146, contentWidth, label("theme.stage"), GraphicIcon.SUCCESS, false,
-                this::stageThemeGroup));
+        themeConfigure = row(button(x + half + GAP, 94, contentWidth - half - GAP,
+                themeConfigureLabel(), GraphicIcon.CUSTOM_THEME, false, this::configureThemeGroup));
         syncThemeEditor();
     }
 
@@ -429,23 +426,25 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
     }
 
     private void syncThemeEditor() {
-        if (themeJson == null) return;
-        var theme = draft.settings().theme();
         themeGroup.setMessage(themeGroupName());
-        themeJson.setValue(theme.effects().group(themeGroupId()).toString());
+        themeConfigure.setMessage(themeConfigureLabel());
     }
 
-    private void stageThemeGroup() {
+    private Component themeConfigureLabel() {
+        return Component.translatable("sh_better_ui.theme_editor.title", themeGroupName());
+    }
+
+    private void configureThemeGroup() {
+        String group = themeGroupId();
         var settings = draft.settings();
-        try {
-            var values = JsonParser.parseString(themeJson.getValue()).getAsJsonObject();
-            ThemeEffects.validate(themeGroupId(), values);
-            var next = settings.theme().effects().withGroup(themeGroupId(), values);
-            edit(new Draft(settings.withTheme(settings.theme().withEffects(next)), draft.shortcut()));
-            status = label("theme.staged");
-        } catch (RuntimeException error) {
-            status = label("theme.invalid");
-        }
+        var form = UnifiedUI.get().require(UIApis.APPEARANCE).edit(this, settings, group, new JsonObject(),
+                settings.theme().effects().group(group), values -> {
+                    var next = settings.theme().effects().withGroup(group, values);
+                    edit(new Draft(settings.withTheme(settings.theme().withEffects(next)), draft.shortcut()));
+                    status = label("theme.staged");
+                });
+        restoreThemeConfigureFocus = true;
+        minecraft.setScreen(form);
     }
 
     private static Component themeLabel(ThemeSettings.Mode mode) {
@@ -724,10 +723,7 @@ public final class ControlPanelScreen extends Screen implements UiScreenReturn.T
                 themeMode.setLeadingIcon(UiTheme.icon(mode));
                 boolean custom = mode == ThemeSettings.Mode.CUSTOM;
                 themeGroup.active = custom;
-                themeTemplate.active = custom;
-                themeJson.active = custom;
-                themeJson.setEditable(custom);
-                themeStage.active = custom;
+                themeConfigure.active = custom;
             }
             case SHORTCUT -> {
                 shortcut.setMessage(capturingShortcut ? label("shortcut.capture") : label("shortcut.binding",

@@ -6,6 +6,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
@@ -17,6 +18,14 @@ public final class NeoForgeExampleMod {
         @SubscribeEvent
         public static void screen(ScreenEvent.Init.Post event) {
             ExampleClient.addTitleEntry(event.getScreen(), event::addListener);
+        }
+
+        @SubscribeEvent public static void joined(ClientPlayerNetworkEvent.LoggingIn event) {
+            ExampleClient.joined(event.getConnection());
+        }
+
+        @SubscribeEvent public static void left(ClientPlayerNetworkEvent.LoggingOut event) {
+            ExampleClient.left(event.getConnection());
         }
 
         @SubscribeEvent(priority = EventPriority.LOWEST)

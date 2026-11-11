@@ -11,5 +11,7 @@ public enum UIPermission {
     BLOCK_VANILLA_INPUT,
     REGISTER_RENDER_PASS,
     ACCESS_INTERNAL_DIAGNOSTICS,
-    MODIFY_GLOBAL_THEME
+    MODIFY_GLOBAL_THEME,
+    /** Allows an explicitly trusted module to interrupt with a system-priority live publication. */
+    PUBLISH_CRITICAL_ACTIVITY
 }

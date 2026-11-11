@@ -3,7 +3,7 @@ package com.dishanhai.sh_better_ui.client.gui.panel;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewContext;
 import com.dishanhai.sh_better_ui.client.api.preview.PreviewScene;
 import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogo;
-import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogoProfile;
+import com.dishanhai.sh_better_ui.client.gui.display.ElectricLogoProfile.Preset;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicIcon;
 import com.dishanhai.sh_better_ui.client.gui.scaled.DarkModeTheme;
@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 import static com.dishanhai.sh_better_ui.client.gui.panel.DeveloperPanelScreen.label;
@@ -29,6 +30,7 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
     private static final String TEXT = "gallery.electric_logo.";
     private static final int GAP = 4;
     private static final int BUTTON_HEIGHT = 20;
+    private static final Preset[] STYLES = Preset.values();
     private static final List<SampleImage> IMAGES = List.of(
             new SampleImage("bolt", null),
             new SampleImage("star", GraphicIcon.FAVORITE.texture()),
@@ -36,10 +38,14 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
 
     private ElectricLogo logo;
     private int selected;
+    private Preset style;
 
-    ElectricLogoGalleryPreview() { this(0); }
+    ElectricLogoGalleryPreview() { this(0, Preset.VIOLET); }
 
-    private ElectricLogoGalleryPreview(int selected) { this.selected = selected; }
+    private ElectricLogoGalleryPreview(int selected, Preset style) {
+        this.selected = selected;
+        this.style = style;
+    }
 
     @Override
     public void layout(PreviewContext host) {
@@ -49,9 +55,11 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
     List<AbstractWidget> widgets(Bounds area, UiPreferences preferences) {
         if (logo == null) logo = new ElectricLogo(IMAGES.get(selected).texture());
         boolean stacked = area.height() >= 82;
-        int buttonWidth = stacked ? Math.min(190, area.width() - 2 * GAP) : area.width() * 45 / 100;
-        int buttonX = stacked ? area.x() + (area.width() - buttonWidth) / 2 : area.right() - GAP - buttonWidth;
-        int buttonY = stacked ? area.bottom() - GAP - BUTTON_HEIGHT : area.y() + (area.height() - BUTTON_HEIGHT) / 2;
+        int rowWidth = Math.min(296, area.width() - 2 * GAP);
+        int buttonWidth = stacked ? (rowWidth - GAP) / 2 : area.width() * 45 / 100;
+        int buttonX = stacked ? area.x() + (area.width() - rowWidth) / 2 : area.right() - GAP - buttonWidth;
+        int buttonY = stacked ? area.bottom() - GAP - BUTTON_HEIGHT
+                : area.y() + (area.height() - 2 * BUTTON_HEIGHT - GAP) / 2;
         int canvasRight = stacked ? area.right() - GAP : buttonX - GAP;
         int canvasBottom = stacked ? buttonY - GAP : area.bottom() - GAP;
         var canvas = new Bounds(area.x() + GAP, area.y() + GAP,
@@ -63,7 +71,18 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
                     logo.setTexture(IMAGES.get(selected).texture());
                     pressed.setMessage(changeLabel());
                 });
-        return List.of(new Canvas(canvas, logo, preferences), change);
+        var preset = DeveloperPanelScreen.button(stacked ? buttonX + buttonWidth + GAP : buttonX,
+                stacked ? buttonY : buttonY + BUTTON_HEIGHT + GAP, buttonWidth, BUTTON_HEIGHT,
+                styleLabel(), null, preferences, pressed -> {
+                    style = STYLES[(style.ordinal() + 1) % STYLES.length];
+                    pressed.setMessage(styleLabel());
+                });
+        return List.of(new Canvas(canvas, logo, preferences, () -> style), change, preset);
+    }
+
+    private Component styleLabel() {
+        String key = "sh_better_ui.theme_editor.preset";
+        return Component.translatable(key, Component.translatable(key + "." + style.name().toLowerCase(Locale.ROOT)));
     }
 
     private Component changeLabel() {
@@ -76,7 +95,8 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
     @Override
     public Supplier<? extends PreviewScene> saveForRemount() {
         int saved = selected;
-        return () -> new ElectricLogoGalleryPreview(saved);
+        Preset savedStyle = style;
+        return () -> new ElectricLogoGalleryPreview(saved, savedStyle);
     }
 
     private void release() {
@@ -91,14 +111,16 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
         private final Bounds area;
         private final ElectricLogo logo;
         private final UiPreferences preferences;
+        private final Supplier<Preset> style;
 
-        Canvas(Bounds area, ElectricLogo logo, UiPreferences preferences) {
+        Canvas(Bounds area, ElectricLogo logo, UiPreferences preferences, Supplier<Preset> style) {
             super(area.x(), area.y(), area.width(), area.height(), label(TEXT + "canvas"),
                     ignored -> logo.pulse(area.x() + area.width() * 0.5, area.y() + area.height() * 0.5),
                     DEFAULT_NARRATION);
             this.area = area;
             this.logo = logo;
             this.preferences = preferences;
+            this.style = style;
         }
 
         @Override
@@ -120,7 +142,7 @@ final class ElectricLogoGalleryPreview implements PreviewScene {
             graphics.fill(area.x(), area.y(), area.right(), area.bottom(),
                     preferences.highContrast() ? 0xFF000000 : 0xFF0D101D);
             if (!logo.draw(graphics, area.x(), area.y(), area.width(), area.height(), mouseX, mouseY,
-                    ElectricLogoProfile.DEFAULT, preferences)) {
+                    style.get().profile(), preferences)) {
                 var font = Minecraft.getInstance().font;
                 var lines = font.split(label(TEXT + "unavailable"), area.width() - 2 * GAP);
                 int y = area.y() + (area.height() - lines.size() * font.lineHeight) / 2;

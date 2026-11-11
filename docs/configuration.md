@@ -51,7 +51,7 @@ final class PageSettings {
 
 - `beginTransaction()` 擷取基線。以 `set`、`clear`、`load` 暫存同一批修改，再呼叫 `commit()`。型別、允許層、權限、作用域與基線版本都會驗證。失敗保留先前發布值，過期基線會拋出 `ConcurrentModificationException`。重新讀取後建立新交易。
 - `observe(scope, key, listener)` 以該作用域的有效值發出 `ValueChange<T>`。多次暫存同一鍵以最終有效值通知。關閉觀察的作用域或模組會移除訂閱。監聽器可排隊或提交下一批，內核診斷循環因果並限制連續通知批次。快照只讀，保留取得時的版本和值。
-- `ConfigTransaction.load(...)` 在 `USER_GLOBAL` 層載入 `Persistence.USER_GLOBAL` 的鍵，逐版應用同型別遷移再驗證。SH-Better-UI 的 `UIApis.CLIENT_SETTINGS` 繼續鏡像 Loader 的客戶端 TOML 快照，既有設定保存仍透過 `ShBetterUiApi.settings()`，不會再寫入另一份核心設定檔。 [原有設定入口](../API_REFERENCE.md#全库客户端主题)
+- `ConfigTransaction.load(...)` 在 `USER_GLOBAL` 層載入 `Persistence.USER_GLOBAL` 的鍵，逐版應用同型別遷移再驗證。SH-Better-UI 的 `UIApis.CLIENT_SETTINGS` 繼續鏡像 Loader 的客戶端 TOML 快照，既有設定保存仍透過 `ShBetterUiApi.settings()`。資源包主題沿用主題解析與資源重載。 [原有設定入口](API_REFERENCE.md#全库客户端主题) · [平台相容性](platform-compatibility.md)
 
 ### 共用持久化
 

@@ -1,0 +1,10 @@
+[
+  {
+    "materialId": "sh_better_ui:liquid_glass",
+    "fromRevision": "0.9.0",
+    "toRevision": "1.0.0",
+    "fromSchemaVersion": "0.9.0",
+    "toSchemaVersion": "1.0.0",
+    "rename": { "opticalBlur": "blurRadius" }
+  }
+]

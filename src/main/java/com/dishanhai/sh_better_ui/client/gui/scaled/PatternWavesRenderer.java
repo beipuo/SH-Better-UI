@@ -18,10 +18,7 @@ import net.minecraft.server.packs.resources.ResourceProvider;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL14;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
-import org.lwjgl.system.MemoryStack;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -85,7 +82,7 @@ final class PatternWavesRenderer extends RenderType {
     private static final RenderType MARK_TYPE = create("sh_better_ui_pattern_waves", DefaultVertexFormat.POSITION_TEX,
             VertexFormat.Mode.QUADS, 256, false, false, CompositeState.builder()
                     .setShaderState(new ShaderStateShard(() -> markShader))
-                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY).setDepthTestState(LEQUAL_DEPTH_TEST)
+                    .setTransparencyState(WaveRenderState.ALPHA_BLEND).setDepthTestState(LEQUAL_DEPTH_TEST)
                     .setCullState(NO_CULL).setWriteMaskState(COLOR_WRITE).createCompositeState(false));
 
     private PatternWavesRenderer() {
@@ -124,7 +121,7 @@ final class PatternWavesRenderer extends RenderType {
                         long now, WavePointer.Ripple[] ripples) {
         if (fieldShader == null || markShader == null) return false;
         Grid grid = Grid.forBounds(bounds, profile);
-        DrawState state = DrawState.capture();
+        WaveRenderState state = WaveRenderState.capture();
         int textureUnit = GlStateManager._getActiveTexture();
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
         int texture0 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
@@ -193,44 +190,6 @@ final class PatternWavesRenderer extends RenderType {
             if (grow) RenderSystem.clearColor(clear[0], clear[1], clear[2], clear[3]);
             if (clipped) RenderSystem.enableScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
             else RenderSystem.disableScissor();
-        }
-    }
-
-    /** RenderType 的清理只重置默认值；调用方可能处在另一个绘制通道。 */
-    private record DrawState(ShaderInstance shader, int program, boolean depthTest, boolean depthWrite,
-                             int depthFunc, boolean cull, boolean blend, int sourceRgb, int destinationRgb,
-                             int sourceAlpha, int destinationAlpha, int equationRgb, int equationAlpha, int colorMask) {
-        static DrawState capture() {
-            try (var stack = MemoryStack.stackPush()) {
-                var mask = stack.malloc(4);
-                GL11.glGetBooleanv(GL11.GL_COLOR_WRITEMASK, mask);
-                int channels = (mask.get(0) != 0 ? 1 : 0) | (mask.get(1) != 0 ? 2 : 0)
-                        | (mask.get(2) != 0 ? 4 : 0) | (mask.get(3) != 0 ? 8 : 0);
-                return new DrawState(RenderSystem.getShader(), GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM),
-                        GL11.glIsEnabled(GL11.GL_DEPTH_TEST), GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK),
-                        GL11.glGetInteger(GL11.GL_DEPTH_FUNC), GL11.glIsEnabled(GL11.GL_CULL_FACE),
-                        GL11.glIsEnabled(GL11.GL_BLEND), GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB),
-                        GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA),
-                        GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA), GL11.glGetInteger(GL20.GL_BLEND_EQUATION_RGB),
-                        GL11.glGetInteger(GL20.GL_BLEND_EQUATION_ALPHA), channels);
-            }
-        }
-
-        void restore() {
-            RenderSystem.setShader(() -> shader);
-            GlStateManager._glUseProgram(program);
-            RenderSystem.colorMask((colorMask & 1) != 0, (colorMask & 2) != 0,
-                    (colorMask & 4) != 0, (colorMask & 8) != 0);
-            RenderSystem.depthMask(depthWrite);
-            RenderSystem.depthFunc(depthFunc);
-            if (depthTest) RenderSystem.enableDepthTest();
-            else RenderSystem.disableDepthTest();
-            if (cull) RenderSystem.enableCull();
-            else RenderSystem.disableCull();
-            GL20.glBlendEquationSeparate(equationRgb, equationAlpha);
-            RenderSystem.blendFuncSeparate(sourceRgb, destinationRgb, sourceAlpha, destinationAlpha);
-            if (blend) RenderSystem.enableBlend();
-            else RenderSystem.disableBlend();
         }
     }
 

@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- Author: dishanhai -->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <title>材质实验室 · SH-Better-UI</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#material-title">跳到材质预览</a>
+  <header class="masthead">
+    <div class="identity">
+      <div class="mark" aria-hidden="true"></div>
+      <div><p class="eyebrow">SH-BETTER-UI / UNIFIED UI KERNEL</p><h1>材质实验室</h1></div>
+    </div>
+    <div class="masthead-meta">
+      <span id="catalogVersion" class="stamp">目录加载中</span>
+      <label for="theme" class="sr-only">界面主题</label>
+      <select id="theme" autocomplete="off"><option value="system">跟随系统</option><option value="dark">深色</option><option value="light">浅色</option></select>
+    </div>
+  </header>
+  <noscript><p class="noscript">启用 JavaScript 后可浏览目录、编辑预设并运行 WebGL 2 预览。</p></noscript>
+  <main class="workbench" id="workbench">
+    <aside class="catalog panel" aria-labelledby="catalog-title">
+      <div class="panel-title"><p class="eyebrow">01 / INDEX</p><h2 id="catalog-title">材质目录</h2></div>
+      <label for="query">搜索材质</label>
+      <input id="query" type="search" maxlength="1024" placeholder="例如：透明玻璃、边缘高光" autocomplete="off" aria-describedby="searchHint">
+      <p id="searchHint" class="hint">支持自然语言、稳定 ID、别名和公开 API。</p>
+      <details class="filters">
+        <summary>筛选条件</summary>
+        <div class="filter-grid">
+          <label>分类<select id="filterCategory"><option value="">所有分类</option></select></label>
+          <label>标签<select id="filterTag"><option value="">所有标签</option></select></label>
+          <label>Loader<select id="filterLoader"><option value="">所有平台</option><option value="forge">Forge</option><option value="neoforge">NeoForge</option></select></label>
+          <label>渲染能力<select id="filterCapability"><option value="">所有能力</option></select></label>
+        </div>
+        <label class="check"><input id="filterDynamic" type="checkbox">动态效果</label>
+        <label class="check"><input id="filterWeb" type="checkbox">含 WebGL 2 适配器</label>
+      </details>
+      <p id="resultCount" class="result-count" role="status"></p>
+      <ul id="results" class="results" aria-label="材质检索结果"></ul>
+    </aside>
+
+    <section class="preview panel" aria-labelledby="material-title">
+      <div class="material-header">
+        <div><p class="eyebrow">02 / OPTICAL BENCH</p><h2 id="material-title" tabindex="-1">加载材质</h2><code id="materialId" class="material-id"></code></div>
+        <span class="stamp" id="webBadge" hidden></span>
+      </div>
+      <p id="materialDescription" class="summary"></p>
+      <p id="matchReason" class="match" hidden></p>
+
+      <div class="bench" id="bench">
+        <div class="stage-bar"><span>固定场景</span><span id="stageSize">sRGB</span></div>
+        <div id="stage" class="stage" data-mode="single" hidden>
+          <canvas id="previewCanvas" aria-label="Liquid Glass 光学场景，指针、时间和参数可在预览控件中调整" role="img" width="640" height="384"></canvas>
+          <div class="stage-mark stage-mark-a" aria-hidden="true">GLASS / A</div>
+          <div class="stage-mark stage-mark-b" aria-hidden="true">GLASS / B</div>
+          <div class="stage-divider" aria-hidden="true"></div>
+        </div>
+        <div id="fallback" class="fallback">
+          <p id="previewStatus" role="status">正在读取本地目录…</p>
+          <figure id="reference" hidden>
+            <img src="./references/liquid-glass-web.png" width="640" height="384" loading="lazy" alt="固定场景中玻璃覆盖明暗背景的 WebGL 2 验证帧">
+            <figcaption>静态参考 · Liquid Glass WebGL 2 固定场景</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <fieldset id="previewControls" class="preview-controls" disabled>
+        <legend class="sr-only">预览控制</legend>
+        <div class="control-grid">
+          <label>场景<select id="sceneMode"><option value="calibration">综合校准</option><option value="zoom">纹理放大</option></select></label>
+          <label>像素密度<select id="density"><option value="1">1×</option><option value="2">2×</option></select></label>
+          <label>对比<select id="compareMode"><option value="single">当前草稿</option><option value="split">并排 A/B</option><option value="wipe">滑动对比</option></select></label>
+          <label>播放速度<select id="playbackSpeed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+        </div>
+        <label id="dividerControl" class="range-line" hidden><span>A/B 分界</span><input id="divider" type="range" min="0" max="100" value="50"><output id="dividerValue" for="divider">50%</output></label>
+        <div class="time-controls">
+          <button id="play" type="button">播放</button><button id="step" type="button">步进一帧</button><button id="resetTime" type="button">回到起点</button>
+          <label class="timeline"><span class="sr-only">模拟时间（毫秒）</span><input id="time" type="range" min="0" max="2400" value="0" step="1"><output id="timeValue" for="time" aria-live="off">0.000 s</output></label>
+        </div>
+        <details>
+          <summary>指针与对比度</summary>
+          <div class="control-grid scene-options">
+            <label>输入<select id="inputMode"><option value="replay">固定轨迹回放</option><option value="manual">指针或键盘调节</option></select></label>
+            <label class="check"><input id="highContrast" type="checkbox">高对比前景</label>
+            <label>指针横向<input id="pointerX" type="range" min="0" max="1" value="0.5" step="0.01" disabled></label>
+            <label>指针纵向<input id="pointerY" type="range" min="0" max="1" value="0.5" step="0.01" disabled></label>
+          </div>
+        </details>
+      </fieldset>
+      <section class="routes" aria-labelledby="native-title">
+        <div class="panel-title"><p class="eyebrow">NATIVE ROUTE</p><h3 id="native-title">Minecraft 原生预览</h3></div>
+        <p id="nativeRoute"></p><div id="compatibility" class="compatibility"></div>
+      </section>
+    </section>
+
+    <aside class="inspector panel" aria-labelledby="draft-title">
+      <div class="panel-title"><p class="eyebrow">03 / TUNING</p><h2 id="draft-title">参数与预设</h2></div>
+      <div class="draft-actions">
+        <label>编辑草稿<select id="draftSide"><option value="a">草稿 A</option><option value="b">草稿 B</option></select></label>
+        <button id="resetDraft" type="button">恢复默认</button>
+      </div>
+      <div id="parameterFields" class="parameters" aria-label="材质参数"></div>
+      <details id="difference" class="difference">
+        <summary>A/B 参数差异</summary>
+        <div class="actions"><button id="copyAToB" type="button">复制 A 到 B</button><button id="copyBToA" type="button">复制 B 到 A</button><button id="swap" type="button">交换</button></div>
+        <ul id="diffList" class="diff-list"></ul>
+      </details>
+      <details open class="preset">
+        <summary>预设文件与分享</summary>
+        <div class="actions"><button id="exportPreset" type="button">导出 JSON</button><button id="sharePreset" type="button">生成分享链接</button></div>
+        <label>导入 JSON 文件<input id="presetFile" type="file" accept=".json,application/json"></label>
+        <label id="shareField" hidden>分享链接<input id="shareUrl" type="text" readonly></label>
+        <details class="secondary"><summary>粘贴 JSON</summary><label for="presetText" class="sr-only">预设 JSON</label><textarea id="presetText" rows="4" maxlength="65536" spellcheck="false"></textarea><button id="importText" type="button">应用到当前草稿</button></details>
+        <details class="secondary"><summary>此浏览器的预设</summary><label>预设名称<input id="presetName" maxlength="48" type="text"></label><div class="actions"><button id="savePreset" type="button">保存草稿</button></div><label>已保存预设<select id="savedPresets"><option value="">选择预设</option></select></label><div class="actions"><button id="loadSavedPreset" type="button">载入</button><button id="removeSavedPreset" type="button">移除</button></div></details>
+      </details>
+      <p id="feedback" class="feedback" role="status"></p>
+      <details id="evidence" class="evidence"><summary>公开 API 与验证记录</summary><div id="evidenceBody"></div></details>
+    </aside>
+  </main>
+  <footer><span>SH-Better-UI · UUK Material Catalog</span><span>本地渲染 · 离线目录 · 可移植预设</span></footer>
+</body>
+</html>

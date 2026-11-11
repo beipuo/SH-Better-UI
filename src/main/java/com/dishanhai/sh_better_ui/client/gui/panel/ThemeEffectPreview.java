@@ -5,13 +5,14 @@ import com.dishanhai.sh_better_ui.client.api.BackgroundSpec;
 import com.dishanhai.sh_better_ui.client.api.ShBetterUiApi;
 import com.dishanhai.sh_better_ui.client.gui.display.GraphicDisplayLayout.Bounds;
 import com.dishanhai.sh_better_ui.client.gui.scaled.*;
+import com.dishanhai.sh_better_ui.kernel.api.AppearanceService;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /** 山海：在主题草稿作用域内绘制设置页的效果样例。 */
-final class ThemeEffectPreview implements AutoCloseable {
-    private final BackgroundLayer backgrounds = ShBetterUiApi.backgrounds().layer(null);
+public final class ThemeEffectPreview implements AutoCloseable {
+    private final BackgroundLayer backgrounds;
     private final ClickRipple ripple = new ClickRipple();
     private final UiPageSlide slide = new UiPageSlide();
     private final UiRecipePageTransition recipe = new UiRecipePageTransition();
@@ -19,7 +20,19 @@ final class ThemeEffectPreview implements AutoCloseable {
     private String previousGroup;
     private long replayAt;
 
-    void draw(String group, GuiGraphics graphics, Font font, Bounds area, Component caption,
+    public ThemeEffectPreview() {
+        this(ShBetterUiApi.backgrounds().layer(null));
+    }
+
+    public ThemeEffectPreview(AppearanceService appearance) {
+        this(appearance.backgrounds().layer(null));
+    }
+
+    private ThemeEffectPreview(BackgroundLayer backgrounds) {
+        this.backgrounds = backgrounds;
+    }
+
+    public void draw(String group, GuiGraphics graphics, Font font, Bounds area, Component caption,
               int mouseX, int mouseY, UiPreferences preferences) {
         int x = area.x(), y = area.y(), w = area.width(), h = area.height();
         long now = PageTransition.nowMs();
@@ -105,7 +118,14 @@ final class ThemeEffectPreview implements AutoCloseable {
         }
     }
 
-    static boolean supports(String group) {
+    public boolean click(String group, Bounds area, double x, double y, long now) {
+        var spec = background(group);
+        if (spec == null || !area.contains(x, y)) return false;
+        backgrounds.click(spec.id(), area, x, y, now);
+        return true;
+    }
+
+    public static boolean supports(String group) {
         if (background(group) != null) return true;
         return switch (group) {
             case "classic", "clearGlass", "smokeGlass", "network", "slate",
@@ -115,7 +135,7 @@ final class ThemeEffectPreview implements AutoCloseable {
         };
     }
 
-    static BackgroundSpec background(String group) {
+    public static BackgroundSpec background(String group) {
         for (var spec : ShBetterUiApi.backgrounds().entries()) {
             if (group.equals(spec.settingsGroup())) return spec;
         }

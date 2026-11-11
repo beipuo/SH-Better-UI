@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "sh_better_ui:formatted_text_effects",
+  "materialRevision": "1.0.0",
+  "name": "Formatted Text and Glyph Effects",
+  "localizedNames": {
+    "zh_cn": "格式文字与逐字效果",
+    "zh_tw": "格式文字與逐字效果"
+  },
+  "aliases": [
+    "formatted text",
+    "glyph effect",
+    "FCS text",
+    "gradient text",
+    "text reveal",
+    "UiTextEffects"
+  ],
+  "category": "typography",
+  "tags": [
+    "text",
+    "palette",
+    "gradient",
+    "glyph",
+    "animation"
+  ],
+  "description": "Formatted components and glyph sequences can receive palettes, animated displacement, gradient color, or reveal tails.",
+  "visualCharacteristics": [
+    "动态色板",
+    "逐字偏移",
+    "首尾渐变",
+    "逐字显现"
+  ],
+  "useCases": [
+    "原生界面文字",
+    "物品提示",
+    "文字动画"
+  ],
+  "sourceRepository": "https://github.com/dishanhai/SH-Better-UI",
+  "sourceRevision": "d87e31ebe5cafd39b2c7dd48111e21327a943b17+worktree",
+  "sourceFiles": [
+    "src/main/java/com/dishanhai/sh_better_ui/client/api/GraphicsApi.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/text/UiTextEffects.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/text/UiFormattedText.java",
+    "src/main/java/com/dishanhai/sh_better_ui/client/gui/text/TextGlyphEffects.java"
+  ],
+  "publicSymbols": [
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#applyTextEffect",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#drawFormattedText",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#revealText",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#gradientText",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#registerTextPalette",
+    "com.dishanhai.sh_better_ui.client.api.GraphicsApi#registerTextEffect"
+  ],
+  "publicEntrypoint": "com.dishanhai.sh_better_ui.client.api.GraphicsApi#applyTextEffect",
+  "requiredCapabilities": [],
+  "requiredResources": [],
+  "parameters": {
+    "timing": {
+      "type": "object",
+      "defaultValue": {
+        "stepMillis": 0,
+        "reverse": false
+      },
+      "minimum": null,
+      "maximum": null,
+      "step": null,
+      "unit": "",
+      "editable": true,
+      "requiresResourceRebuild": false,
+      "runtimeUpdate": true,
+      "animatable": false,
+      "dependsOn": [],
+      "constraints": [],
+      "choices": []
+    }
+  },
+  "nativePreviewId": null,
+  "webRendererId": null,
+  "rendererVersion": null,
+  "previewScene": null,
+  "renderPassDependencies": [
+    "parse-formatting",
+    "sample-glyph-effects",
+    "native-font-batch"
+  ],
+  "loaderCompatibility": {
+    "forge": "source-verified",
+    "neoforge": "source-verified"
+  },
+  "webCompatibility": "native-only",
+  "validationStatus": "source-verified",
+  "validationEvidence": [
+    "UiTextEffectsTest",
+    "docs/effects.md 格式文字与逐字效果",
+    "UiTextEffects.Timing.DEFAULT"
+  ],
+  "deprecated": false,
+  "replacementId": null
+}

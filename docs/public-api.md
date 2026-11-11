@@ -1,6 +1,8 @@
 <!-- 作者：山海／dishanhai -->
 # Unified UI 公開 API
 
+[English API reference](API_REFERENCE.en.md#get-the-kernel-and-look-up-services)
+
 `com.dishanhai.sh_better_ui.kernel.api` 提供 Java 17 內核契約與 Minecraft 客戶端服務。兩個發行包各自包含核心，`kernel.internal`、Loader bridge 和 mixin 由 SH-Better-UI 維護。使用兩端各自的依賴 JAR 編譯。 [平台相容性](platform-compatibility.md)
 
 ## 取得引擎和服務
@@ -38,12 +40,52 @@ final class ThemeQuery {
 | `FOCUS` · `FocusService` | `request(...)`、`target(...)` | 使用原生 `GuiEventListener`，焦點取得回傳可選租約。鍵盤和字元路由跟隨實際焦點。 |
 | `COLLISION` · `CollisionService` | `mount(...)`、`target(...)` | 使用既有 `UiCollisionLayout`，命中取已發布的呈現幾何及裁剪。每個 body 可設定 GUI 單位的 hit slop。 |
 | `RENDER` · `RenderService` | `graphics()`、`blur()`、`submit(...)` | 單次原生 `SCREEN` 或 `HUD` pass。`Context` 在回呼內有效，提供 GUI 座標填色、裁剪及變換。 |
+| `GLASS` · `GlassService` | `ui.glass().material(variant)`、`diagnostics()` | 使用 `RenderService.Context.glass(...)` 提交不可變材質和幾何，之後繪製前景。快照可跨執行緒讀取。 |
 | `RESOURCES` · `ResourcesService` | `version()`、`observe(...)`、`alignmentAssets(...)` | 成功套用重載並清除受管快取後通知。素材快取隨作用域釋放。 |
 | `ACCESSIBILITY` · `AccessibilityService` | `preferences(...)`、`describe(...)`、`semantics(...)`、`narrate(...)` | 可取得介面偏好，並在原生旁白回呼寫入語義角色、名稱和提示。 |
 | `SCREENS` · `ScreenService` | `create(...)`、`mount(...)`、`session(...)` | 建立有模組身分的 `UiScreen`，掛載自己擁有的活動畫面，或掛載真實連線會話。 |
 | `PLATFORM` · `UIPlatform` | `info()`、`viewport()`、`hasClientSession()`、`isOnUIThread()` | 可用 `ui.platform()` 取得同一服務。視口包含 GUI 邏輯尺寸、比例和視窗焦點。 |
+| `ACTIVITIES` · `ActivityService` | `publish(...)`、`updateAll(...)`、版本化活動句柄 | 在模組、會話或頁面作用域發布。不可變內容可從背景提交，中央狀態相位處理合併。 |
+| `NOTIFICATIONS` · `NotificationService` | `publish(...)`、`dismissAll(...)` | 使用同一個仲裁與展示引擎，支援作用域內去重、限速、逾時和結果回呼。 |
+| `LIVE_SURFACES` · `LiveSurfaceService` | `view()`、`reserve(...)`、`diagnostics()` | 讀取已繪製幾何、預約避讓區域及取得近期 CPU 測量。 [即時表面接入](live-surfaces.md) |
 
 跨平台的純 Java 消費者可使用 `UIPlatform.KEY`、`NativeInput` 和內核契約。引用 `UIApis` 的 Minecraft 服務時，依實際簽名使用該版本的 `Screen`、`GuiEventListener` 或 `ResourceManager`。可在同一畫面保留 `UiScreenBuilder`、原生按鈕、旁白及傳統渲染回呼。 [遷移指南](migration-guide.md)
+
+### Liquid Glass
+
+在模組描述宣告 `UIPermission.REGISTER_RENDER_PASS`，以已掛載的 Screen 樹或元件作用域提交材質。在啟動期間用 `find(GlassService.KEY)` 探測服務。GPU 能力和資源於首次光學繪製時檢查。缺少可用的場景捕獲或 Shader、使用者關閉背景效果，或選擇 `FALLBACK` 時，繪製保護前景對比的實色底板。
+
+```java
+import com.dishanhai.sh_better_ui.kernel.api.ModuleContext;
+import com.dishanhai.sh_better_ui.kernel.api.RenderService;
+import com.dishanhai.sh_better_ui.kernel.api.ScopeHandle;
+import com.dishanhai.sh_better_ui.kernel.api.TaskHandle;
+import com.dishanhai.sh_better_ui.kernel.api.UIApis;
+import com.dishanhai.sh_better_ui.kernel.api.glass.GlassDraw;
+import com.dishanhai.sh_better_ui.kernel.api.glass.GlassRegion;
+import com.dishanhai.sh_better_ui.kernel.api.glass.GlassVariant;
+import net.minecraft.network.chat.Component;
+import java.util.List;
+
+final class StatusGlass {
+    static TaskHandle draw(ModuleContext module, ScopeHandle node, Component label) {
+        var ui = module.engine();
+        var material = ui.glass().material(GlassVariant.REGULAR);
+        var draw = new GlassDraw(GlassRegion.capsule(24, 18, 120, 24), material);
+        return ui.require(UIApis.RENDER).submit(module, node, RenderService.Surface.SCREEN,
+                RenderService.Layer.OVERLAY, 0, pass -> {
+                    pass.glass(List.of(draw));
+                    pass.text(label, 34, 26, material.foreground().argb());
+                });
+    }
+}
+```
+
+- 所有玻璃命令依呼叫及批次順序繪製。每個原生 pass 在首個光學命令之前捕獲一次目前畫面。先提交共同的背景，再提交材質和前景。同一 pass 的後續玻璃會採樣同一份背景。
+- 幾何與折射、厚度、模糊半徑均使用 GUI 單位，隨原生縮放與平移／正向縮放變換。支援圓角、膠囊、橢圓（等寬高為圓形）和連續角。用 `GlassRegion.contains` 驗證命中，陰影位於互動區域外。
+- `REGULAR` 適用於文字及一般控件，`CLEAR` 適用於豐富背景。使用材質的 `Foreground` 顏色。高對比設定提高光學底板的最低前景對比。Shader 逐區域採樣背景，GPU 僅向 Java 提供資源及繪製計數。
+- `GlassOptics`、`GlassRegion` 和 `GlassDraw` 可重用。原生繪製僅在作用域內的回呼中有效，背景、Shader 和 VAO 由內核持有並於重載或停止時釋放。GLSL 以 OpenGL 3.2 為底線，實際可用性由 Shader 編譯及幀緩衝檢查確認。
+- 用 `GlassDraw.interpolate(target, progress)` 將同一軌道的進度套用到輪廓、光學和高光。變體、品質、前景和形狀族維持一致，圓角矩形與膠囊屬於同一族。控件可用同一份當前 `GlassRegion` 做繪製與輸入命中。
 
 ## 內核視圖
 

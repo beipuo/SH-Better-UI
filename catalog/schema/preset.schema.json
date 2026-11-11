@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "preset.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "catalogVersion", "materialId", "materialRevision", "parameters"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "catalogVersion": { "$ref": "material.schema.json#/$defs/version" },
+    "materialId": { "$ref": "material.schema.json#/$defs/id" },
+    "materialRevision": { "$ref": "material.schema.json#/$defs/version" },
+    "parameters": { "type": "object", "propertyNames": { "$ref": "parameter.schema.json#/$defs/key" } }
+  }
+}

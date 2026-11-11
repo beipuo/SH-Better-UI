@@ -9,6 +9,7 @@ import com.dishanhai.sh_better_ui.client.gui.scaled.UiPointerCapture;
 import com.dishanhai.sh_better_ui.client.gui.scaled.UiToast;
 import com.dishanhai.sh_better_ui.client.lyrics.LyricClient;
 import com.dishanhai.sh_better_ui.client.music.ClientMusic;
+import com.dishanhai.sh_better_ui.client.spatial.SpatialRenderer;
 import com.dishanhai.sh_better_ui.client.theme.MinecraftThemes;
 import com.dishanhai.sh_better_ui.kernel.api.NativeInput;
 import com.dishanhai.sh_better_ui.kernel.internal.ClientUiKernel;
@@ -23,6 +24,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
@@ -42,6 +44,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 @EventBusSubscriber(modid = ShBetterUi.MOD_ID, value = Dist.CLIENT)
 public final class UiClient {
     private static KeyMapping controlPanelKey;
+    private static KeyMapping liveActivitiesKey;
 
     private UiClient() {
     }
@@ -50,6 +53,10 @@ public final class UiClient {
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         ClientUiKernel.tick(minecraft);
+        ClientUiKernel.nativeScoreboard(NeoForgePlatformBridge.hasSidebar(minecraft));
+        while (liveActivitiesKey != null && liveActivitiesKey.consumeClick()) {
+            ClientUiKernel.openLiveActivities(minecraft);
+        }
         MinecraftThemes.tick(minecraft);
         LyricClient.tick(minecraft);
         UiLocalModal.current(minecraft.screen);
@@ -150,6 +157,12 @@ public final class UiClient {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLiveBossBar(CustomizeGuiOverlayEvent.BossEventProgress event) {
+        ClientUiKernel.nativeBossBar(event.getX(), event.getY(),
+                Minecraft.getInstance().font.width(event.getBossEvent().getName()));
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onHudRenderPost(RenderGuiEvent.Post event) {
         LyricClient.renderHud(Minecraft.getInstance(), event.getGuiGraphics());
         UiClientRendering.renderHudOverlay(event.getGuiGraphics());
@@ -189,7 +202,11 @@ public final class UiClient {
 
     @SubscribeEvent
     public static void onShutdown(GameShuttingDownEvent event) {
-        ClientUiKernel.stop();
+        try {
+            ClientUiKernel.stop();
+        } finally {
+            SpatialRenderer.releaseTiming();
+        }
     }
 
     /** 資源重載仍停留在玻璃畫面時，立即以新資源恢復管線，不必重開畫面。 */
@@ -219,6 +236,7 @@ public final class UiClient {
         @SubscribeEvent
         public static void onRegisterLyricShader(RegisterShadersEvent event) {
             LyricView.registerShader(event.getResourceProvider(), event::registerShader);
+            SpatialRenderer.register(event.getResourceProvider(), event::registerShader);
         }
 
         @SubscribeEvent
@@ -226,6 +244,9 @@ public final class UiClient {
             controlPanelKey = new KeyMapping("key.sh_better_ui.control_panel", KeyConflictContext.IN_GAME,
                     InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F8, "key.categories.sh_better_ui");
             event.register(controlPanelKey);
+            liveActivitiesKey = new KeyMapping("key.sh_better_ui.live_activities", KeyConflictContext.IN_GAME,
+                    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F7, "key.categories.sh_better_ui");
+            event.register(liveActivitiesKey);
         }
 
         @SubscribeEvent

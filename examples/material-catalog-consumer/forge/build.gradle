@@ -1,0 +1,52 @@
+// Author: dishanhai
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.2.0.7-dev-SNAPSHOT'
+}
+
+java { toolchain.languageVersion = JavaLanguageVersion.of(17) }
+repositories { mavenCentral() }
+
+def shBetterUiJar = file(providers.gradleProperty('shBetterUiJar').get())
+ext.consumerLibrary = shBetterUiJar
+ext.consumerMetadata = 'META-INF/mods.toml'
+
+sourceSets.main {
+    java.srcDir('../common/src/main/java')
+    resources.srcDir('../common/src/main/resources')
+}
+dependencies {
+    compileOnly files(shBetterUiJar)
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.16'
+}
+minecraft { mappings channel: 'parchment', version: '2023.09.03-1.20.1' }
+
+// ForgeGradle can reuse the game metadata cache for a fresh offline consumer checkout.
+def cachedMetadata = new File(gradle.gradleUserHomeDir, 'caches/forge_gradle/minecraft_repo/versions/1.20.1/version.json')
+def gameMetadata = layout.buildDirectory.file('downloadMCMeta/version.json').get().asFile
+if (cachedMetadata.isFile() && !gameMetadata.exists()) {
+    gameMetadata.parentFile.mkdirs()
+    java.nio.file.Files.copy(cachedMetadata.toPath(), gameMetadata.toPath())
+}
+
+apply from: '../consumer.gradle'
+
+jar {
+    archiveClassifier = 'raw'
+    destinationDirectory = layout.buildDirectory.dir('reobf-input')
+    finalizedBy 'reobfJar'
+}
+def release = tasks.register('releaseJar', Copy) {
+    dependsOn 'reobfJar'
+    from layout.buildDirectory.file('reobfJar/output.jar')
+    into layout.buildDirectory.dir('libs')
+    rename { "${project.name}-${project.version}.jar" }
+}
+def verify = tasks.register('verifyConsumerJar') {
+    dependsOn release
+    doLast {
+        project.ext.verifyConsumerArchive(layout.buildDirectory.file("libs/${project.name}-${project.version}.jar").get().asFile)
+    }
+}
+tasks.named('build') { dependsOn verify }

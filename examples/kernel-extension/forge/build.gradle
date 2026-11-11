@@ -11,7 +11,7 @@ repositories { mavenCentral() }
 
 def workspace = file('../../..')
 ext.uiLibrary = file(providers.gradleProperty('shBetterUiJar')
-        .orElse(new File(workspace, 'build/libs/sh_better_ui-1.0.5-dev.jar').path).get())
+        .orElse(new File(workspace, 'build/libs/sh_better_ui-1.0.6-dev.jar').path).get())
 ext.kotlinMod = file(providers.gradleProperty('kotlinForForgeJar')
         .orElse(new File(workspace, 'libs/kotlinforforge-4.12.0-all.jar').path).get())
 ext.loaderMetadata = 'META-INF/mods.toml'

@@ -31,9 +31,8 @@ public final class CodeRain {
     private CodeRainProfile themeBase;
 
     public static CodeRain ascii() {
-        var fallback = CodeRainProfile.builder().mode(CodeRainProfile.Mode.ASCII).build();
-        var rain = new CodeRain(fallback);
-        rain.themeBase = fallback;
+        var rain = new CodeRain(CodeRainProfile.ASCII);
+        rain.themeBase = CodeRainProfile.ASCII;
         return rain;
     }
 
